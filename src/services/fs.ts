@@ -30,6 +30,10 @@ export function createDir(path: string, name: string): Promise<string> {
   return invoke<string>("create_dir", { path, name });
 }
 
+export function searchDir(root: string, query: string): Promise<import("../types").DirEntry[]> {
+  return invoke("search_dir", { root, query });
+}
+
 export function loadFavorites(): Promise<Favorites> {
   return invoke<Favorites>("load_favorites");
 }

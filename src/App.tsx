@@ -2,7 +2,9 @@
 import { useState } from "react";
 import { useFileManager } from "./hooks/useFileManager";
 import { useFavorites } from "./hooks/useFavorites";
+import { useSearch } from "./hooks/useSearch";
 import { Topbar } from "./components/Topbar";
+import { SearchResults } from "./components/SearchBar";
 import { Sidebar } from "./components/Sidebar";
 import { FileGrid } from "./components/FileGrid";
 import { FileList } from "./components/FileList";
@@ -22,6 +24,7 @@ type Dialog =
 export default function App() {
   const fm = useFileManager();
   const favs = useFavorites();
+  const search = useSearch(fm.cwd);
   const [menu, setMenu] = useState<Menu>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
 
@@ -37,7 +40,7 @@ export default function App() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative">
       <Topbar
         mode={fm.mode}
         onMode={fm.setMode}
@@ -48,7 +51,21 @@ export default function App() {
         onToggleHidden={fm.toggleHidden}
         onNewFolder={() => setDialog({ kind: "newfolder" })}
         onCrumb={fm.navigate}
+        searchOpen={search.open}
+        searchQuery={search.query}
+        onSearchOpen={() => search.setOpen(true)}
+        onSearchQuery={search.setQuery}
+        onSearchClose={search.close}
       />
+      {search.open && (
+        <SearchResults
+          results={search.results}
+          searching={search.searching}
+          query={search.query}
+          onOpen={(e) => { fm.openEntry(e); search.close(); }}
+          onNavigate={(p) => { fm.navigate(p); search.close(); }}
+        />
+      )}
 
       <div className="flex-1 flex min-h-0">
         <Sidebar

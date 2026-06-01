@@ -38,6 +38,9 @@ export const Save = (p: P) => (
 export const Drive = (p: P) => (
   <svg {...base} {...p}><rect x="3" y="13" width="18" height="6" rx="2" /><path d="M5 13V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6" /><circle cx="8" cy="16" r="0.5" /></svg>
 );
+export const Search = (p: P) => (
+  <svg {...base} {...p}><circle cx="11" cy="11" r="7" /><path d="m21 21-4.35-4.35" /></svg>
+);
 export const Home = (p: P) => (
   <svg {...base} {...p}><path d="M3 11l9-8 9 8" /><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" /></svg>
 );

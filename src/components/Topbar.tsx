@@ -1,7 +1,8 @@
 // Barre supérieure : toggle des deux modes, navigation, path éditable. Zone de drag (fenêtre sans décoration).
 import { useEffect, useRef, useState } from "react";
 import type { Mode } from "../types";
-import { ArrowUp, Refresh, Eye, FolderPlus } from "./icons";
+import { ArrowUp, Refresh, Eye, FolderPlus, Search } from "./icons";
+import { SearchInput } from "./SearchBar";
 
 interface Props {
   mode: Mode;
@@ -13,6 +14,11 @@ interface Props {
   onToggleHidden: () => void;
   onNewFolder: () => void;
   onCrumb: (path: string) => void;
+  searchOpen: boolean;
+  searchQuery: string;
+  onSearchOpen: () => void;
+  onSearchQuery: (q: string) => void;
+  onSearchClose: () => void;
 }
 
 function crumbs(path: string): { label: string; path: string }[] {
@@ -27,7 +33,7 @@ function crumbs(path: string): { label: string; path: string }[] {
 }
 
 export function Topbar(props: Props) {
-  const { mode, onMode, path } = props;
+  const { mode, onMode, path, searchOpen } = props;
   return (
     <div
       data-tauri-drag-region
@@ -52,8 +58,15 @@ export function Topbar(props: Props) {
       <IconBtn onClick={props.onUp} title="Dossier parent"><ArrowUp /></IconBtn>
       <IconBtn onClick={props.onRefresh} title="Rafraîchir"><Refresh /></IconBtn>
 
-      <PathBar path={path} onSubmit={props.onCrumb} />
+      {searchOpen ? (
+        <SearchInput query={props.searchQuery} onChange={props.onSearchQuery} onClose={props.onSearchClose} />
+      ) : (
+        <PathBar path={path} onSubmit={props.onCrumb} />
+      )}
 
+      <IconBtn onClick={searchOpen ? props.onSearchClose : props.onSearchOpen} active={searchOpen} title="Rechercher">
+        <Search />
+      </IconBtn>
       <IconBtn onClick={props.onToggleHidden} active={props.showHidden} title="Fichiers cachés">
         <Eye />
       </IconBtn>

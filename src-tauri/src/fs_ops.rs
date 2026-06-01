@@ -163,6 +163,32 @@ pub fn delete_entry(path: String) -> Result<(), String> {
     })
 }
 
+// Recherche récursive par nom de fichier/dossier, insensible à la casse, limité à 200 résultats.
+#[tauri::command]
+pub fn search_dir(root: String, query: String) -> Vec<DirEntry> {
+    let q = query.to_lowercase();
+    let mut results = Vec::new();
+    walk_search(Path::new(&root), &q, &mut results);
+    results
+}
+
+fn walk_search(dir: &Path, query: &str, out: &mut Vec<DirEntry>) {
+    if out.len() >= 200 { return; }
+    let Ok(read) = fs::read_dir(dir) else { return };
+    for entry in read.filter_map(|r| r.ok()) {
+        if out.len() >= 200 { return; }
+        let path = entry.path();
+        let name = path.file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        if name.starts_with('.') { continue; }
+        if name.to_lowercase().contains(query) {
+            if let Some(e) = to_entry(&path) { out.push(e); }
+        }
+        if path.is_dir() { walk_search(&path, query, out); }
+    }
+}
+
 #[tauri::command]
 pub fn create_dir(path: String, name: String) -> Result<String, String> {
     let dst = Path::new(&path).join(&name);

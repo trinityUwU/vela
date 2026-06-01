@@ -41,13 +41,116 @@
 - [x] Quick Look (Espace → overlay viewer sans mode Édition)
 - [x] Renommage par lot (rechercher/remplacer + jeton `{n}`, aperçu live)
 - [x] Corbeille dans la sidebar (badge compteur, ouvrir, clic droit → vider) — `trash_dir`/`trash_count`/`empty_trash`
+- [x] Bouton « Vider (N) » dans la topbar quand cwd = corbeille (clic droit conservé en parallèle)
+- [x] Fix outline focus navigateur (`:focus`/`:focus-visible` → `outline:none` global)
 
-## Backlog
-- [ ] Thumbnails images en mode Fichiers (backend resize + crate `image`)
-- [ ] Aperçu PDF (pdfjs-dist)
-- [ ] Indicateur progression copie/déplacement gros volumes
+---
+
+# À FAIRE — specs détaillées (chantier v1.5)
+
+> Ordre d'attaque recommandé : (1) progression copie → (2) PDF → (3) thumbnails.
+> Chaque feature ci-dessous est auto-suffisante : tout le contexte d'implémentation est ici.
+
+## 1 · Indicateur de progression copie / déplacement  ⏱️ effort faible
+
+**Objectif** : sur une copie/déplacement volumineux, l'UI ne doit plus paraître figée. Réutilise
+intégralement le pattern existant `ExtractionManager` + events Tauri + `ExtractionPanel`.
+
+**Backend** (`ops.rs`)
+- `copy_entries` / `move_entries` deviennent **async** (`tauri::async_runtime::spawn`), reçoivent
+  `app: AppHandle` pour émettre un event `transfer-progress`.
+- Pré-comptage : `walkdir` pour compter le nombre total de fichiers à traiter → `total`.
+- Émettre `transfer-progress` à chaque fichier copié : payload `{ job_id, kind: "copy"|"move", current, total, status, error }`
+  (même forme que `ProgressPayload` de archive.rs — statuts : `transferring` | `done` | `error`).
+- `job_id` = uuid simple (timestamp + compteur, ou crate `uuid` déjà transitive — vérifier, sinon
+  format `transfer-{millis}`).
+- Garder une version synchrone interne `copy_recursive` (déjà là). Le wrapper async boucle dessus
+  en émettant la progression entre chaque entrée racine ET idéalement par fichier (passer un
+  callback `on_file` à `copy_recursive`).
+- **Pas de pause/annulation en v1** (option v2). Juste la barre de progression.
+
+**Frontend**
+- `src/types.ts` : `TransferStatus = "transferring" | "done" | "error"`, `TransferJob { id, kind, current, total, status, error? }`.
+- `src/hooks/useTransfers.ts` : calqué EXACTEMENT sur `useExtractions.ts` — écoute `transfer-progress`,
+  maintient `Map<id, TransferJob>`, auto-dismiss 6 s sur état terminal.
+- `src/services/fs.ts` : `copyEntries`/`moveEntries` renvoient déjà void ; le suivi passe par events.
+- **Réutiliser `ExtractionPanel`** : soit le généraliser pour empiler extractions + transferts (préféré),
+  soit créer `TransferPanel.tsx` jumeau. Si généralisation : renommer en `ActivityPanel` qui prend
+  `jobs: (ExtractionJob | TransferJob)[]` et affiche libellé selon le type.
+- `App.tsx` : monter `useTransfers`, passer au panel.
+- Le `paste` de `useFileManager` (cut → moveEntries, copy → copyEntries) bénéficie automatiquement
+  de la barre puisque le backend émet les events.
+
+**Fichiers** : `ops.rs`, `lib.rs` (passer AppHandle aux commandes — déjà le cas pour watch_dir),
+`types.ts`, `useTransfers.ts` (nouveau), `ExtractionPanel.tsx` (généralisation), `App.tsx`.
+
+**Risque** : double émission / flicker si `total` mal compté. Tester avec un dossier ~5000 fichiers.
+
+---
+
+## 2 · Aperçu PDF  ⏱️ effort moyen, isolé
+
+**Objectif** : afficher les PDF dans l'éditeur (et donc gratuitement dans Quick Look).
+
+**Dépendance** : `pdfjs-dist` (npm, `bun add pdfjs-dist`). Worker servi **en local** (souveraineté :
+zéro CDN) via import Vite `pdfjs-dist/build/pdf.worker.min.mjs?url`.
+
+**Frontend uniquement**
+- `src/services/file-kind.ts` : ajouter `"pdf"` au type `Preview`, mapper l'extension `pdf` →
+  `previewKind === "pdf"`. Retirer `pdf` d'éventuels sets binaires. `isEditable("pdf")` doit
+  rester **false** (lecture seule, pas d'édition CodeMirror).
+- `src/components/PdfViewer.tsx` (nouveau) :
+  - Lit le fichier via `read_file_base64` (commande déjà existante) → `Uint8Array`.
+  - `pdfjsLib.getDocument({ data })` ; configurer `GlobalWorkerOptions.workerSrc = workerUrl`.
+  - Rendu page par page sur des `<canvas>` empilés verticalement, scroll dans un conteneur `flex-1 overflow-auto`.
+  - Contrôles : zoom +/- (scale 0.5→3), indicateur page courante/total. Render à `scale * devicePixelRatio`.
+  - Lazy render des pages visibles (IntersectionObserver) si > 20 pages.
+  - Gestion erreur (PDF corrompu / chiffré) → message via `onError`.
+- `src/components/Editor.tsx` : brancher `kind === "pdf"` → `<PdfViewer entry={entry} onError={onError} />`
+  (avant les autres branches isImage/isArchive). Masquer les boutons save/search pour ce type.
+
+**Fichiers** : `package.json`, `file-kind.ts`, `PdfViewer.tsx` (nouveau), `Editor.tsx`,
+`vite.config.ts` (vérifier que le worker `?url` est bien bundlé, sinon `optimizeDeps`/`assetsInclude`).
+
+**Risque** : plomberie worker pdf.js avec Vite + Tauri (chemin asset). ~30 min connues. Tester avec
+un PDF multi-pages et un PDF lourd (>10 Mo).
+
+---
+
+## 3 · Thumbnails images (mode Fichiers)  ⏱️ effort moyen, le plus de code
+
+**Objectif** : miniatures réelles pour les images dans la grille, au lieu de l'icône générique.
+
+**Dépendance** : `image = "0.25"` (Rust).
+
+**Backend** (`thumbs.rs`, nouveau module)
+- Commande `thumbnail(path: String, max: u32) -> Result<String, String>` (base64 d'un WebP ou PNG).
+  - **Cache disque** : `~/.cache/vela/thumbs/{hash}.webp` où `hash = blake3/sha(path + mtime + max)`.
+    Clé incluant mtime → invalidation automatique si l'image change. Lire le cache avant toute génération.
+  - Décodage `image::open`, resize `Lanczos3` cap dimension `max` (défaut 128px), encode WebP (ou PNG si webp indispo).
+  - Async via `spawn_blocking`. Skip si fichier > 20 Mo (retourne Err → fallback icône front).
+  - Créer `~/.cache/vela/thumbs/` au besoin.
+- Enregistrer dans `lib.rs`.
+
+**Frontend**
+- `src/services/fs.ts` : `thumbnail(path, max=128): Promise<string>`.
+- `src/hooks/useThumbnail.ts` (nouveau) : lazy via **IntersectionObserver** — ne génère QUE les
+  tuiles visibles. Limite de **concurrence ~4** générations en parallèle (queue) pour ne pas saturer
+  sur un dossier de 500 images. Retourne `{ src, loading, error }`.
+- `src/components/FileTile.tsx` : si `previewKind(entry.extension) === "image"`, afficher le thumbnail
+  (img base64) à la place de `FileIcon` ; fallback `FileIcon` pendant chargement / si erreur.
+  Garder un ref sur la tuile pour l'IntersectionObserver.
+
+**Fichiers** : `Cargo.toml`, `thumbs.rs` (nouveau), `lib.rs`, `fs.ts`, `useThumbnail.ts` (nouveau), `FileTile.tsx`.
+
+**Risque** : dossier plein de RAW lourds → skip > 20 Mo + cache. Concurrence à plafonner.
+Mémoire : ne pas garder toutes les base64 en RAM, laisser le GC ; le cache disque est la source.
+
+---
+
+## Backlog (non détaillé — à spécifier au moment venu)
 - [ ] Onglets multi-fichiers en mode Édition
-- [ ] Diff entre deux fichiers (CodeMirror merge view)
+- [ ] Diff entre deux fichiers (CodeMirror merge view) — 2 fichiers sélectionnés → clic droit « Comparer »
 - [ ] Terminal intégré (cwd courant)
-- [ ] Tags / couleurs sur fichiers
-- [ ] Annuler (Ctrl+Z) sur rename/move/delete récents
+- [ ] Tags / couleurs sur fichiers (métadonnées `~/.config/vela/tags.json`)
+- [ ] Annuler (Ctrl+Z) sur rename/move/delete récents (pile d'opérations inverses)

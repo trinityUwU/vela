@@ -65,12 +65,12 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 ## Limitation connue
 WebKitGTK comme couche de rendu (vs GTK natif chez Nemo/Thunar en C). Plus de RAM, démarrage plus lent. Trade-off assumé pour la richesse de l'UI.
 
-## Backlog
-- Thumbnails images en mode Fichiers (backend resize + crate `image`)
-- Aperçu PDF (pdfjs-dist)
-- Indicateur progression copie/déplacement gros volumes
-- Onglets multi-fichiers en mode Édition
-- Diff deux fichiers (CodeMirror merge view)
-- Terminal intégré (cwd courant)
-- Tags / couleurs sur fichiers
-- Annuler (Ctrl+Z) sur rename/move/delete récents
+## Prochain chantier — v1.5
+**Specs complètes détaillées dans `TODO.md` (section « À FAIRE — specs détaillées »).**
+Ordre : (1) progression copie/déplacement → (2) aperçu PDF → (3) thumbnails images.
+- (1) `ops.rs` async + event `transfer-progress` + `useTransfers` + généraliser `ExtractionPanel`
+- (2) `pdfjs-dist` (worker local) + `PdfViewer.tsx` branché dans `Editor` (→ Quick Look gratuit)
+- (3) `thumbs.rs` (crate `image`, cache `~/.cache/vela/thumbs`) + `useThumbnail` (IntersectionObserver, concurrence 4) + `FileTile`
+
+## Backlog (non priorisé)
+- Onglets multi-fichiers en mode Édition · Diff 2 fichiers (CodeMirror merge) · Terminal intégré · Tags/couleurs · Annuler (Ctrl+Z)

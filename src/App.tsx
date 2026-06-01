@@ -290,8 +290,11 @@ export default function App() {
         )}
       </div>
 
-      {termVisible && (
-        <div className="shrink-0 flex flex-col" style={{ height: termHeight }}>
+      {(termVisible || terminals.tabs.length > 0) && (
+        <div
+          className={`shrink-0 flex flex-col ${termVisible ? "" : "hidden"}`}
+          style={{ height: termVisible ? termHeight : 0 }}
+        >
           <ResizeHandle onResize={(dy) => setTermHeight((h) => Math.max(120, Math.min(window.innerHeight - 160, h - dy)))} />
           <div className="flex-1 min-h-0">
             <TerminalPanel

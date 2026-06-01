@@ -4,6 +4,7 @@ use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::io::{Read, Write};
+use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use tauri::{AppHandle, Emitter};
 
@@ -56,19 +57,25 @@ fn reader_loop(app: AppHandle, id: String, mut reader: Box<dyn Read + Send>) {
 }
 
 // Ouvre une session shell dans `cwd` et démarre le thread de lecture. Retourne l'id de session.
-// Liste les shells disponibles (présents dans /etc/shells et existants sur disque).
+const SHELL_DENYLIST: &[&str] = &["nologin", "git-shell", "systemd-home-fallback-shell", "rbash"];
+
+// Liste les shells interactifs disponibles (présents dans /etc/shells, existants, dédupliqués par nom).
 #[tauri::command]
 pub fn available_shells() -> Vec<String> {
     let content = std::fs::read_to_string("/etc/shells").unwrap_or_default();
+    let mut seen = Vec::new();
     let mut out = Vec::new();
     for line in content.lines() {
         let p = line.trim();
-        if p.is_empty() || p.starts_with('#') {
+        if p.is_empty() || p.starts_with('#') || !std::path::Path::new(p).exists() {
             continue;
         }
-        if std::path::Path::new(p).exists() && !out.contains(&p.to_string()) {
-            out.push(p.to_string());
+        let name = Path::new(p).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        if SHELL_DENYLIST.contains(&name.as_str()) || seen.contains(&name) {
+            continue;
         }
+        seen.push(name);
+        out.push(p.to_string());
     }
     out
 }

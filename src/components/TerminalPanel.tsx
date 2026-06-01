@@ -57,32 +57,32 @@ export function TerminalPanel(props: Props) {
               </button>
             </div>
           ))}
-          <button onClick={props.onNew} title="Nouveau terminal (shell par défaut)"
-            className="h-6 px-1.5 rounded text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]">
-            +
-          </button>
-          {props.shells.length > 0 && (
-            <div className="relative">
-              <button onClick={() => setShellMenu((v) => !v)} title="Choisir un shell"
-                className="h-6 px-1 rounded text-[11px] text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]">
-                ▾
-              </button>
-              {shellMenu && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShellMenu(false)} />
-                  <div className="absolute z-50 top-7 left-0 min-w-32 p-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
-                    {props.shells.map((s) => (
-                      <button key={s} onClick={() => { props.onNewShell(s); setShellMenu(false); }}
-                        className="w-full text-left px-2 py-1 text-xs rounded text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] font-mono">
-                        {shellName(s)}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
         </div>
+        <button onClick={props.onNew} title="Nouveau terminal (shell par défaut)"
+          className="h-6 px-1.5 rounded text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] shrink-0">
+          +
+        </button>
+        {props.shells.length > 0 && (
+          <div className="relative shrink-0">
+            <button onClick={() => setShellMenu((v) => !v)} title="Choisir un shell"
+              className="h-6 px-1 rounded text-[11px] text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]">
+              ▾
+            </button>
+            {shellMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShellMenu(false)} />
+                <div className="absolute z-50 top-7 right-0 min-w-32 p-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+                  {props.shells.map((s) => (
+                    <button key={s} onClick={() => { props.onNewShell(s); setShellMenu(false); }}
+                      className="w-full text-left px-2 py-1 text-xs rounded text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] font-mono">
+                      {shellName(s)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
         <button onClick={props.onFollow} title="Suivre le dossier courant"
           className="h-6 px-2 rounded text-[11px] text-[var(--color-text-dim)] hover:text-[var(--color-accent)]">
           Suivre

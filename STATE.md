@@ -47,7 +47,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - **Aperçu PDF** : `PdfViewer` (pdf.js, worker local `?url`) — canvas page par page, zoom 50-300%, lazy IntersectionObserver au-delà de 20 pages. Branché dans `Editor` (`previewKind` "pdf", non éditable) → dispo en Quick Look
 - **Thumbnails images** : `useThumbnail` (IntersectionObserver lazy, file de concurrence globale 4) + `FileTile` affiche la miniature réelle (fallback `FileIcon` pendant chargement/erreur)
 
-**Commandes Rust** : 41 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager`)
+**Commandes Rust** : 45 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager` + `TerminalManager`)
 
 **Transferts contrôlables** : `TransferManager` (state, AtomicBool paused/cancelled par job) + `transfer_pause`/`transfer_resume`/`transfer_cancel`. La boucle de copie par chunks vérifie le contrôle à chaque tranche (pause = spin-wait 50 ms, annulation = nettoyage du partiel + statut `cancelled`). Boutons Pause/Reprendre + Annuler sur copie ET déplacement. **Déplacement intelligent** : `rename` si même FS (instantané) ; sinon (cross-device EXDEV) copie par chunks pausable/annulable + suppression de la source **différée à la fin** (annuler ne perd jamais de données). Annulation = restauration : rename inverse des renommés, suppression des copies cross-device partielles. `MoveState` (renamed/copied), `undo_move`, `is_cross_device`, `validate_move_target`
 
@@ -74,8 +74,10 @@ WebKitGTK comme couche de rendu (vs GTK natif chez Nemo/Thunar en C). Plus de RA
 ## v1.5 — livré ✅
 Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, pause/annulation copie & déplacement, cross-device). Détail dans `TODO.md` section « Livré — v1.5 ».
 
-## Prochain chantier — v1.6 : Terminal intégré
-Objectif : terminal parfaitement intégré à l'app (PTY réel, panneau dévoilable, cwd synchronisé sur le dossier courant). Archi à figer avant code. Specs dans `TODO.md` section « À FAIRE — Terminal intégré ».
+## v1.6 — Terminal intégré ✅ (livré, installé)
+- `terminal.rs` : `TerminalManager` (state, `HashMap<id, Session>`). Session = master PTY + writer + child. Commandes `term_open(cwd, cols, rows)→id` (spawn `$SHELL` via `portable-pty`, `TERM=xterm-256color`, thread lecteur → event `term-output {id, data b64}`), `term_input`, `term_resize`, `term_close`. EOF shell → event `term-exit {id}`.
+- Front : `useTerminals` (onglets multi-sessions, actif), `TerminalPanel.tsx` (barre d'onglets + xterm.js par session via `@xterm/addon-fit`, écoute `term-output`/`term-exit`, frappes → `term_input`, ResizeObserver → `term_resize`). Panneau bas redimensionnable (`ResizeHandle` drag), toggle **Ctrl+`** + bouton topbar. Bouton **« Suivre »** = `cd '<cwd>'` injecté dans la session active.
+- 45 commandes Rust. Deps : `portable-pty` (Rust) + `@xterm/xterm` + `@xterm/addon-fit` (local).
 
 ## Backlog (non priorisé)
 - Onglets multi-fichiers en mode Édition · Diff 2 fichiers (CodeMirror merge) · Tags/couleurs · Annuler (Ctrl+Z)

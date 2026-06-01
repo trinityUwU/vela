@@ -1,12 +1,15 @@
 // Assemblage du gestionnaire : topbar, sidebar, zone centrale (grille ou éditeur), modals.
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFileManager } from "./hooks/useFileManager";
 import { useFavorites } from "./hooks/useFavorites";
 import { useSearch } from "./hooks/useSearch";
 import { useSort, applySortFilter } from "./hooks/useSort";
 import { useExtractions } from "./hooks/useExtractions";
 import { useTransfers } from "./hooks/useTransfers";
+import { useTerminals } from "./hooks/useTerminals";
 import { useKeyboard } from "./hooks/useKeyboard";
+import { TerminalPanel } from "./components/TerminalPanel";
+import { termInput } from "./services/term";
 import { Topbar } from "./components/Topbar";
 import { SearchResults } from "./components/SearchBar";
 import { SortBar } from "./components/SortBar";
@@ -71,8 +74,35 @@ export default function App() {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [quickLook, setQuickLook] = useState<DirEntry | null>(null);
   const [trashPath, setTrashPath] = useState("");
+  const terminals = useTerminals();
+  const [termVisible, setTermVisible] = useState(false);
+  const [termHeight, setTermHeight] = useState(280);
 
   useEffect(() => { trashDir().then(setTrashPath).catch(() => {}); }, []);
+
+  const toggleTerm = useCallback(() => {
+    setTermVisible((v) => {
+      const next = !v;
+      if (next && terminals.tabs.length === 0) terminals.open(fm.cwd);
+      return next;
+    });
+  }, [terminals, fm.cwd]);
+
+  const newTerm = useCallback(() => { terminals.open(fm.cwd); }, [terminals, fm.cwd]);
+
+  const followTerm = useCallback(() => {
+    if (!terminals.activeId) { terminals.open(fm.cwd); return; }
+    const escaped = fm.cwd.replace(/'/g, "'\\''");
+    termInput(terminals.activeId, `cd '${escaped}'\n`).catch(() => {});
+  }, [terminals, fm.cwd]);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "`") { e.preventDefault(); toggleTerm(); }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [toggleTerm]);
 
   const entries = useMemo(
     () => applySortFilter(fm.listing?.entries ?? [], sort),
@@ -182,6 +212,8 @@ export default function App() {
         inTrash={!!trashPath && fm.cwd === trashPath}
         trashCount={fm.trashCount}
         onEmptyTrash={() => setDialog({ kind: "emptytrash" })}
+        termOpen={termVisible}
+        onToggleTerm={toggleTerm}
         searchOpen={search.open}
         searchQuery={search.query}
         searchMode={search.mode}
@@ -257,6 +289,24 @@ export default function App() {
           />
         )}
       </div>
+
+      {termVisible && (
+        <div className="shrink-0 flex flex-col" style={{ height: termHeight }}>
+          <ResizeHandle onResize={(dy) => setTermHeight((h) => Math.max(120, Math.min(window.innerHeight - 160, h - dy)))} />
+          <div className="flex-1 min-h-0">
+            <TerminalPanel
+              tabs={terminals.tabs}
+              activeId={terminals.activeId}
+              onSelect={terminals.setActiveId}
+              onNew={newTerm}
+              onClose={terminals.close}
+              onExit={terminals.exit}
+              onFollow={followTerm}
+              onHide={() => setTermVisible(false)}
+            />
+          </div>
+        </div>
+      )}
 
       {fm.error && (
         <div className="absolute bottom-3 right-3 max-w-md px-3 py-2 rounded-md bg-[var(--color-danger)] text-[var(--color-bg)] text-xs shadow-lg">
@@ -402,5 +452,23 @@ export default function App() {
 
       <ExtractionPanel jobs={extractionJobs} transfers={transferJobs} onNavigate={fm.navigate} />
     </div>
+  );
+}
+
+// Poignée de redimensionnement vertical du panneau terminal (drag).
+function ResizeHandle({ onResize }: { onResize: (dy: number) => void }) {
+  const onMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    let last = e.clientY;
+    const move = (ev: MouseEvent) => { onResize(ev.clientY - last); last = ev.clientY; };
+    const up = () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      className="h-1 cursor-ns-resize bg-[var(--color-border)] hover:bg-[var(--color-accent)] shrink-0"
+    />
   );
 }

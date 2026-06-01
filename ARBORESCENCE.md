@@ -38,7 +38,8 @@ vela/
 │   │   ├── useExtractions.ts       Écoute events Tauri extraction-progress → Map<id, ExtractionJob>
 │   │   │                           auto-dismiss 6s états terminaux
 │   │   ├── useTransfers.ts         Écoute transfer-progress → Map<id, TransferJob> (copie/déplacement)
-│   │   └── useThumbnail.ts         Miniature lazy (IntersectionObserver) + file concurrence globale 4
+│   │   ├── useThumbnail.ts         Miniature lazy (IntersectionObserver) + file concurrence globale 4
+│   │   └── useTerminals.ts         Onglets terminal : open/close sessions PTY, onglet actif
 │   │
 │   └── components/
 │       ├── Topbar.tsx              Toggle modes, PathBar éditable, search (Nom/Contenu), drop crumbs
@@ -54,6 +55,7 @@ vela/
 │       ├── ExtractionPanel.tsx     Panel fixe bas-droite : extractions + transferts empilés, progression,
 │       │                           pause/reprise/annulation, mot de passe inline, aller au dossier
 │       ├── PdfViewer.tsx           Aperçu PDF (pdf.js worker local) : canvas/page, zoom, lazy >20 pages
+│       ├── TerminalPanel.tsx       Panneau terminal bas : onglets + xterm.js par session PTY
 │       ├── PropertiesModal.tsx     Métadonnées + contenu dossier + app par défaut (PATH + custom)
 │       ├── ContextMenu.tsx         Mono/multi : ouvrir, extraire, copier/couper, compresser,
 │       │                           renommer (mono) / par lot (multi), corbeille, suppr définitive
@@ -78,6 +80,7 @@ vela/
         ├── ops.rs                  trash/delete/copy/move groupés, create_archive, search_content,
         │                           trash_dir/trash_count/empty_trash (gestion corbeille XDG)
         ├── watcher.rs              DirWatcher (state) + watch_dir (notify → event fs-changed)
+        ├── terminal.rs             TerminalManager (PTY portable-pty) : term_open/input/resize/close
         ├── thumbs.rs               thumbnail (crate image, PNG base64, cache ~/.cache/vela/thumbs)
         ├── places.rs               home_dir, list_places (XDG + mounts)
         ├── favorites.rs            load/save favorites (JSON ~/.config/vela/)

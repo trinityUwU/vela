@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Mode } from "../types";
 import type { SearchMode } from "../hooks/useSearch";
-import { ArrowUp, Refresh, Eye, FolderPlus, Search, Trash } from "./icons";
+import { ArrowUp, Refresh, Eye, FolderPlus, Search, Trash, TerminalIcon } from "./icons";
 import { SearchInput } from "./SearchBar";
 
 interface Props {
@@ -19,6 +19,8 @@ interface Props {
   inTrash: boolean;
   trashCount: number;
   onEmptyTrash: () => void;
+  termOpen: boolean;
+  onToggleTerm: () => void;
   searchOpen: boolean;
   searchQuery: string;
   searchMode: SearchMode;
@@ -88,6 +90,9 @@ export function Topbar(props: Props) {
       </IconBtn>
       <IconBtn onClick={props.onToggleHidden} active={props.showHidden} title="Fichiers cachés">
         <Eye />
+      </IconBtn>
+      <IconBtn onClick={props.onToggleTerm} active={props.termOpen} title="Terminal (Ctrl+`)">
+        <TerminalIcon />
       </IconBtn>
       <IconBtn onClick={props.onNewFolder} title="Nouveau dossier"><FolderPlus /></IconBtn>
     </div>

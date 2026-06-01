@@ -41,6 +41,9 @@ export const Drive = (p: P) => (
 export const Search = (p: P) => (
   <svg {...base} {...p}><circle cx="11" cy="11" r="7" /><path d="m21 21-4.35-4.35" /></svg>
 );
+export const TerminalIcon = (p: P) => (
+  <svg {...base} {...p}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="m7 9 3 3-3 3M13 15h4" /></svg>
+);
 export const Home = (p: P) => (
   <svg {...base} {...p}><path d="M3 11l9-8 9 8" /><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" /></svg>
 );

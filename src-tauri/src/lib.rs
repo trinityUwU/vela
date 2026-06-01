@@ -5,6 +5,7 @@ mod favorites;
 mod fs_ops;
 mod ops;
 mod places;
+mod terminal;
 mod thumbs;
 mod watcher;
 
@@ -14,6 +15,7 @@ pub fn run() {
         .manage(archive::ExtractionManager::new())
         .manage(watcher::DirWatcher::new())
         .manage(ops::TransferManager::new())
+        .manage(terminal::TerminalManager::new())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             fs_ops::list_dir,
@@ -42,6 +44,10 @@ pub fn run() {
             ops::empty_trash,
             watcher::watch_dir,
             thumbs::thumbnail,
+            terminal::term_open,
+            terminal::term_input,
+            terminal::term_resize,
+            terminal::term_close,
             places::home_dir,
             places::list_places,
             favorites::load_favorites,

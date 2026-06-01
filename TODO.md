@@ -58,10 +58,22 @@
 
 ---
 
-# À FAIRE — Terminal intégré (chantier v1.6)
+# Livré — v1.6 : Terminal intégré ✅
 
-> Prochaine étape : terminal parfaitement intégré à l'app. Specs à figer avant code (archi proposée
-> à Chris). Cible : PTY réel, panneau dévoilable, cwd synchronisé sur le dossier courant.
+**Décisions actées** : multi-onglets dès la v1 · sync cwd = bouton manuel « suivre » (lancement dans
+le cwd + resync à la demande) · PTY réel `portable-pty` + `xterm.js` · panneau bas dévoilable.
+
+**Backend** (`terminal.rs`) : `TerminalManager` (state, `HashMap<id, Session>`). Session = master PTY +
+writer + child. Commandes : `term_open(cwd)→id` (spawn `$SHELL` via portable-pty, thread lecteur →
+event `term-output {id, data b64}`), `term_input(id, data)`, `term_resize(id, cols, rows)`,
+`term_close(id)`. EOF shell → event `term-exit {id}`.
+
+**Frontend** : `useTerminals` (Map sessions, onglet actif), `TerminalPanel.tsx` (barre d'onglets +
+xterm.js par session, `@xterm/addon-fit`, écoute `term-output`/`term-exit`, envoie frappes via
+`term_input`, resize via addon-fit → `term_resize`). Toggle Ctrl+` + bouton topbar, hauteur drag.
+Bouton « suivre » = `term_input(id, "cd '<cwd>'\\n")`.
+
+**Deps** : `portable-pty` (Rust, wezterm, MIT) · `@xterm/xterm` + `@xterm/addon-fit` (JS, MIT, local).
 
 ## 1 · Indicateur de progression copie / déplacement  ✅ LIVRÉ
 

@@ -78,7 +78,8 @@ Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, paus
 - `terminal.rs` : `TerminalManager` (state, `HashMap<id, Session>`). Session = master PTY + writer + child. Commandes `term_open(cwd, cols, rows)→id` (spawn `$SHELL` via `portable-pty`, `TERM=xterm-256color`, thread lecteur → event `term-output {id, data b64}`), `term_input`, `term_resize`, `term_close`. EOF shell → event `term-exit {id}`.
 - Front : `useTerminals` (onglets multi-sessions, actif), `TerminalPanel.tsx` (barre d'onglets + xterm.js par session via `@xterm/addon-fit`, écoute `term-output`/`term-exit`, frappes → `term_input`, ResizeObserver → `term_resize`). Panneau bas redimensionnable (`ResizeHandle` drag), toggle **Ctrl+`** + bouton topbar. Bouton **« Suivre »** = `cd '<cwd>'` injecté dans la session active.
 - Bannière d'accueil (cwd + date, sans mention produit) écrite dans le pane au montage. Fit robuste via double `requestAnimationFrame` (le prompt s'affiche sans resize manuel).
-- **Choix du shell** : `available_shells` (parse `/etc/shells`, existants) ; bouton `▾` à côté du `+` → menu des shells (bash/zsh…). `+` = `$SHELL` par défaut, `term_open(shell?)`.
+- **Choix du shell** : `available_shells` (parse `/etc/shells`, existants, dédup par nom, exclut nologin/git-shell/rbash/fallback) ; bouton `▾` (hors zone scrollable pour éviter le clip overflow) → menu des shells (bash/zsh…). `+` = `$SHELL` par défaut, `term_open(shell?)`.
+- **Police** : `JetBrainsMono Nerd Font` dans xterm → glyphes Powerlevel10k/powerline rendus (sinon carrés).
 - 46 commandes Rust. Deps : `portable-pty` (Rust) + `@xterm/xterm` + `@xterm/addon-fit` (local).
 
 ## Backlog (non priorisé)

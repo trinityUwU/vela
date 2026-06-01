@@ -5,6 +5,7 @@ import { termOpen, termClose } from "../services/term";
 export interface TermTab {
   id: string;
   title: string;
+  cwd: string;
 }
 
 function basename(path: string): string {
@@ -19,7 +20,7 @@ export function useTerminals() {
   const open = useCallback(async (cwd: string) => {
     try {
       const id = await termOpen(cwd, 80, 24);
-      setTabs((t) => [...t, { id, title: basename(cwd) }]);
+      setTabs((t) => [...t, { id, title: basename(cwd), cwd }]);
       setActiveId(id);
       return id;
     } catch {

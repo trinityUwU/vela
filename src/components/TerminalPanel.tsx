@@ -67,7 +67,7 @@ export function TerminalPanel(props: Props) {
 
       <div className="flex-1 min-h-0 relative">
         {tabs.map((t) => (
-          <TerminalView key={t.id} id={t.id} active={t.id === activeId} onExit={props.onExit} />
+          <TerminalView key={t.id} id={t.id} cwd={t.cwd} active={t.id === activeId} onExit={props.onExit} />
         ))}
         {tabs.length === 0 && (
           <div className="flex items-center justify-center h-full text-xs text-[var(--color-text-dim)]">
@@ -79,7 +79,16 @@ export function TerminalPanel(props: Props) {
   );
 }
 
-function TerminalView({ id, active, onExit }: { id: string; active: boolean; onExit: (id: string) => void }) {
+function banner(cwd: string): string {
+  const accent = "\x1b[38;2;110;168;254m";
+  const dim = "\x1b[2m";
+  const reset = "\x1b[0m";
+  return `${accent}▌ Vela terminal${reset}  ${dim}${cwd}${reset}\r\n\r\n`;
+}
+
+function TerminalView({ id, cwd, active, onExit }: {
+  id: string; cwd: string; active: boolean; onExit: (id: string) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const inst = useRef<{ term: Terminal; fit: FitAddon } | null>(null);
 
@@ -94,6 +103,7 @@ function TerminalView({ id, active, onExit }: { id: string; active: boolean; onE
     term.loadAddon(fit);
     term.open(ref.current!);
     try { fit.fit(); } catch { /* conteneur masqué */ }
+    term.write(banner(cwd));
     inst.current = { term, fit };
     termResize(id, term.cols, term.rows).catch(() => {});
 

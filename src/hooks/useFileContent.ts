@@ -23,10 +23,11 @@ const INIT: State = {
   loading: true,
 };
 
-export function useFileContent(path: string, size: number, onError: (m: string) => void) {
+export function useFileContent(path: string, size: number, onError: (m: string) => void, skip = false) {
   const [st, setSt] = useState<State>(INIT);
 
   useEffect(() => {
+    if (skip) { setSt({ ...INIT, loading: false }); return; }
     let alive = true;
     const editable = size <= EDIT_MAX;
     setSt({ ...INIT, editable });
@@ -46,7 +47,7 @@ export function useFileContent(path: string, size: number, onError: (m: string) 
     return () => {
       alive = false;
     };
-  }, [path, size, onError]);
+  }, [path, size, onError, skip]);
 
   const loadMore = useCallback(async () => {
     if (st.eof || st.loading) return;

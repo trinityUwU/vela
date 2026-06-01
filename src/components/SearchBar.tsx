@@ -15,7 +15,6 @@ export function SearchInput({ query, onChange, onClose }: BarProps) {
 
   return (
     <div className="flex-1 flex items-center gap-2 h-8 px-3 rounded-md bg-[var(--color-bg)] border border-[var(--color-accent)] text-sm">
-      <span className="text-[var(--color-text-dim)] text-xs">🔍</span>
       <input
         ref={ref}
         value={query}

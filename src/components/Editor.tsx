@@ -13,6 +13,12 @@ import type { DirEntry } from "../types";
 import { Save, Eye, Code, Search } from "./icons";
 import { TableViewer } from "./TableViewer";
 
+const MIME: Record<string, string> = {
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+  gif: "image/gif", webp: "image/webp", svg: "image/svg+xml",
+  bmp: "image/bmp", ico: "image/x-icon",
+};
+
 interface Props {
   entry: DirEntry;
   onClose: () => void;
@@ -26,20 +32,31 @@ function fmtSize(b: number): string {
 }
 
 export function Editor({ entry, onClose, onError }: Props) {
-  const file = useFileContent(entry.path, entry.size, onError);
-  const [dirty, setDirty] = useState(false);
-  const [preview, setPreview] = useState(false);
-  const [searchOn, setSearchOn] = useState(false);
-  const viewRef = useRef<EditorView | null>(null);
   const kind = previewKind(entry.extension);
   const isMd = kind === "markdown";
   const isTable = kind === "table";
+  const isImage = kind === "image";
+  const file = useFileContent(entry.path, entry.size, onError, isImage);
+  const [dirty, setDirty] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const [searchOn, setSearchOn] = useState(false);
+  const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const viewRef = useRef<EditorView | null>(null);
 
   useEffect(() => {
     setDirty(false);
     setPreview(false);
     setSearchOn(false);
+    setImgSrc(null);
   }, [entry.path]);
+
+  useEffect(() => {
+    if (!isImage) return;
+    const mime = MIME[entry.extension] ?? "image/png";
+    fs.readFileBase64(entry.path)
+      .then((b64) => setImgSrc(`data:${mime};base64,${b64}`))
+      .catch((e) => onError(String(e)));
+  }, [entry.path, isImage, entry.extension, onError]);
 
   const toggleSearch = useCallback(() => {
     const view = viewRef.current;
@@ -79,7 +96,7 @@ export function Editor({ entry, onClose, onError }: Props) {
         {dirty && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" title="Non sauvegardé" />}
         <span className="text-[11px] text-[var(--color-text-dim)]">{fmtSize(entry.size)}</span>
         <div className="flex-1" />
-        {!preview && !isTable && (
+        {!preview && !isTable && !isImage && (
           <HBtn onClick={toggleSearch} active={searchOn} title="Rechercher dans le fichier (Ctrl+F)">
             <Search />
           </HBtn>
@@ -89,7 +106,7 @@ export function Editor({ entry, onClose, onError }: Props) {
             {preview ? <Code /> : <Eye />}
           </HBtn>
         )}
-        {file.editable && !isTable && (
+        {file.editable && !isTable && !isImage && (
           <HBtn onClick={save} title="Sauvegarder (Ctrl+S)"><Save /></HBtn>
         )}
         <button
@@ -112,7 +129,20 @@ export function Editor({ entry, onClose, onError }: Props) {
         </div>
       )}
 
-      {isTable ? (
+      {isImage ? (
+        <div className="flex-1 flex items-center justify-center overflow-auto p-4 bg-[var(--color-bg)]">
+          {imgSrc ? (
+            <img
+              src={imgSrc}
+              alt={entry.name}
+              className="max-w-full max-h-full object-contain rounded"
+              style={{ imageRendering: entry.extension === "svg" ? "auto" : "auto" }}
+            />
+          ) : (
+            <span className="text-sm text-[var(--color-text-dim)]">Chargement…</span>
+          )}
+        </div>
+      ) : isTable ? (
         <TableViewer entry={entry} onError={onError} />
       ) : file.loading && file.content === "" ? (
         <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)]">

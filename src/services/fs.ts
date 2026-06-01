@@ -22,6 +22,14 @@ export function setDefaultApp(desktopId: string, mime: string): Promise<void> {
   return invoke("set_default_app", { desktopId, mime });
 }
 
+export function searchPathBins(query: string): Promise<import("../types").AppInfo[]> {
+  return invoke("search_path_bins", { query });
+}
+
+export function setCustomCommand(name: string, exec: string, mime: string): Promise<string> {
+  return invoke("set_custom_command", { name, exec, mime });
+}
+
 export function listDir(path: string, showHidden = false): Promise<DirListing> {
   return invoke<DirListing>("list_dir", { path, showHidden });
 }

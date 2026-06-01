@@ -45,7 +45,7 @@ export function FileTile({ entry, selected, onClick, onDouble, onContext, onMove
       onDrop={handleDrop}
       onClick={onClick}
       onDoubleClick={onDouble}
-      onContextMenu={onContext}
+      onContextMenu={(e) => { e.stopPropagation(); onContext(e); }}
       title={entry.name}
       className={`flex flex-col items-center gap-1.5 w-24 p-2 rounded-lg transition-colors ${
         dragOver

@@ -9,12 +9,17 @@ interface Props {
   onSelect: (entry: DirEntry) => void;
   onOpen: (entry: DirEntry) => void;
   onContext: (e: React.MouseEvent, entry: DirEntry) => void;
+  onContextBg: (e: React.MouseEvent) => void;
   onMove: (src: string, destDir: string) => void;
 }
 
-export function FileList({ entries, selected, onSelect, onOpen, onContext, onMove }: Props) {
+export function FileList({ entries, selected, onSelect, onOpen, onContext, onContextBg, onMove }: Props) {
+  const handleBg = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onContextBg(e);
+  };
   return (
-    <div className="w-64 shrink-0 border-r border-[var(--color-border)] overflow-y-auto py-1">
+    <div className="w-64 shrink-0 border-r border-[var(--color-border)] overflow-y-auto py-1" onContextMenu={handleBg}>
       {entries.map((e) => (
         <FileRow
           key={e.path}
@@ -70,7 +75,7 @@ function FileRow({ entry, selected, onSelect, onOpen, onContext, onMove }: {
       onDrop={handleDrop}
       onClick={() => onSelect(entry)}
       onDoubleClick={() => onOpen(entry)}
-      onContextMenu={(ev) => onContext(ev, entry)}
+      onContextMenu={(ev) => { ev.stopPropagation(); onContext(ev, entry); }}
       title={entry.name}
       className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors ${
         dragOver

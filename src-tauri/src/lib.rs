@@ -29,7 +29,9 @@ pub fn run() {
             archive::list_archive,
             archive::extract_archive,
             apps::get_apps_for_file,
+            apps::search_path_bins,
             apps::set_default_app,
+            apps::set_custom_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

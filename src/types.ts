@@ -61,6 +61,8 @@ export interface EntryProps {
 export interface AppInfo {
   name: string;
   desktop_id: string;
+  exec: string;
+  source: "desktop" | "binary";
   is_default: boolean;
   supports_mime: boolean;
 }

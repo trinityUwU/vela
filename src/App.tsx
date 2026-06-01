@@ -10,12 +10,14 @@ import { FileGrid } from "./components/FileGrid";
 import { FileList } from "./components/FileList";
 import { Editor } from "./components/Editor";
 import { ContextMenu } from "./components/ContextMenu";
+import { BgContextMenu } from "./components/BgContextMenu";
 import { InputModal } from "./components/InputModal";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { PropertiesModal } from "./components/PropertiesModal";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
+type BgMenu = { x: number; y: number } | null;
 type Dialog =
   | { kind: "rename"; entry: DirEntry }
   | { kind: "newfolder" }
@@ -28,17 +30,33 @@ export default function App() {
   const favs = useFavorites();
   const search = useSearch(fm.cwd);
   const [menu, setMenu] = useState<Menu>(null);
+  const [bgMenu, setBgMenu] = useState<BgMenu>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
 
   const onContext = (e: React.MouseEvent, entry: DirEntry) => {
     e.preventDefault();
+    setBgMenu(null);
     fm.setSelected(entry.path);
     setMenu({ x: e.clientX, y: e.clientY, entry });
+  };
+
+  const onContextBg = (e: React.MouseEvent) => {
+    setMenu(null);
+    setBgMenu({ x: e.clientX, y: e.clientY });
   };
 
   const pinCurrent = () => {
     const name = fm.cwd.split("/").filter(Boolean).pop() ?? fm.cwd;
     favs.pinPath(fm.cwd, name);
+  };
+
+  const cwdEntry: DirEntry = {
+    name: fm.cwd.split("/").filter(Boolean).pop() || "/",
+    path: fm.cwd,
+    is_dir: true,
+    size: 0,
+    modified: 0,
+    extension: "",
   };
 
   return (
@@ -88,6 +106,7 @@ export default function App() {
               onSelect={fm.previewEntry}
               onOpen={fm.openEntry}
               onContext={onContext}
+              onContextBg={onContextBg}
               onMove={fm.moveEntry}
             />
             {fm.opened ? (
@@ -105,6 +124,7 @@ export default function App() {
             onSelect={fm.setSelected}
             onOpen={fm.openEntry}
             onContext={onContext}
+            onContextBg={onContextBg}
             onMove={fm.moveEntry}
           />
         )}
@@ -119,12 +139,26 @@ export default function App() {
 
       {menu && (
         <ContextMenu
-          menu={{ x: menu.x, y: menu.y, path: menu.entry.path, name: menu.entry.name }}
+          menu={{ x: menu.x, y: menu.y, path: menu.entry.path, name: menu.entry.name, isDir: menu.entry.is_dir, cwd: fm.cwd }}
           onClose={() => setMenu(null)}
           onOpen={() => { fm.openEntry(menu.entry); setMenu(null); }}
           onRename={() => { setDialog({ kind: "rename", entry: menu.entry }); setMenu(null); }}
           onDelete={() => { setDialog({ kind: "delete", entry: menu.entry }); setMenu(null); }}
           onProperties={() => { setDialog({ kind: "props", entry: menu.entry }); setMenu(null); }}
+        />
+      )}
+
+      {bgMenu && (
+        <BgContextMenu
+          x={bgMenu.x}
+          y={bgMenu.y}
+          showHidden={fm.showHidden}
+          onClose={() => setBgMenu(null)}
+          onNewFolder={() => { setDialog({ kind: "newfolder" }); setBgMenu(null); }}
+          onRefresh={() => { fm.refresh(); setBgMenu(null); }}
+          onToggleHidden={() => { fm.toggleHidden(); setBgMenu(null); }}
+          onPinCurrent={() => { pinCurrent(); setBgMenu(null); }}
+          onProperties={() => { setDialog({ kind: "props", entry: cwdEntry }); setBgMenu(null); }}
         />
       )}
 

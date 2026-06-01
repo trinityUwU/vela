@@ -79,15 +79,17 @@ function TrashRow({ active, count, onOpen, onEmpty }: {
       </button>
       {menu && (
         <div
-          style={{ top: menu.y, left: menu.x }}
-          className="fixed z-50 min-w-44 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
+          style={{ bottom: window.innerHeight - menu.y + 4, left: menu.x }}
+          onClick={(e) => e.stopPropagation()}
+          className="fixed z-50 min-w-48 p-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
         >
           <button
             onClick={() => { onEmpty(); setMenu(null); }}
             disabled={count === 0}
-            className="w-full text-left px-3 py-1.5 text-sm text-[var(--color-danger)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40 disabled:hover:bg-transparent"
+            className="w-full flex items-center gap-2 text-left px-3 py-2 text-sm rounded text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:opacity-40 disabled:hover:bg-transparent"
           >
-            Vider la corbeille
+            <Trash width={15} height={15} />
+            Vider la corbeille{count > 0 ? ` (${count})` : ""}
           </button>
         </div>
       )}

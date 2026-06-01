@@ -1,7 +1,7 @@
 // Opérations fichiers avancées : corbeille XDG, copie récursive, compression, recherche contenu.
 use serde::Serialize;
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter};
@@ -104,18 +104,37 @@ fn unique_dest(dest_dir: &Path, name: &str) -> PathBuf {
     }
 }
 
-fn copy_recursive(src: &Path, dst: &Path, on_file: &mut dyn FnMut()) -> std::io::Result<()> {
+const COPY_BUF: usize = 1024 * 1024;
+
+// Copie un fichier par tranches de 1 Mo, notifiant les octets écrits (progression intra-fichier).
+fn copy_file_progress(src: &Path, dst: &Path, on_bytes: &mut dyn FnMut(u64)) -> std::io::Result<()> {
+    let mut reader = fs::File::open(src)?;
+    let mut writer = fs::File::create(dst)?;
+    let mut buf = vec![0u8; COPY_BUF];
+    loop {
+        let n = reader.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        writer.write_all(&buf[..n])?;
+        on_bytes(n as u64);
+    }
+    if let Ok(meta) = fs::metadata(src) {
+        let _ = fs::set_permissions(dst, meta.permissions());
+    }
+    Ok(())
+}
+
+fn copy_recursive(src: &Path, dst: &Path, on_bytes: &mut dyn FnMut(u64)) -> std::io::Result<()> {
     if src.is_dir() {
         fs::create_dir_all(dst)?;
         for entry in fs::read_dir(src)? {
             let entry = entry?;
-            copy_recursive(&entry.path(), &dst.join(entry.file_name()), on_file)?;
+            copy_recursive(&entry.path(), &dst.join(entry.file_name()), on_bytes)?;
         }
         Ok(())
     } else {
-        fs::copy(src, dst)?;
-        on_file();
-        Ok(())
+        copy_file_progress(src, dst, on_bytes)
     }
 }
 
@@ -132,8 +151,9 @@ struct TransferPayload {
     error: Option<String>,
 }
 
-// En dessous de ce nombre de fichiers, le transfert est instantané : aucun panneau (anti-flicker).
-const TRANSFER_NOTIFY_THRESHOLD: u64 = 8;
+// Panneau de progression affiché si le transfert dépasse l'un de ces seuils (sinon instantané, anti-flicker).
+const NOTIFY_FILE_THRESHOLD: u64 = 8;
+const NOTIFY_BYTE_THRESHOLD: u64 = 100 * 1024 * 1024;
 const EMIT_THROTTLE_MS: u128 = 80;
 
 fn transfer_job_id() -> String {
@@ -156,13 +176,19 @@ fn emit_transfer(
     });
 }
 
-fn count_files(paths: &[String]) -> u64 {
-    paths.iter().map(|p| {
-        WalkDir::new(p).into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().is_file())
-            .count() as u64
-    }).sum()
+// Compte fichiers + total d'octets sous les chemins (pour seuil + total de progression).
+fn count_files_bytes(paths: &[String]) -> (u64, u64) {
+    let mut files = 0u64;
+    let mut bytes = 0u64;
+    for p in paths {
+        for e in WalkDir::new(p).into_iter().filter_map(|e| e.ok()) {
+            if e.file_type().is_file() {
+                files += 1;
+                bytes += e.metadata().map(|m| m.len()).unwrap_or(0);
+            }
+        }
+    }
+    (files, bytes)
 }
 
 fn job_label(paths: &[String]) -> String {
@@ -180,8 +206,8 @@ fn job_label(paths: &[String]) -> String {
 pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         let dest = Path::new(&dest_dir);
-        let total = count_files(&paths);
-        let notify = total >= TRANSFER_NOTIFY_THRESHOLD;
+        let (files, total) = count_files_bytes(&paths);
+        let notify = files >= NOTIFY_FILE_THRESHOLD || total >= NOTIFY_BYTE_THRESHOLD;
         let job_id = transfer_job_id();
         let label = job_label(&paths);
         if notify { emit_transfer(&app, &job_id, "copy", &label, 0, total, "transferring", None); }
@@ -199,8 +225,8 @@ pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
                 }
             };
             let target = unique_dest(dest, &name);
-            let res = copy_recursive(src, &target, &mut || {
-                current += 1;
+            let res = copy_recursive(src, &target, &mut |n| {
+                current += n;
                 if notify && last.elapsed().as_millis() >= EMIT_THROTTLE_MS {
                     emit_transfer(&app, &job_id, "copy", &label, current, total, "transferring", None);
                     last = Instant::now();
@@ -224,8 +250,8 @@ pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
 pub async fn move_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         let dest = Path::new(&dest_dir);
-        let total = paths.len() as u64;
-        let notify = total >= TRANSFER_NOTIFY_THRESHOLD;
+        let (files, total) = count_files_bytes(&paths);
+        let notify = files >= NOTIFY_FILE_THRESHOLD || total >= NOTIFY_BYTE_THRESHOLD;
         let job_id = transfer_job_id();
         let label = job_label(&paths);
         if notify { emit_transfer(&app, &job_id, "move", &label, 0, total, "transferring", None); }
@@ -252,12 +278,13 @@ pub async fn move_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
                 if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.clone())); }
                 return Err(e);
             }
+            let entry_bytes = count_files_bytes(std::slice::from_ref(path)).1;
             if let Err(e) = fs::rename(src, &target) {
                 eprintln!("[move_entries] {path}: {e}");
                 if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.to_string())); }
                 return Err(e.to_string());
             }
-            current += 1;
+            current += entry_bytes;
             if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "transferring", None); }
         }
         if notify { emit_transfer(&app, &job_id, "move", &label, total, total, "done", None); }

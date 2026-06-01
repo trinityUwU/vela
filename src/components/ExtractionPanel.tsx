@@ -32,6 +32,13 @@ export function ExtractionPanel({ jobs, transfers, onNavigate }: Props) {
   );
 }
 
+function fmtBytes(b: number): string {
+  if (b < 1024) return `${b} o`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(0)} Ko`;
+  if (b < 1024 * 1024 * 1024) return `${(b / 1024 / 1024).toFixed(1)} Mo`;
+  return `${(b / 1024 / 1024 / 1024).toFixed(2)} Go`;
+}
+
 function TransferRow({ job }: { job: TransferJob }) {
   const pct = job.total > 0 ? Math.round((job.current / job.total) * 100) : null;
   const verb = job.kind === "copy" ? "Copie" : "Déplacement";
@@ -52,7 +59,7 @@ function TransferRow({ job }: { job: TransferJob }) {
         </span>
       </div>
       <span className="text-[10px] text-[var(--color-text-dim)] font-mono">
-        {job.current} / {job.total} fichiers
+        {fmtBytes(job.current)} / {fmtBytes(job.total)}
       </span>
       {!terminal && <ProgressBar pct={pct} paused={false} />}
       {job.status === "error" && job.error && (

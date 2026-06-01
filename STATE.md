@@ -7,7 +7,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 
 **Backend Rust — modules**
 - `fs_ops.rs` : `list_dir`, `read_file`, `write_file` (crée si absent), `rename_entry`, `delete_entry`, `create_dir`, `move_entry`, `open_native` (xdg-open), `read_file_chunk`, `read_file_base64`, `search_dir` (async spawn_blocking), `get_entry_props` (taille récursive, permissions Unix, item/file/dir count)
-- `ops.rs` : `trash_entries` (corbeille XDG via crate `trash`), `delete_entries` (définitif), `copy_entries`/`move_entries` (async, récursif, suffixe « copie N » anti-écrasement, émission `transfer-progress` au-delà de 8 fichiers, throttle 80 ms), `create_archive` (ZIP Deflated / TAR.GZ via `walkdir`), `search_content` (grep récursif async, skip binaires + dirs lourds, 200 matchs max), `trash_dir`/`trash_count`/`empty_trash` (gestion corbeille XDG : files/ + info/)
+- `ops.rs` : `trash_entries` (corbeille XDG via crate `trash`), `delete_entries` (définitif), `copy_entries`/`move_entries` (async, copie par chunks 1 Mo, suffixe « copie N » anti-écrasement, émission `transfer-progress` **en octets** si ≥8 fichiers OU ≥100 Mo, throttle 80 ms), `create_archive` (ZIP Deflated / TAR.GZ via `walkdir`), `search_content` (grep récursif async, skip binaires + dirs lourds, 200 matchs max), `trash_dir`/`trash_count`/`empty_trash` (gestion corbeille XDG : files/ + info/)
 - `watcher.rs` : `DirWatcher` (state Tauri), `watch_dir` (notify non-récursif, émet event `fs-changed`)
 - `thumbs.rs` : `thumbnail` (crate `image`, miniature PNG base64, cache `~/.cache/vela/thumbs`, clé hash path+mtime+max, resize Lanczos3, skip > 20 Mo, async spawn_blocking)
 - `places.rs` : `home_dir`, `list_places` (XDG + /proc/mounts, kind: home/dir/mount)

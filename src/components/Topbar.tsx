@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Mode } from "../types";
 import type { SearchMode } from "../hooks/useSearch";
-import { ArrowUp, Refresh, Eye, FolderPlus, Search } from "./icons";
+import { ArrowUp, Refresh, Eye, FolderPlus, Search, Trash } from "./icons";
 import { SearchInput } from "./SearchBar";
 
 interface Props {
@@ -16,6 +16,9 @@ interface Props {
   onNewFolder: () => void;
   onCrumb: (path: string) => void;
   onMove: (src: string, destDir: string) => void;
+  inTrash: boolean;
+  trashCount: number;
+  onEmptyTrash: () => void;
   searchOpen: boolean;
   searchQuery: string;
   searchMode: SearchMode;
@@ -66,6 +69,18 @@ export function Topbar(props: Props) {
         <SearchInput query={props.searchQuery} mode={props.searchMode} onChange={props.onSearchQuery} onMode={props.onSearchMode} onClose={props.onSearchClose} />
       ) : (
         <PathBar path={path} onSubmit={props.onCrumb} onMove={onMove} />
+      )}
+
+      {props.inTrash && (
+        <button
+          onClick={props.onEmptyTrash}
+          disabled={props.trashCount === 0}
+          title="Vider la corbeille"
+          className="flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs text-[var(--color-danger)] border border-[var(--color-danger)]/40 hover:bg-[var(--color-danger)]/10 transition-colors disabled:opacity-40 disabled:hover:bg-transparent shrink-0"
+        >
+          <Trash width={15} height={15} />
+          Vider{props.trashCount > 0 ? ` (${props.trashCount})` : ""}
+        </button>
       )}
 
       <IconBtn onClick={searchOpen ? props.onSearchClose : props.onSearchOpen} active={searchOpen} title="Rechercher">

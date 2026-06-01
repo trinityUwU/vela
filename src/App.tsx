@@ -177,6 +177,9 @@ export default function App() {
         onNewFolder={() => setDialog({ kind: "newfolder" })}
         onCrumb={fm.navigate}
         onMove={fm.moveEntry}
+        inTrash={!!trashPath && fm.cwd === trashPath}
+        trashCount={fm.trashCount}
+        onEmptyTrash={() => setDialog({ kind: "emptytrash" })}
         searchOpen={search.open}
         searchQuery={search.query}
         searchMode={search.mode}

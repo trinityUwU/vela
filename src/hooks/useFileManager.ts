@@ -51,12 +51,16 @@ export function useFileManager() {
   const recordRef = useRef<(e: UndoEntry) => void>(() => {});
   const setRecorder = useCallback((fn: (e: UndoEntry) => void) => { recordRef.current = fn; }, []);
 
+  const history = useRef<string[]>([]);
+  const histIdx = useRef(-1);
+  const [histState, setHistState] = useState({ canBack: false, canForward: false });
+
   const refreshTrashCount = useCallback(() => {
     fs.trashCount().then(setTrashCount).catch(() => {});
   }, []);
 
-  const navigate = useCallback(
-    async (path: string) => {
+  const navigateInternal = useCallback(
+    async (path: string, fromHistory: boolean) => {
       try {
         const data = await fs.listDir(path, showHidden);
         setListing(data);
@@ -65,12 +69,32 @@ export function useFileManager() {
         setSelection(new Set());
         anchor.current = null;
         setError(null);
+        if (!fromHistory && data.path !== history.current[histIdx.current]) {
+          history.current = history.current.slice(0, histIdx.current + 1);
+          history.current.push(data.path);
+          histIdx.current = history.current.length - 1;
+        }
+        setHistState({ canBack: histIdx.current > 0, canForward: histIdx.current < history.current.length - 1 });
       } catch (e) {
         setError(String(e));
       }
     },
     [showHidden],
   );
+
+  const navigate = useCallback((path: string) => navigateInternal(path, false), [navigateInternal]);
+
+  const goBack = useCallback(() => {
+    if (histIdx.current <= 0) return;
+    histIdx.current -= 1;
+    navigateInternal(history.current[histIdx.current], true);
+  }, [navigateInternal]);
+
+  const goForward = useCallback(() => {
+    if (histIdx.current >= history.current.length - 1) return;
+    histIdx.current += 1;
+    navigateInternal(history.current[histIdx.current], true);
+  }, [navigateInternal]);
 
   useEffect(() => {
     (async () => {
@@ -378,6 +402,7 @@ export function useFileManager() {
     showHidden, toggleHidden,
     error, setError,
     navigate, openEntry, previewEntry, goUp, refresh,
+    goBack, goForward, canBack: histState.canBack, canForward: histState.canForward,
     rename, renameMany, remove, newFolder, createFile, moveEntry,
     trash, deletePermanent, compress,
     trashCount, emptyTrash, openTrash,

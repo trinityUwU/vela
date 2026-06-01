@@ -2,14 +2,22 @@
 import { useEffect, useRef, useState } from "react";
 import type { Mode } from "../types";
 import type { SearchMode } from "../hooks/useSearch";
-import { ArrowUp, Refresh, Eye, FolderPlus, Search, Trash, TerminalIcon } from "./icons";
+import { ArrowUp, Refresh, Eye, FolderPlus, Search, Trash, TerminalIcon, ChevronLeft, ChevronRight, GridIcon, ListIcon } from "./icons";
 import { SearchInput } from "./SearchBar";
+
+export type View = "grid" | "list";
 
 interface Props {
   mode: Mode;
   onMode: (m: Mode) => void;
   path: string;
   showHidden: boolean;
+  view: View;
+  onView: (v: View) => void;
+  onBack: () => void;
+  onForward: () => void;
+  canBack: boolean;
+  canForward: boolean;
   onUp: () => void;
   onRefresh: () => void;
   onToggleHidden: () => void;
@@ -64,6 +72,8 @@ export function Topbar(props: Props) {
         ))}
       </div>
 
+      <IconBtn onClick={props.onBack} title="Précédent (Alt+←)" disabled={!props.canBack}><ChevronLeft /></IconBtn>
+      <IconBtn onClick={props.onForward} title="Suivant (Alt+→)" disabled={!props.canForward}><ChevronRight /></IconBtn>
       <IconBtn onClick={props.onUp} title="Dossier parent"><ArrowUp /></IconBtn>
       <IconBtn onClick={props.onRefresh} title="Rafraîchir"><Refresh /></IconBtn>
 
@@ -88,6 +98,14 @@ export function Topbar(props: Props) {
       <IconBtn onClick={searchOpen ? props.onSearchClose : props.onSearchOpen} active={searchOpen} title="Rechercher">
         <Search />
       </IconBtn>
+      {mode === "files" && (
+        <IconBtn
+          onClick={() => props.onView(props.view === "grid" ? "list" : "grid")}
+          title={props.view === "grid" ? "Vue liste" : "Vue grille"}
+        >
+          {props.view === "grid" ? <ListIcon /> : <GridIcon />}
+        </IconBtn>
+      )}
       <IconBtn onClick={props.onToggleHidden} active={props.showHidden} title="Fichiers cachés">
         <Eye />
       </IconBtn>
@@ -168,13 +186,14 @@ function PathBar({ path, onSubmit, onMove }: {
 }
 
 function IconBtn({
-  children, onClick, title, active,
-}: { children: React.ReactNode; onClick: () => void; title: string; active?: boolean }) {
+  children, onClick, title, active, disabled,
+}: { children: React.ReactNode; onClick: () => void; title: string; active?: boolean; disabled?: boolean }) {
   return (
     <button
       onClick={onClick}
       title={title}
-      className={`p-1.5 rounded-md transition-colors ${
+      disabled={disabled}
+      className={`p-1.5 rounded-md transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--color-text-dim)] ${
         active
           ? "text-[var(--color-accent)] bg-[var(--color-surface-hover)]"
           : "text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"

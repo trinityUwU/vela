@@ -91,5 +91,11 @@ Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, paus
 - **Diff 2 fichiers** (`components/DiffViewer.tsx`) : overlay `MergeView` (`@codemirror/merge`) côte à côte, lecture seule, coloration syntaxique via `langExtension`. Déclenché par sélection de 2 fichiers → clic droit « Comparer les 2 fichiers » (`ContextMenu` affiche l'item si `count===2` ; `App.compareSelection` valide que les deux ne sont pas des dossiers).
 - **Étiquettes couleur** (`tags.rs` + `services/tags.ts` + `useTags`) : palette sémantique de 7 couleurs persistée dans `~/.config/vela/tags.json` (path → clé couleur). Commandes `load_tags`/`set_tag(paths, color)` (color vide = retrait, applicable à une sélection multiple). UI : rangée de swatches dans le `ContextMenu` (+ ✕ pour retirer) ; pastille d'angle sur `FileTile` (grille) et point sur `FileRow` (liste Édition). `App` convertit clé→hex via `hexFor` avant de passer `colorOf` aux vues.
 
+## v1.9 — Ergonomie navigation ✅ (livré, installé)
+- **Vue liste détaillée** (`components/FileTable.tsx`) : colonnes Nom/Taille/Date/Type, tri au clic d'en-tête (`onToggleBy` → `useSort`), indicateur ▲/▼ sur la colonne active. Drag-drop + sélection identiques à la grille. Bascule grille ↔ liste via bouton topbar (icône `GridIcon`/`ListIcon`), persistée localStorage `vela-view` (state dans `App`).
+- **Historique de navigation** (`useFileManager`) : pile `history` + index `histIdx` (refs). `navigateInternal(path, fromHistory)` empile uniquement les navigations utilisateur (refresh/showHidden re-navigation = même path, pas d'empilement). `goBack`/`goForward` + flags `canBack`/`canForward`. Boutons topbar (chevrons, désactivés en bout de pile) + **Alt+←/→**.
+- **Navigation clavier** (`useKeyboard` + `App`) : flèches déplacent la sélection (`moveSel` linéaire sur `entries` ordonnées ; en vue liste/Édition les flèches horizontales sont ignorées), **Entrée** ouvre l'élément actif (`activateSel`).
+- **Ouvrir un terminal ici** : item `ContextMenu` (dossier mono-sélection) → `openTerminalHere(path)` ouvre un onglet PTY dans ce dossier + déploie le panneau.
+
 ## Backlog
-Vidé — toutes les features planifiées sont livrées. Prochaines idées à définir avec Chris.
+`BACKLOG.md` — P1 livré (v1.9). Restent P2 (confort : thèmes, recherches récentes, taille dossier, analyse disque) et P3 (aperçu vidéo/audio, comparaison de dossiers).

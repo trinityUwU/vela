@@ -14,6 +14,10 @@ export interface KeyHandlers {
   onFind?: () => void;
   onQuickLook?: () => void;
   onUndo?: () => void;
+  onMoveSelection?: (delta: number, axis: "x" | "y") => void;
+  onActivate?: () => void;
+  onBack?: () => void;
+  onForward?: () => void;
 }
 
 function inEditable(target: EventTarget | null): boolean {
@@ -32,6 +36,14 @@ export function useKeyboard(h: KeyHandlers): void {
       }
       if (inEditable(e.target)) return;
       const mod = e.ctrlKey || e.metaKey;
+
+      if (e.altKey && e.key === "ArrowLeft") { e.preventDefault(); h.onBack?.(); return; }
+      if (e.altKey && e.key === "ArrowRight") { e.preventDefault(); h.onForward?.(); return; }
+      if (e.key === "ArrowLeft") { e.preventDefault(); h.onMoveSelection?.(-1, "x"); return; }
+      if (e.key === "ArrowRight") { e.preventDefault(); h.onMoveSelection?.(1, "x"); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); h.onMoveSelection?.(-1, "y"); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); h.onMoveSelection?.(1, "y"); return; }
+      if (e.key === "Enter") { e.preventDefault(); h.onActivate?.(); return; }
 
       if (mod && e.key === "c") { e.preventDefault(); h.onCopy?.(); return; }
       if (mod && e.key === "x") { e.preventDefault(); h.onCut?.(); return; }

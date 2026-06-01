@@ -15,10 +15,12 @@ import { useKeyboard } from "./hooks/useKeyboard";
 import { TerminalPanel } from "./components/TerminalPanel";
 import { termInput, availableShells } from "./services/term";
 import { Topbar } from "./components/Topbar";
+import type { View } from "./components/Topbar";
 import { SearchResults } from "./components/SearchBar";
 import { SortBar } from "./components/SortBar";
 import { Sidebar } from "./components/Sidebar";
 import { FileGrid } from "./components/FileGrid";
+import { FileTable } from "./components/FileTable";
 import { FileList } from "./components/FileList";
 import { EditorArea } from "./components/EditorArea";
 import { ContextMenu } from "./components/ContextMenu";
@@ -91,6 +93,8 @@ export default function App() {
   const [termHeight, setTermHeight] = useState(280);
   const [shells, setShells] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [view, setView] = useState<View>(() => ((localStorage.getItem("vela-view") as View) || "grid"));
+  const setViewPersist = useCallback((v: View) => { setView(v); try { localStorage.setItem("vela-view", v); } catch {} }, []);
 
   useEffect(() => { trashDir().then(setTrashPath).catch(() => {}); }, []);
   useEffect(() => { availableShells().then(setShells).catch(() => {}); }, []);
@@ -104,6 +108,11 @@ export default function App() {
   }, [terminals, fm.cwd]);
 
   const newTerm = useCallback(() => { terminals.open(fm.cwd); }, [terminals, fm.cwd]);
+
+  const openTerminalHere = useCallback((path: string) => {
+    terminals.open(path);
+    setTermVisible(true);
+  }, [terminals]);
 
   const followTerm = useCallback(() => {
     if (!terminals.activeId) { terminals.open(fm.cwd); return; }
@@ -123,6 +132,18 @@ export default function App() {
     () => applySortFilter(fm.listing?.entries ?? [], sort),
     [fm.listing, sort],
   );
+
+  const moveSel = useCallback((delta: number) => {
+    if (!entries.length) return;
+    const i = entries.findIndex((e) => e.path === fm.selected);
+    const next = i < 0 ? (delta > 0 ? 0 : entries.length - 1) : Math.max(0, Math.min(entries.length - 1, i + delta));
+    fm.selectOne(entries[next].path);
+  }, [entries, fm.selected, fm.selectOne]);
+
+  const activateSel = useCallback(() => {
+    const e = entries.find((x) => x.path === fm.selected);
+    if (e) fm.openEntry(e);
+  }, [entries, fm.selected, fm.openEntry]);
 
   const onSelect = (entry: DirEntry, e: React.MouseEvent) => {
     if (e.shiftKey) fm.rangeSelect(entry.path, entries);
@@ -220,6 +241,13 @@ export default function App() {
       if (entry && !entry.is_dir) setQuickLook(entry);
     },
     onUndo: undo.undo,
+    onBack: fm.goBack,
+    onForward: fm.goForward,
+    onActivate: activateSel,
+    onMoveSelection: (delta, axis) => {
+      if ((view === "list" || fm.mode === "edit") && axis === "x") return;
+      moveSel(delta);
+    },
   });
 
   return (
@@ -229,6 +257,12 @@ export default function App() {
         onMode={fm.setMode}
         path={fm.cwd}
         showHidden={fm.showHidden}
+        view={view}
+        onView={setViewPersist}
+        onBack={fm.goBack}
+        onForward={fm.goForward}
+        canBack={fm.canBack}
+        canForward={fm.canForward}
         onUp={fm.goUp}
         onRefresh={fm.refresh}
         onToggleHidden={fm.toggleHidden}
@@ -304,6 +338,20 @@ export default function App() {
               onError={fm.setError}
             />
           </div>
+        ) : view === "list" ? (
+          <FileTable
+            entries={entries}
+            selection={fm.selection}
+            sort={sort}
+            onToggleBy={toggleBy}
+            onSelect={onSelect}
+            onOpen={fm.openEntry}
+            onContext={onContext}
+            onContextBg={onContextBg}
+            onClearBg={fm.clearSelection}
+            onMove={fm.moveEntry}
+            colorOf={tagHex}
+          />
         ) : (
           <FileGrid
             entries={entries}
@@ -373,6 +421,7 @@ export default function App() {
           onCompare={() => { compareSelection(menu.entry.path); setMenu(null); }}
           onSetColor={(color) => tags.setColor(selPaths(menu.entry.path), color)}
           currentColor={tags.colorOf(menu.entry.path)}
+          onOpenTerminal={() => { openTerminalHere(menu.entry.path); setMenu(null); }}
           onExtractHere={() => {
             const dest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
             startExtraction(menu.entry.path, dest).catch((e) => fm.setError(String(e)));

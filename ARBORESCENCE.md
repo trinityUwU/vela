@@ -35,7 +35,8 @@ vela/
 │   │   ├── useSearch.ts            Recherche live (debounce 500ms) : mode Nom / Contenu
 │   │   ├── useSort.ts              Tri (name/size/modified/extension, ASC/DESC) + filtre
 │   │   │                           (all/files/dirs) + dirsFirst — persisté localStorage
-│   │   ├── useKeyboard.ts          Raccourcis globaux (C/X/V/A/F/Z, F2/F5, Suppr, Espace, Échap)
+│   │   ├── useKeyboard.ts          Raccourcis globaux (C/X/V/A/F/Z, F2/F5, Suppr, Espace, Échap,
+│   │   │                           flèches+Entrée navigation, Alt+←/→ historique)
 │   │   ├── useUndo.ts              Pile Ctrl+Z (rename/move/copy/trash) — ops inverses, max 30
 │   │   ├── useEditorTabs.ts        Onglets multi-fichiers mode Édition (sync sur fm.opened)
 │   │   ├── useTags.ts              Étiquettes couleur : chargement + application optimiste
@@ -50,6 +51,7 @@ vela/
 │       ├── Sidebar.tsx             Favoris/groupes + Emplacements + Montages + Corbeille (badge, vider)
 │       ├── SortBar.tsx             Barre tri/filtre compacte (32px) sous topbar
 │       ├── FileGrid.tsx            Grille mode Fichiers, sélection multiple, clic fond = clear
+│       ├── FileTable.tsx           Vue liste détaillée mode Fichiers : colonnes Nom/Taille/Date/Type, tri en-tête
 │       ├── FileList.tsx            Liste pane gauche mode Édition, sélection + élément actif
 │       ├── FileTile.tsx            Tuile grille : drag source + drop target dossiers
 │       ├── FileIcon.tsx            Icônes devicon (20+ langages) + SVG génériques

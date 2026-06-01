@@ -29,6 +29,7 @@ interface Props {
   onCompare: () => void;
   onSetColor: (color: string) => void;
   currentColor?: string;
+  onOpenTerminal?: () => void;
   onExtractHere?: () => void;
   onExtractTo?: () => void;
 }
@@ -44,7 +45,7 @@ function copyToClipboard(text: string) {
 
 export function ContextMenu(props: Props) {
   const { menu, onClose, onOpen, onRename, onTrash, onDeletePermanent, onProperties } = props;
-  const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onExtractHere, onExtractTo } = props;
+  const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onOpenTerminal, onExtractHere, onExtractTo } = props;
 
   useEffect(() => {
     window.addEventListener("click", onClose);
@@ -64,6 +65,9 @@ export function ContextMenu(props: Props) {
         <div className="px-3 py-1 text-xs text-[var(--color-text-dim)]">{menu.count} éléments</div>
       )}
       {!multi && <Item label="Ouvrir" onClick={onOpen} />}
+      {!multi && menu.isDir && onOpenTerminal && (
+        <Item label="Ouvrir un terminal ici" onClick={() => { onOpenTerminal(); onClose(); }} />
+      )}
       {isArchive && (
         <>
           <Divider />

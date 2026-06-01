@@ -181,5 +181,11 @@ Mémoire : ne pas garder toutes les base64 en RAM, laisser le GC ; le cache disq
 - [x] Diff entre deux fichiers (CodeMirror MergeView) — sélection 2 fichiers → clic droit « Comparer »
 - [x] Tags / couleurs sur fichiers (palette 7 couleurs, `~/.config/vela/tags.json`, swatches menu contextuel)
 
+## Livré — v1.9 (ergonomie navigation) ✅
+- [x] P1·1 — Vue liste détaillée triable (`FileTable`, colonnes Nom/Taille/Date/Type, tri en-tête, toggle topbar persisté `vela-view`)
+- [x] P1·2 — Historique navigation (back/forward Alt+←/→, pile dans `useFileManager`, boutons topbar)
+- [x] P1·3 — Navigation clavier (flèches déplacent la sélection, Entrée ouvre)
+- [x] P1·4 — Ouvrir terminal ici (clic droit dossier → onglet PTY dans ce dossier)
+
 ## Backlog
-Vidé — à réalimenter avec Chris.
+Voir `BACKLOG.md` — P2 (confort) et P3 (avancé) en attente.

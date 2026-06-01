@@ -16,7 +16,12 @@ const SECTIONS: Section[] = [
     title: "Navigation",
     rows: [
       { keys: ["Entrée", "double-clic"], label: "Ouvrir un dossier ou un fichier" },
+      { keys: ["←", "→", "↑", "↓"], label: "Déplacer la sélection au clavier ; Entrée pour ouvrir" },
+      { keys: ["Alt", "←"], label: "Précédent (historique de navigation)" },
+      { keys: ["Alt", "→"], label: "Suivant (historique de navigation)" },
       { keys: ["⌫ haut"], label: "Remonter d'un dossier (bouton topbar)" },
+      { label: "Bascule vue grille / liste détaillée (bouton topbar, mode Fichiers)" },
+      { label: "Vue liste : colonnes Nom/Taille/Date/Type, tri au clic d'en-tête" },
       { label: "Fil d'Ariane cliquable pour remonter à n'importe quel niveau" },
       { keys: ["F5"], label: "Actualiser le dossier courant" },
       { keys: ["Ctrl", "H"], label: "Afficher / masquer les fichiers cachés (bouton topbar)" },
@@ -92,6 +97,7 @@ const SECTIONS: Section[] = [
     title: "Terminal intégré",
     rows: [
       { keys: ["Ctrl", "`"], label: "Afficher / masquer le terminal" },
+      { label: "Clic droit sur un dossier → « Ouvrir un terminal ici »" },
       { label: "Onglets multi-sessions ; ＋ nouveau, ▾ choisir le shell (bash, zsh…)" },
       { label: "« Suivre » synchronise le terminal sur le dossier courant" },
       { label: "Bord supérieur déplaçable pour redimensionner le panneau" },

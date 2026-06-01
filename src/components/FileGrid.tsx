@@ -13,11 +13,12 @@ interface Props {
   onContextBg: (e: React.MouseEvent) => void;
   onClearBg: () => void;
   onMove: (src: string, destDir: string) => void;
+  onArrow: (delta: number, axis: "x" | "y") => void;
   onColumns?: (cols: number) => void;
   colorOf: (path: string) => string | undefined;
 }
 
-export function FileGrid({ entries, selection, active, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, onColumns, colorOf }: Props) {
+export function FileGrid({ entries, selection, active, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, onArrow, onColumns, colorOf }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const handleBg = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -71,6 +72,7 @@ export function FileGrid({ entries, selection, active, onSelect, onOpen, onConte
             onClick={(ev) => onSelect(e, ev)}
             onDouble={() => onOpen(e)}
             onContext={(ev) => onContext(ev, e)}
+            onArrow={onArrow}
             onMove={onMove}
           />
         ))}

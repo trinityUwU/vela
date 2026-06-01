@@ -141,6 +141,12 @@ export default function App() {
     fm.selectOne(entries[next].path);
   }, [entries, fm.selected, fm.selectOne]);
 
+  const navSel = useCallback((delta: number, axis: "x" | "y") => {
+    const grid = view === "grid" && fm.mode === "files";
+    if (!grid) { if (axis === "x") return; moveSel(delta); return; }
+    moveSel(axis === "y" ? delta * gridCols.current : delta);
+  }, [view, fm.mode, moveSel]);
+
   const onSelect = (entry: DirEntry, e: React.MouseEvent) => {
     if (e.shiftKey) fm.rangeSelect(entry.path, entries);
     else if (e.ctrlKey || e.metaKey) fm.toggleSelect(entry.path);
@@ -239,11 +245,6 @@ export default function App() {
     onUndo: undo.undo,
     onBack: fm.goBack,
     onForward: fm.goForward,
-    onMoveSelection: (delta, axis) => {
-      const grid = view === "grid" && fm.mode === "files";
-      if (!grid) { if (axis === "x") return; moveSel(delta); return; }
-      moveSel(axis === "y" ? delta * gridCols.current : delta);
-    },
   });
 
   return (
@@ -347,6 +348,7 @@ export default function App() {
             onContextBg={onContextBg}
             onClearBg={fm.clearSelection}
             onMove={fm.moveEntry}
+            onArrow={navSel}
             colorOf={tagHex}
           />
         ) : (
@@ -360,6 +362,7 @@ export default function App() {
             onContextBg={onContextBg}
             onClearBg={fm.clearSelection}
             onMove={fm.moveEntry}
+            onArrow={navSel}
             onColumns={(c) => { gridCols.current = c; }}
             colorOf={tagHex}
           />

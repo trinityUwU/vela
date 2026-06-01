@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DirEntry } from "../types";
 import type { SortBy, SortState } from "../hooks/useSort";
 import { FileIcon } from "./FileIcon";
+import { onTileKey } from "./tile-keys";
 
 interface Props {
   entries: DirEntry[];
@@ -16,6 +17,7 @@ interface Props {
   onContextBg: (e: React.MouseEvent) => void;
   onClearBg: () => void;
   onMove: (src: string, destDir: string) => void;
+  onArrow: (delta: number, axis: "x" | "y") => void;
   colorOf: (path: string) => string | undefined;
 }
 
@@ -43,7 +45,7 @@ const COLS: { by: SortBy; label: string; className: string }[] = [
 ];
 
 export function FileTable(props: Props) {
-  const { entries, selection, active, sort, onToggleBy, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, colorOf } = props;
+  const { entries, selection, active, sort, onToggleBy, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, onArrow, colorOf } = props;
   const handleBg = (e: React.MouseEvent) => { e.preventDefault(); onContextBg(e); };
   const arrow = (by: SortBy) => (sort.by === by ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
 
@@ -73,6 +75,7 @@ export function FileTable(props: Props) {
               onSelect={onSelect}
               onOpen={onOpen}
               onContext={onContext}
+              onArrow={onArrow}
               onMove={onMove}
             />
           ))
@@ -82,7 +85,7 @@ export function FileTable(props: Props) {
   );
 }
 
-function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onMove }: {
+function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onArrow, onMove }: {
   entry: DirEntry;
   selected: boolean;
   active: boolean;
@@ -90,6 +93,7 @@ function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onMo
   onSelect: (e: DirEntry, ev: React.MouseEvent) => void;
   onOpen: (e: DirEntry) => void;
   onContext: (ev: React.MouseEvent, e: DirEntry) => void;
+  onArrow: (delta: number, axis: "x" | "y") => void;
   onMove: (src: string, destDir: string) => void;
 }) {
   const [dragOver, setDragOver] = useState(false);
@@ -119,7 +123,7 @@ function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onMo
       onDrop={handleDrop}
       onClick={(ev) => onSelect(entry, ev)}
       onDoubleClick={() => onOpen(entry)}
-      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onOpen(entry); } }}
+      onKeyDown={(e) => onTileKey(e, () => onOpen(entry), onArrow)}
       onContextMenu={(ev) => { ev.stopPropagation(); onContext(ev, entry); }}
       title={entry.name}
       className={`w-full flex items-center gap-3 px-3 py-1 text-left transition-colors ${

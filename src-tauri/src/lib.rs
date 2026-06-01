@@ -3,12 +3,15 @@ mod apps;
 mod archive;
 mod favorites;
 mod fs_ops;
+mod ops;
 mod places;
+mod watcher;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .manage(archive::ExtractionManager::new())
+        .manage(watcher::DirWatcher::new())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             fs_ops::list_dir,
@@ -23,6 +26,13 @@ pub fn run() {
             fs_ops::open_native,
             fs_ops::move_entry,
             fs_ops::get_entry_props,
+            ops::trash_entries,
+            ops::delete_entries,
+            ops::copy_entries,
+            ops::move_entries,
+            ops::create_archive,
+            ops::search_content,
+            watcher::watch_dir,
             places::home_dir,
             places::list_places,
             favorites::load_favorites,

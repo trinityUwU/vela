@@ -1,18 +1,47 @@
-// État central du gestionnaire : navigation, listing, mode, sélection, ouverture, ops CRUD.
-import { useCallback, useEffect, useState } from "react";
+// État central du gestionnaire : navigation, listing, mode, sélection multiple, presse-papier, ops.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import * as fs from "../services/fs";
 import { isEditable } from "../services/file-kind";
-import type { DirEntry, DirListing, Mode, Place } from "../types";
+import type { Clipboard, ClipboardOp, DirEntry, DirListing, Mode, Place } from "../types";
+
+const SESSION_KEY = "vela-session";
+
+interface Session {
+  cwd?: string;
+  mode?: Mode;
+  showHidden?: boolean;
+}
+
+function loadSession(): Session {
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveSession(s: Session): void {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  } catch {
+    /* quota — ignore */
+  }
+}
 
 export function useFileManager() {
-  const [mode, setMode] = useState<Mode>("files");
+  const session = useRef(loadSession()).current;
+  const [mode, setMode] = useState<Mode>(session.mode ?? "files");
   const [cwd, setCwd] = useState<string>("");
   const [listing, setListing] = useState<DirListing | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [selection, setSelection] = useState<Set<string>>(new Set());
+  const [clipboard, setClipboard] = useState<Clipboard | null>(null);
   const [opened, setOpened] = useState<DirEntry | null>(null);
-  const [showHidden, setShowHidden] = useState(false);
+  const [showHidden, setShowHidden] = useState(session.showHidden ?? false);
   const [error, setError] = useState<string | null>(null);
+  const anchor = useRef<string | null>(null);
 
   const navigate = useCallback(
     async (path: string) => {
@@ -21,6 +50,8 @@ export function useFileManager() {
         setListing(data);
         setCwd(data.path);
         setSelected(null);
+        setSelection(new Set());
+        anchor.current = null;
         setOpened(null);
         setError(null);
       } catch (e) {
@@ -35,13 +66,88 @@ export function useFileManager() {
       try {
         const [home, pl] = await Promise.all([fs.homeDir(), fs.listPlaces()]);
         setPlaces(pl);
-        await navigate(home);
+        await navigate(session.cwd || home);
       } catch (e) {
         setError(String(e));
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (cwd) saveSession({ cwd, mode, showHidden });
+  }, [cwd, mode, showHidden]);
+
+  // ── watch live du dossier courant ───────────────────────────────────────────
+  const refreshRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (cwd) fs.watchDir(cwd).catch(() => {});
+  }, [cwd]);
+
+  useEffect(() => {
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const unlistenP = listen<string>("fs-changed", () => {
+      if (debounce) clearTimeout(debounce);
+      debounce = setTimeout(() => refreshRef.current(), 250);
+    });
+    return () => {
+      if (debounce) clearTimeout(debounce);
+      unlistenP.then((u) => u());
+    };
+  }, []);
+
+  // ── sélection ──────────────────────────────────────────────────────────────
+
+  const selectOne = useCallback((path: string) => {
+    anchor.current = path;
+    setSelected(path);
+    setSelection(new Set([path]));
+  }, []);
+
+  const toggleSelect = useCallback((path: string) => {
+    anchor.current = path;
+    setSelected(path);
+    setSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }, []);
+
+  const rangeSelect = useCallback(
+    (path: string, ordered: DirEntry[]) => {
+      const from = anchor.current ?? path;
+      const i = ordered.findIndex((e) => e.path === from);
+      const j = ordered.findIndex((e) => e.path === path);
+      if (i < 0 || j < 0) return selectOne(path);
+      const [lo, hi] = i < j ? [i, j] : [j, i];
+      const range = ordered.slice(lo, hi + 1).map((e) => e.path);
+      setSelected(path);
+      setSelection(new Set(range));
+    },
+    [selectOne],
+  );
+
+  const selectAll = useCallback((ordered: DirEntry[]) => {
+    setSelection(new Set(ordered.map((e) => e.path)));
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelection(new Set());
+    setSelected(null);
+    anchor.current = null;
+  }, []);
+
+  const selectionPaths = useCallback(
+    (fallback?: string): string[] => {
+      if (selection.size > 0) return [...selection];
+      if (fallback) return [fallback];
+      if (selected) return [selected];
+      return [];
+    },
+    [selection, selected],
+  );
 
   const openEntry = useCallback(
     async (entry: DirEntry) => {
@@ -65,13 +171,14 @@ export function useFileManager() {
         navigate(entry.path);
         return;
       }
-      setSelected(entry.path);
+      selectOne(entry.path);
       if (isEditable(entry.extension)) setOpened(entry);
     },
-    [navigate],
+    [navigate, selectOne],
   );
 
   const refresh = useCallback(() => navigate(cwd), [cwd, navigate]);
+  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
 
   useEffect(() => {
     if (cwd) navigate(cwd);
@@ -81,6 +188,8 @@ export function useFileManager() {
   const goUp = useCallback(() => {
     if (listing?.parent) navigate(listing.parent);
   }, [listing, navigate]);
+
+  // ── CRUD ───────────────────────────────────────────────────────────────────
 
   const rename = useCallback(
     async (path: string, name: string) => {
@@ -130,10 +239,84 @@ export function useFileManager() {
     [cwd, refresh],
   );
 
+  const renameMany = useCallback(
+    async (dir: string, renames: { from: string; to: string }[]) => {
+      try {
+        for (const r of renames) {
+          await fs.renameEntry(`${dir}/${r.from}`, r.to);
+        }
+        await refresh();
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [refresh],
+  );
+
   const moveEntry = useCallback(
     async (src: string, destDir: string) => {
       try {
-        await fs.moveEntry(src, destDir);
+        const paths = selection.has(src) ? [...selection] : [src];
+        await fs.moveEntries(paths, destDir);
+        await refresh();
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [refresh, selection],
+  );
+
+  // ── opérations groupées ────────────────────────────────────────────────────
+
+  const trash = useCallback(
+    async (paths: string[]) => {
+      try {
+        await fs.trashEntries(paths);
+        await refresh();
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [refresh],
+  );
+
+  const deletePermanent = useCallback(
+    async (paths: string[]) => {
+      try {
+        await fs.deleteEntries(paths);
+        await refresh();
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [refresh],
+  );
+
+  const copyToClipboard = useCallback(
+    (op: ClipboardOp, paths: string[]) => {
+      if (paths.length > 0) setClipboard({ op, paths });
+    },
+    [],
+  );
+
+  const paste = useCallback(async () => {
+    if (!clipboard) return;
+    try {
+      if (clipboard.op === "copy") await fs.copyEntries(clipboard.paths, cwd);
+      else {
+        await fs.moveEntries(clipboard.paths, cwd);
+        setClipboard(null);
+      }
+      await refresh();
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [clipboard, cwd, refresh]);
+
+  const compress = useCallback(
+    async (paths: string[], dest: string, format: "zip" | "targz") => {
+      try {
+        await fs.createArchive(paths, dest, format);
         await refresh();
       } catch (e) {
         setError(String(e));
@@ -148,10 +331,13 @@ export function useFileManager() {
     mode, setMode,
     cwd, listing, places,
     selected, setSelected,
+    selection, selectOne, toggleSelect, rangeSelect, selectAll, clearSelection, selectionPaths,
+    clipboard, copyToClipboard, paste,
     opened, setOpened,
     showHidden, toggleHidden,
     error, setError,
     navigate, openEntry, previewEntry, goUp, refresh,
-    rename, remove, newFolder, createFile, moveEntry,
+    rename, renameMany, remove, newFolder, createFile, moveEntry,
+    trash, deletePermanent, compress,
   };
 }

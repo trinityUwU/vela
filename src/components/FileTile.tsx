@@ -6,7 +6,7 @@ import { FileIcon } from "./FileIcon";
 interface Props {
   entry: DirEntry;
   selected: boolean;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
   onDouble: () => void;
   onContext: (e: React.MouseEvent) => void;
   onMove: (src: string, destDir: string) => void;

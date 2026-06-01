@@ -91,3 +91,17 @@ export interface ExtractionJob {
   status: ExtractionStatus;
   error?: string;
 }
+
+export type ClipboardOp = "copy" | "cut";
+
+export interface Clipboard {
+  op: ClipboardOp;
+  paths: string[];
+}
+
+export interface ContentMatch {
+  path: string;
+  name: string;
+  line: number;
+  text: string;
+}

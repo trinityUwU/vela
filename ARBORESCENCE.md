@@ -17,30 +17,33 @@ vela/
 │   ├── types.ts                    DirEntry, DirListing, FileChunk, Place, Mode,
 │   │                               Favorites, FavPin, FavGroup, ArchiveEntry,
 │   │                               EntryProps, AppInfo (+exec +source), FileApps,
-│   │                               ExtractionStatus, ExtractionJob
+│   │                               ExtractionStatus, ExtractionJob, Clipboard, ContentMatch
 │   │
 │   ├── services/
 │   │   ├── fs.ts                   Wrappers invoke() → toutes commandes Rust + startExtraction,
-│   │   │                           extractionPause/Resume/Cancel/ProvidePassword, searchPathBins
+│   │   │                           trash/delete/copy/moveEntries, createArchive, searchContent, watchDir
 │   │   └── file-kind.ts            Preview type (code/md/image/table/archive/binary)
 │   │                               + isEditable + langExtension (CodeMirror)
 │   │
 │   ├── hooks/
-│   │   ├── useFileManager.ts       État central : nav, mode, sélection, CRUD, moveEntry, createFile
+│   │   ├── useFileManager.ts       État central : nav, mode, sélection multiple (Set + anchor),
+│   │   │                           presse-papier, CRUD, ops groupées (trash/delete/copy/compress),
+│   │   │                           renameMany, watch live (fs-changed), persistance session
 │   │   ├── useFileContent.ts       Chargement fichier : édition (≤1Mo) / chunks (>1Mo) / skip
 │   │   ├── useFavorites.ts         Pins + groupes, persistance auto via save_favorites
-│   │   ├── useSearch.ts            Recherche live (debounce 500ms, min 2 chars)
+│   │   ├── useSearch.ts            Recherche live (debounce 500ms) : mode Nom / Contenu
 │   │   ├── useSort.ts              Tri (name/size/modified/extension, ASC/DESC) + filtre
 │   │   │                           (all/files/dirs) + dirsFirst — persisté localStorage
+│   │   ├── useKeyboard.ts          Raccourcis globaux (C/X/V/A/F, F2/F5, Suppr, Espace, Échap)
 │   │   └── useExtractions.ts       Écoute events Tauri extraction-progress → Map<id, ExtractionJob>
 │   │                               auto-dismiss 6s états terminaux
 │   │
 │   └── components/
-│       ├── Topbar.tsx              Toggle modes, PathBar éditable, search, drop crumbs
+│       ├── Topbar.tsx              Toggle modes, PathBar éditable, search (Nom/Contenu), drop crumbs
 │       ├── Sidebar.tsx             Favoris/groupes (collapse) + Emplacements + Montages, drop targets
 │       ├── SortBar.tsx             Barre tri/filtre compacte (32px) sous topbar
-│       ├── FileGrid.tsx            Grille mode Fichiers, drag & drop, onContextBg
-│       ├── FileList.tsx            Liste pane gauche mode Édition, drag & drop, onContextBg
+│       ├── FileGrid.tsx            Grille mode Fichiers, sélection multiple, clic fond = clear
+│       ├── FileList.tsx            Liste pane gauche mode Édition, sélection + élément actif
 │       ├── FileTile.tsx            Tuile grille : drag source + drop target dossiers
 │       ├── FileIcon.tsx            Icônes devicon (20+ langages) + SVG génériques
 │       ├── Editor.tsx              CodeMirror + save + search + MD preview + image + archive + table
@@ -49,23 +52,28 @@ vela/
 │       ├── ExtractionPanel.tsx     Panel fixe bas-droite : jobs empilés, progression, pause/reprise/
 │       │                           annulation, mot de passe inline, aller au dossier
 │       ├── PropertiesModal.tsx     Métadonnées + contenu dossier + app par défaut (PATH + custom)
-│       ├── ContextMenu.tsx         Ouvrir / Extraire ici + vers… (archives) / Copier chemin /
-│       │                           Copier chemin relatif / Renommer / Supprimer / Propriétés
-│       ├── BgContextMenu.tsx       Clic droit zone vide : nouveau fichier/dossier, actualiser,
+│       ├── ContextMenu.tsx         Mono/multi : ouvrir, extraire, copier/couper, compresser,
+│       │                           renommer (mono) / par lot (multi), corbeille, suppr définitive
+│       ├── BgContextMenu.tsx       Clic droit zone vide : nouveau fichier/dossier, coller, actualiser,
 │       │                           toggle hidden, épingler, propriétés dossier
-│       ├── SearchBar.tsx           SearchInput (topbar) + SearchResults (overlay)
+│       ├── CompressModal.tsx       Création archive : nom + format ZIP / TAR.GZ
+│       ├── BatchRenameModal.tsx    Renommage par lot : rechercher/remplacer + {n}, aperçu live
+│       ├── QuickLook.tsx           Overlay aperçu rapide (Espace) réutilisant l'éditeur
+│       ├── SearchBar.tsx           SearchInput (toggle Nom/Contenu) + SearchResults (overlay)
 │       ├── InputModal.tsx          Modal saisie texte (renommer, nouveau dossier, nouveau fichier)
 │       ├── ConfirmModal.tsx        Confirmation suppression
 │       └── icons.tsx               SVG inline (ArrowUp, Refresh, Eye, Search, Save…)
 │
 └── src-tauri/
-    ├── Cargo.toml                  zip, tar, flate2, bzip2, xz2, base64, mime_guess
+    ├── Cargo.toml                  zip, tar, flate2, bzip2, xz2, base64, mime_guess, trash, walkdir, notify
     ├── tauri.conf.json             1200×780, decorations:false, devUrl:1430, targets:deb+rpm
     ├── capabilities/default.json   core:default, start-dragging, opener:default + allow-open-path
     └── src/
         ├── main.rs
-        ├── lib.rs                  Builder + manage(ExtractionManager) + enregistrement 27 commandes
+        ├── lib.rs                  Builder + manage(ExtractionManager + DirWatcher) + 34 commandes
         ├── fs_ops.rs               CRUD + chunks + search + move + props + open_native + createFile
+        ├── ops.rs                  trash/delete/copy/move groupés, create_archive (zip/targz), search_content
+        ├── watcher.rs              DirWatcher (state) + watch_dir (notify → event fs-changed)
         ├── places.rs               home_dir, list_places (XDG + mounts)
         ├── favorites.rs            load/save favorites (JSON ~/.config/vela/)
         ├── archive.rs              list_archive, ExtractionManager (Tauri state), start_extraction,

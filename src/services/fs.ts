@@ -105,3 +105,31 @@ export function extractionCancel(jobId: string): Promise<void> {
 export function extractionProvidePassword(jobId: string, password: string): Promise<void> {
   return invoke("extraction_provide_password", { jobId, password });
 }
+
+export function trashEntries(paths: string[]): Promise<void> {
+  return invoke("trash_entries", { paths });
+}
+
+export function deleteEntries(paths: string[]): Promise<void> {
+  return invoke("delete_entries", { paths });
+}
+
+export function copyEntries(paths: string[], destDir: string): Promise<void> {
+  return invoke("copy_entries", { paths, destDir });
+}
+
+export function moveEntries(paths: string[], destDir: string): Promise<void> {
+  return invoke("move_entries", { paths, destDir });
+}
+
+export function createArchive(paths: string[], dest: string, format: "zip" | "targz"): Promise<string> {
+  return invoke<string>("create_archive", { paths, dest, format });
+}
+
+export function searchContent(root: string, query: string): Promise<import("../types").ContentMatch[]> {
+  return invoke("search_content", { root, query });
+}
+
+export function watchDir(path: string): Promise<void> {
+  return invoke("watch_dir", { path });
+}

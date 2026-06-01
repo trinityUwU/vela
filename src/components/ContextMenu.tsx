@@ -1,4 +1,4 @@
-// Menu contextuel au clic droit sur une entrée (fichier ou dossier).
+// Menu contextuel au clic droit sur une entrée (fichier ou dossier), mono ou multi-sélection.
 import { useEffect } from "react";
 import { previewKind } from "../services/file-kind";
 
@@ -10,6 +10,7 @@ export interface MenuState {
   isDir: boolean;
   extension: string;
   cwd: string;
+  count: number;
 }
 
 interface Props {
@@ -17,8 +18,13 @@ interface Props {
   onClose: () => void;
   onOpen: () => void;
   onRename: () => void;
-  onDelete: () => void;
+  onTrash: () => void;
+  onDeletePermanent: () => void;
   onProperties: () => void;
+  onCopy: () => void;
+  onCut: () => void;
+  onCompress: () => void;
+  onBatchRename: () => void;
   onExtractHere?: () => void;
   onExtractTo?: () => void;
 }
@@ -32,21 +38,28 @@ function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text).catch(() => {});
 }
 
-export function ContextMenu({ menu, onClose, onOpen, onRename, onDelete, onProperties, onExtractHere, onExtractTo }: Props) {
+export function ContextMenu(props: Props) {
+  const { menu, onClose, onOpen, onRename, onTrash, onDeletePermanent, onProperties } = props;
+  const { onCopy, onCut, onCompress, onBatchRename, onExtractHere, onExtractTo } = props;
+
   useEffect(() => {
     window.addEventListener("click", onClose);
     return () => window.removeEventListener("click", onClose);
   }, [onClose]);
 
+  const multi = menu.count > 1;
   const rel = relativePath(menu.path, menu.cwd);
-  const isArchive = !menu.isDir && previewKind(menu.extension) === "archive";
+  const isArchive = !multi && !menu.isDir && previewKind(menu.extension) === "archive";
 
   return (
     <div
       style={{ top: menu.y, left: menu.x }}
-      className="fixed z-50 min-w-48 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
+      className="fixed z-50 min-w-52 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
     >
-      <Item label="Ouvrir" onClick={onOpen} />
+      {multi && (
+        <div className="px-3 py-1 text-xs text-[var(--color-text-dim)]">{menu.count} éléments</div>
+      )}
+      {!multi && <Item label="Ouvrir" onClick={onOpen} />}
       {isArchive && (
         <>
           <Divider />
@@ -55,13 +68,27 @@ export function ContextMenu({ menu, onClose, onOpen, onRename, onDelete, onPrope
         </>
       )}
       <Divider />
-      <Item label="Copier le chemin" onClick={() => { copyToClipboard(menu.path); onClose(); }} />
-      <Item label={`Copier le chemin relatif  — ${rel}`} onClick={() => { copyToClipboard(rel); onClose(); }} dim />
+      <Item label="Copier" onClick={() => { onCopy(); onClose(); }} />
+      <Item label="Couper" onClick={() => { onCut(); onClose(); }} />
+      <Item label="Compresser…" onClick={() => { onCompress(); onClose(); }} />
       <Divider />
-      <Item label="Renommer" onClick={onRename} />
-      <Item label="Supprimer" onClick={onDelete} danger />
-      <Divider />
-      <Item label="Propriétés" onClick={onProperties} />
+      {!multi && (
+        <>
+          <Item label="Copier le chemin" onClick={() => { copyToClipboard(menu.path); onClose(); }} />
+          <Item label={`Copier le chemin relatif  — ${rel}`} onClick={() => { copyToClipboard(rel); onClose(); }} dim />
+          <Divider />
+          <Item label="Renommer" onClick={onRename} />
+        </>
+      )}
+      {multi && <Item label="Renommer par lot…" onClick={onBatchRename} />}
+      <Item label="Mettre à la corbeille" onClick={onTrash} />
+      <Item label="Supprimer définitivement" onClick={onDeletePermanent} danger />
+      {!multi && (
+        <>
+          <Divider />
+          <Item label="Propriétés" onClick={onProperties} />
+        </>
+      )}
     </div>
   );
 }

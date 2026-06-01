@@ -1,6 +1,7 @@
 // Barre supérieure : toggle des deux modes, navigation, path éditable. Zone de drag (fenêtre sans décoration).
 import { useEffect, useRef, useState } from "react";
 import type { Mode } from "../types";
+import type { SearchMode } from "../hooks/useSearch";
 import { ArrowUp, Refresh, Eye, FolderPlus, Search } from "./icons";
 import { SearchInput } from "./SearchBar";
 
@@ -17,6 +18,8 @@ interface Props {
   onMove: (src: string, destDir: string) => void;
   searchOpen: boolean;
   searchQuery: string;
+  searchMode: SearchMode;
+  onSearchMode: (m: SearchMode) => void;
   onSearchOpen: () => void;
   onSearchQuery: (q: string) => void;
   onSearchClose: () => void;
@@ -60,7 +63,7 @@ export function Topbar(props: Props) {
       <IconBtn onClick={props.onRefresh} title="Rafraîchir"><Refresh /></IconBtn>
 
       {searchOpen ? (
-        <SearchInput query={props.searchQuery} onChange={props.onSearchQuery} onClose={props.onSearchClose} />
+        <SearchInput query={props.searchQuery} mode={props.searchMode} onChange={props.onSearchQuery} onMode={props.onSearchMode} onClose={props.onSearchClose} />
       ) : (
         <PathBar path={path} onSubmit={props.onCrumb} onMove={onMove} />
       )}

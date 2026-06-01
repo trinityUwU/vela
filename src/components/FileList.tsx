@@ -5,15 +5,16 @@ import { FileIcon } from "./FileIcon";
 
 interface Props {
   entries: DirEntry[];
-  selected: string | null;
-  onSelect: (entry: DirEntry) => void;
+  selection: Set<string>;
+  active: string | null;
+  onSelect: (entry: DirEntry, e: React.MouseEvent) => void;
   onOpen: (entry: DirEntry) => void;
   onContext: (e: React.MouseEvent, entry: DirEntry) => void;
   onContextBg: (e: React.MouseEvent) => void;
   onMove: (src: string, destDir: string) => void;
 }
 
-export function FileList({ entries, selected, onSelect, onOpen, onContext, onContextBg, onMove }: Props) {
+export function FileList({ entries, selection, active, onSelect, onOpen, onContext, onContextBg, onMove }: Props) {
   const handleBg = (e: React.MouseEvent) => {
     e.preventDefault();
     onContextBg(e);
@@ -24,7 +25,8 @@ export function FileList({ entries, selected, onSelect, onOpen, onContext, onCon
         <FileRow
           key={e.path}
           entry={e}
-          selected={selected === e.path}
+          selected={selection.has(e.path)}
+          active={active === e.path}
           onSelect={onSelect}
           onOpen={onOpen}
           onContext={onContext}
@@ -35,10 +37,11 @@ export function FileList({ entries, selected, onSelect, onOpen, onContext, onCon
   );
 }
 
-function FileRow({ entry, selected, onSelect, onOpen, onContext, onMove }: {
+function FileRow({ entry, selected, active, onSelect, onOpen, onContext, onMove }: {
   entry: DirEntry;
   selected: boolean;
-  onSelect: (e: DirEntry) => void;
+  active: boolean;
+  onSelect: (e: DirEntry, ev: React.MouseEvent) => void;
   onOpen: (e: DirEntry) => void;
   onContext: (ev: React.MouseEvent, e: DirEntry) => void;
   onMove: (src: string, destDir: string) => void;
@@ -73,7 +76,7 @@ function FileRow({ entry, selected, onSelect, onOpen, onContext, onMove }: {
       onDragOver={handleDragOver}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      onClick={() => onSelect(entry)}
+      onClick={(ev) => onSelect(entry, ev)}
       onDoubleClick={() => onOpen(entry)}
       onContextMenu={(ev) => { ev.stopPropagation(); onContext(ev, entry); }}
       title={entry.name}
@@ -81,9 +84,9 @@ function FileRow({ entry, selected, onSelect, onOpen, onContext, onMove }: {
         dragOver
           ? "bg-[var(--color-accent-dim)]/20 ring-1 ring-[var(--color-accent)] ring-inset"
           : selected
-            ? "bg-[var(--color-surface-hover)]"
+            ? "bg-[var(--color-accent-dim)]/40"
             : "hover:bg-[var(--color-surface-hover)]"
-      }`}
+      } ${active ? "ring-1 ring-[var(--color-accent)] ring-inset" : ""}`}
     >
       <span className="shrink-0"><FileIcon entry={entry} size={18} /></span>
       <span className="truncate text-sm text-[var(--color-text)]">{entry.name}</span>

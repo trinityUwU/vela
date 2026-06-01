@@ -26,13 +26,27 @@
 - [x] Clic droit archive → Extraire ici / Extraire vers… (sans passer par le visualiseur)
 - [x] Fix build : `bun tauri build` obligatoire (cargo build seul ne produit pas de binaire autonome)
 
-## Backlog
+## Livré — v1.4 (refonte interactions)
 
+- [x] Sélection multiple (Ctrl+clic, Shift+clic, Ctrl+A, Échap) — `selection: Set<string>`
+- [x] Menu contextuel mono/multi (compteur, actions groupées)
+- [x] Copier / couper / coller (Ctrl+C/X/V) — presse-papier interne + `copy_entries`/`move_entries` Rust
+- [x] Corbeille XDG (`trash_entries`, crate `trash`) — Suppr → corbeille, Shift+Suppr → définitif
+- [x] Compression vers archive (ZIP / TAR.GZ) depuis sélection — `create_archive` Rust
+- [x] Suppression / déplacement groupés (drag de sélection multiple inclus)
+- [x] Raccourcis clavier (F2, F5, Suppr/Shift+Suppr, Ctrl+A/C/X/V/F, Espace, Échap)
+- [x] Persistance session (dernier dossier, mode, hidden) — localStorage `vela-session`
+- [x] Watch live dossier (crate `notify` → event `fs-changed` → refresh debounce 250ms)
+- [x] Recherche dans le contenu des fichiers (grep récursif) — `search_content`, toggle Nom/Contenu
+- [x] Quick Look (Espace → overlay viewer sans mode Édition)
+- [x] Renommage par lot (rechercher/remplacer + jeton `{n}`, aperçu live)
+
+## Backlog
+- [ ] Thumbnails images en mode Fichiers (backend resize + crate `image`)
+- [ ] Aperçu PDF (pdfjs-dist)
+- [ ] Indicateur progression copie/déplacement gros volumes
 - [ ] Onglets multi-fichiers en mode Édition
-- [ ] Watch live dossier (crate `notify` → refresh auto)
-- [ ] Copier / couper / coller (Ctrl+C, Ctrl+X, Ctrl+V)
-- [ ] Raccourcis clavier navigation (flèches, Entrée, F2 renommer, Suppr)
-- [ ] Persistance (dernier dossier ouvert, mode, état fichiers cachés)
-- [ ] Thumbnails images en mode Fichiers
-- [ ] Aperçu PDF
-- [ ] Sélection multiple (Shift+clic, Ctrl+clic)
+- [ ] Diff entre deux fichiers (CodeMirror merge view)
+- [ ] Terminal intégré (cwd courant)
+- [ ] Tags / couleurs sur fichiers
+- [ ] Annuler (Ctrl+Z) sur rename/move/delete récents

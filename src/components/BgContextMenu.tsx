@@ -12,9 +12,11 @@ interface Props {
   onToggleHidden: () => void;
   onPinCurrent: () => void;
   onProperties: () => void;
+  onPaste?: () => void;
+  canPaste: boolean;
 }
 
-export function BgContextMenu({ x, y, showHidden, onClose, onNewFile, onNewFolder, onRefresh, onToggleHidden, onPinCurrent, onProperties }: Props) {
+export function BgContextMenu({ x, y, showHidden, onClose, onNewFile, onNewFolder, onRefresh, onToggleHidden, onPinCurrent, onProperties, onPaste, canPaste }: Props) {
   useEffect(() => {
     window.addEventListener("click", onClose);
     return () => window.removeEventListener("click", onClose);
@@ -27,6 +29,7 @@ export function BgContextMenu({ x, y, showHidden, onClose, onNewFile, onNewFolde
     >
       <Item label="Nouveau fichier" onClick={onNewFile} />
       <Item label="Nouveau dossier" onClick={onNewFolder} />
+      {canPaste && <Item label="Coller" onClick={() => onPaste?.()} />}
       <Item label="Actualiser" onClick={onRefresh} />
       <Divider />
       <Item

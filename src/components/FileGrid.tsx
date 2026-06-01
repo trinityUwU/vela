@@ -4,15 +4,16 @@ import { FileTile } from "./FileTile";
 
 interface Props {
   entries: DirEntry[];
-  selected: string | null;
-  onSelect: (path: string) => void;
+  selection: Set<string>;
+  onSelect: (entry: DirEntry, e: React.MouseEvent) => void;
   onOpen: (entry: DirEntry) => void;
   onContext: (e: React.MouseEvent, entry: DirEntry) => void;
   onContextBg: (e: React.MouseEvent) => void;
+  onClearBg: () => void;
   onMove: (src: string, destDir: string) => void;
 }
 
-export function FileGrid({ entries, selected, onSelect, onOpen, onContext, onContextBg, onMove }: Props) {
+export function FileGrid({ entries, selection, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove }: Props) {
   const handleBg = (e: React.MouseEvent) => {
     e.preventDefault();
     onContextBg(e);
@@ -26,14 +27,21 @@ export function FileGrid({ entries, selected, onSelect, onOpen, onContext, onCon
     );
   }
   return (
-    <div className="flex-1 overflow-y-auto p-3" onContextMenu={handleBg}>
-      <div className="flex flex-wrap gap-1 content-start">
+    <div
+      className="flex-1 overflow-y-auto p-3"
+      onContextMenu={handleBg}
+      onClick={(e) => { if (e.target === e.currentTarget) onClearBg(); }}
+    >
+      <div
+        className="flex flex-wrap gap-1 content-start"
+        onClick={(e) => { if (e.target === e.currentTarget) onClearBg(); }}
+      >
         {entries.map((e) => (
           <FileTile
             key={e.path}
             entry={e}
-            selected={selected === e.path}
-            onClick={() => onSelect(e.path)}
+            selected={selection.has(e.path)}
+            onClick={(ev) => onSelect(e, ev)}
             onDouble={() => onOpen(e)}
             onContext={(ev) => onContext(ev, e)}
             onMove={onMove}

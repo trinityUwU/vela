@@ -1,26 +1,42 @@
 // Barre de recherche live : input dans la topbar, résultats superposés sous la topbar.
 import { useEffect, useRef } from "react";
-import type { DirEntry } from "../types";
+import type { ContentMatch, DirEntry } from "../types";
+import type { SearchMode } from "../hooks/useSearch";
 import { FileIcon } from "./FileIcon";
 
 interface BarProps {
   query: string;
+  mode: SearchMode;
   onChange: (q: string) => void;
+  onMode: (m: SearchMode) => void;
   onClose: () => void;
 }
 
-export function SearchInput({ query, onChange, onClose }: BarProps) {
+export function SearchInput({ query, mode, onChange, onMode, onClose }: BarProps) {
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => { ref.current?.focus(); }, []);
 
   return (
     <div className="flex-1 flex items-center gap-2 h-8 px-3 rounded-md bg-[var(--color-bg)] border border-[var(--color-accent)] text-sm">
+      <div className="flex gap-0.5 shrink-0">
+        {(["name", "content"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => onMode(m)}
+            className={`px-1.5 py-0.5 rounded text-[11px] transition-colors ${
+              mode === m ? "bg-[var(--color-accent)] text-[var(--color-bg)]" : "text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+            }`}
+          >
+            {m === "name" ? "Nom" : "Contenu"}
+          </button>
+        ))}
+      </div>
       <input
         ref={ref}
         value={query}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.key === "Escape" && onClose()}
-        placeholder="Rechercher (min. 2 caractères)…"
+        placeholder={mode === "name" ? "Rechercher par nom…" : "Rechercher dans le contenu…"}
         className="flex-1 bg-transparent text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-dim)]"
       />
       {query && (
@@ -31,32 +47,50 @@ export function SearchInput({ query, onChange, onClose }: BarProps) {
 }
 
 interface ResultsProps {
+  mode: SearchMode;
   results: DirEntry[];
+  contentResults: ContentMatch[];
   searching: boolean;
   query: string;
   onOpen: (e: DirEntry) => void;
   onNavigate: (path: string) => void;
+  onOpenMatch: (path: string) => void;
 }
 
-export function SearchResults({ results, searching, query, onOpen, onNavigate }: ResultsProps) {
+export function SearchResults({ mode, results, contentResults, searching, query, onOpen, onNavigate, onOpenMatch }: ResultsProps) {
   if (!query.trim()) return null;
+  const count = mode === "name" ? results.length : contentResults.length;
 
   return (
     <div className="absolute top-12 left-56 right-0 z-40 border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl max-h-[70vh] overflow-y-auto">
       {searching ? (
         <div className="px-4 py-3 text-sm text-[var(--color-text-dim)]">Recherche en cours…</div>
-      ) : results.length === 0 ? (
+      ) : count === 0 ? (
         <div className="px-4 py-3 text-sm text-[var(--color-text-dim)]">Aucun résultat pour « {query} »</div>
       ) : (
         <>
           <div className="px-3 py-1.5 text-[10px] text-[var(--color-text-dim)] border-b border-[var(--color-border)]">
-            {results.length}{results.length >= 200 ? "+" : ""} résultat{results.length > 1 ? "s" : ""}
+            {count}{count >= 200 ? "+" : ""} résultat{count > 1 ? "s" : ""}
           </div>
-          {results.map((e) => (
-            <ResultRow key={e.path} entry={e} onOpen={onOpen} onNavigate={onNavigate} />
-          ))}
+          {mode === "name"
+            ? results.map((e) => <ResultRow key={e.path} entry={e} onOpen={onOpen} onNavigate={onNavigate} />)
+            : contentResults.map((m, i) => <MatchRow key={`${m.path}:${m.line}:${i}`} match={m} onOpen={onOpenMatch} />)}
         </>
       )}
+    </div>
+  );
+}
+
+function MatchRow({ match, onOpen }: { match: ContentMatch; onOpen: (path: string) => void }) {
+  return (
+    <div
+      className="flex items-baseline gap-3 px-3 py-2 hover:bg-[var(--color-surface-hover)] cursor-pointer border-b border-[var(--color-border)]/40"
+      onClick={() => onOpen(match.path)}
+    >
+      <div className="shrink-0 w-40 truncate text-sm text-[var(--color-text)]" title={match.path}>
+        {match.name}<span className="text-[var(--color-text-dim)]">:{match.line}</span>
+      </div>
+      <div className="flex-1 min-w-0 truncate text-[12px] font-mono text-[var(--color-text-dim)]">{match.text}</div>
     </div>
   );
 }

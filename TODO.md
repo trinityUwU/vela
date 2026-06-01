@@ -172,9 +172,11 @@ Mémoire : ne pas garder toutes les base64 en RAM, laisser le GC ; le cache disq
 
 ---
 
+## Livré — v1.7 (annulation + onglets éditeur + Réglages) ✅
+- [x] Annuler (Ctrl+Z) — pile inverse renommage/déplacement/copie/corbeille (`useUndo` + `restore_trash`)
+- [x] Onglets multi-fichiers en mode Édition (`useEditorTabs` + `EditorArea`, éditions préservées)
+- [x] Catégorie Réglages dans la sidebar — référence des features + raccourcis (`SettingsPanel`)
+
 ## Backlog (non détaillé — à spécifier au moment venu)
-- [ ] Onglets multi-fichiers en mode Édition
 - [ ] Diff entre deux fichiers (CodeMirror merge view) — 2 fichiers sélectionnés → clic droit « Comparer »
-- [ ] Terminal intégré (cwd courant)
 - [ ] Tags / couleurs sur fichiers (métadonnées `~/.config/vela/tags.json`)
-- [ ] Annuler (Ctrl+Z) sur rename/move/delete récents (pile d'opérations inverses)

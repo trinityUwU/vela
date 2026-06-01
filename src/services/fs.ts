@@ -114,8 +114,8 @@ export function deleteEntries(paths: string[]): Promise<void> {
   return invoke("delete_entries", { paths });
 }
 
-export function copyEntries(paths: string[], destDir: string): Promise<void> {
-  return invoke("copy_entries", { paths, destDir });
+export function copyEntries(paths: string[], destDir: string): Promise<string[]> {
+  return invoke<string[]>("copy_entries", { paths, destDir });
 }
 
 export function moveEntries(paths: string[], destDir: string): Promise<void> {
@@ -144,6 +144,10 @@ export function trashCount(): Promise<number> {
 
 export function emptyTrash(): Promise<void> {
   return invoke("empty_trash");
+}
+
+export function restoreTrash(paths: string[]): Promise<void> {
+  return invoke("restore_trash", { paths });
 }
 
 export function thumbnail(path: string, max = 128): Promise<string> {

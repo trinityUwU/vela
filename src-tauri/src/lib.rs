@@ -42,6 +42,7 @@ pub fn run() {
             ops::trash_dir,
             ops::trash_count,
             ops::empty_trash,
+            ops::restore_trash,
             watcher::watch_dir,
             thumbs::thumbnail,
             terminal::available_shells,

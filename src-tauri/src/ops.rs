@@ -115,6 +115,24 @@ pub fn trash_count() -> u64 {
         .unwrap_or(0)
 }
 
+// Restaure depuis la corbeille les éléments dont le chemin d'origine figure dans `paths`.
+#[tauri::command]
+pub fn restore_trash(paths: Vec<String>) -> Result<(), String> {
+    let wanted: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
+    let items = trash::os_limited::list().map_err(|e| e.to_string())?;
+    let to_restore: Vec<_> = items
+        .into_iter()
+        .filter(|it| wanted.contains(&it.original_parent.join(&it.name)))
+        .collect();
+    if to_restore.is_empty() {
+        return Err("Élément introuvable dans la corbeille".to_string());
+    }
+    trash::os_limited::restore_all(to_restore).map_err(|e| {
+        eprintln!("[restore_trash] {paths:?}: {e}");
+        e.to_string()
+    })
+}
+
 // Vide la corbeille : purge files/ et info/.
 #[tauri::command]
 pub fn empty_trash() -> Result<(), String> {
@@ -276,7 +294,7 @@ fn job_label(paths: &[String]) -> String {
 
 // Copie plusieurs entrées dans dest_dir, en évitant l'écrasement (suffixe « copie N »).
 #[tauri::command]
-pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) -> Result<(), String> {
+pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) -> Result<Vec<String>, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let dest = Path::new(&dest_dir);
         let (files, total) = count_files_bytes(&paths);
@@ -287,6 +305,7 @@ pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
         let ctrl = mgr.add(&job_id);
         if notify { emit_transfer(&app, &job_id, "copy", &label, 0, total, "transferring", None); }
 
+        let mut created: Vec<String> = Vec::new();
         let mut current = 0u64;
         let mut last = Instant::now();
         let mut last_paused = false;
@@ -318,17 +337,18 @@ pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
                 if e.kind() == ErrorKind::Interrupted {
                     if notify { emit_transfer(&app, &job_id, "copy", &label, current, total, "cancelled", None); }
                     mgr.remove(&job_id);
-                    return Ok(());
+                    return Ok(created);
                 }
                 eprintln!("[copy_entries] {path}: {e}");
                 if notify { emit_transfer(&app, &job_id, "copy", &label, current, total, "error", Some(e.to_string())); }
                 mgr.remove(&job_id);
                 return Err(e.to_string());
             }
+            created.push(target.to_string_lossy().to_string());
         }
         if notify { emit_transfer(&app, &job_id, "copy", &label, total, total, "done", None); }
         mgr.remove(&job_id);
-        Ok(())
+        Ok(created)
     })
     .await
     .map_err(|e| e.to_string())?

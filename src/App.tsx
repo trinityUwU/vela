@@ -7,6 +7,8 @@ import { useSort, applySortFilter } from "./hooks/useSort";
 import { useExtractions } from "./hooks/useExtractions";
 import { useTransfers } from "./hooks/useTransfers";
 import { useTerminals } from "./hooks/useTerminals";
+import { useUndo } from "./hooks/useUndo";
+import { useEditorTabs } from "./hooks/useEditorTabs";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TerminalPanel } from "./components/TerminalPanel";
 import { termInput, availableShells } from "./services/term";
@@ -16,7 +18,7 @@ import { SortBar } from "./components/SortBar";
 import { Sidebar } from "./components/Sidebar";
 import { FileGrid } from "./components/FileGrid";
 import { FileList } from "./components/FileList";
-import { Editor } from "./components/Editor";
+import { EditorArea } from "./components/EditorArea";
 import { ContextMenu } from "./components/ContextMenu";
 import { BgContextMenu } from "./components/BgContextMenu";
 import { InputModal } from "./components/InputModal";
@@ -26,6 +28,7 @@ import { CompressModal } from "./components/CompressModal";
 import { BatchRenameModal } from "./components/BatchRenameModal";
 import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
+import { SettingsPanel } from "./components/SettingsPanel";
 import { startExtraction, trashDir } from "./services/fs";
 import type { DirEntry } from "./types";
 
@@ -75,9 +78,13 @@ export default function App() {
   const [quickLook, setQuickLook] = useState<DirEntry | null>(null);
   const [trashPath, setTrashPath] = useState("");
   const terminals = useTerminals();
+  const undo = useUndo(fm.setError, fm.refresh);
+  useEffect(() => { fm.setRecorder(undo.push); }, [fm.setRecorder, undo.push]);
+  const editorTabs = useEditorTabs(fm.opened, fm.setOpened);
   const [termVisible, setTermVisible] = useState(false);
   const [termHeight, setTermHeight] = useState(280);
   const [shells, setShells] = useState<string[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => { trashDir().then(setTrashPath).catch(() => {}); }, []);
   useEffect(() => { availableShells().then(setShells).catch(() => {}); }, []);
@@ -196,6 +203,7 @@ export default function App() {
       const entry = entries.find((e) => e.path === p[0]);
       if (entry && !entry.is_dir) setQuickLook(entry);
     },
+    onUndo: undo.undo,
   });
 
   return (
@@ -256,6 +264,7 @@ export default function App() {
           onMove={fm.moveEntry}
           onOpenTrash={fm.openTrash}
           onEmptyTrash={() => setDialog({ kind: "emptytrash" })}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
 
         {fm.mode === "edit" ? (
@@ -270,13 +279,13 @@ export default function App() {
               onContextBg={onContextBg}
               onMove={fm.moveEntry}
             />
-            {fm.opened ? (
-              <Editor entry={fm.opened} onClose={() => fm.setOpened(null)} onError={fm.setError} />
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)]">
-                Sélectionne un fichier pour l'éditer
-              </div>
-            )}
+            <EditorArea
+              tabs={editorTabs.tabs}
+              activePath={editorTabs.activePath}
+              onSelect={editorTabs.select}
+              onClose={editorTabs.close}
+              onError={fm.setError}
+            />
           </div>
         ) : (
           <FileGrid
@@ -458,6 +467,8 @@ export default function App() {
       )}
 
       <ExtractionPanel jobs={extractionJobs} transfers={transferJobs} onNavigate={fm.navigate} />
+
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }

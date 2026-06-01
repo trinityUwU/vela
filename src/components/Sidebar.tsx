@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { FavPin, Place } from "../types";
 import type { useFavorites } from "../hooks/useFavorites";
-import { Home, Folder, Drive, Trash } from "./icons";
+import { Home, Folder, Drive, Trash, Settings } from "./icons";
 
 type Favs = ReturnType<typeof useFavorites>;
 
@@ -17,9 +17,10 @@ interface Props {
   onMove: (src: string, destDir: string) => void;
   onOpenTrash: () => void;
   onEmptyTrash: () => void;
+  onOpenSettings: () => void;
 }
 
-export function Sidebar({ favs, places, cwd, trashDir, trashCount, onSelect, onPinCurrent, onMove, onOpenTrash, onEmptyTrash }: Props) {
+export function Sidebar({ favs, places, cwd, trashDir, trashCount, onSelect, onPinCurrent, onMove, onOpenTrash, onEmptyTrash, onOpenSettings }: Props) {
   const xdg = places.filter((p) => p.kind !== "mount");
   const mounts = places.filter((p) => p.kind === "mount");
 
@@ -47,6 +48,13 @@ export function Sidebar({ favs, places, cwd, trashDir, trashCount, onSelect, onP
       <div className="flex-1" />
       <SectionLabel>Système</SectionLabel>
       <TrashRow active={cwd === trashDir} count={trashCount} onOpen={onOpenTrash} onEmpty={onEmptyTrash} />
+      <button
+        onClick={onOpenSettings}
+        className="w-full flex items-center gap-2.5 px-3 py-1.5 mb-1 text-sm text-left text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)] transition-colors"
+      >
+        <span className="shrink-0 opacity-80"><Settings /></span>
+        <span className="truncate">Réglages</span>
+      </button>
     </aside>
   );
 }

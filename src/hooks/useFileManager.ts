@@ -3,7 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import * as fs from "../services/fs";
 import { isEditable } from "../services/file-kind";
+import type { UndoEntry } from "./useUndo";
 import type { Clipboard, ClipboardOp, DirEntry, DirListing, Mode, Place } from "../types";
+
+function baseName(path: string): string {
+  return path.split("/").filter(Boolean).pop() ?? path;
+}
 
 const SESSION_KEY = "vela-session";
 
@@ -43,6 +48,8 @@ export function useFileManager() {
   const [error, setError] = useState<string | null>(null);
   const [trashCount, setTrashCount] = useState(0);
   const anchor = useRef<string | null>(null);
+  const recordRef = useRef<(e: UndoEntry) => void>(() => {});
+  const setRecorder = useCallback((fn: (e: UndoEntry) => void) => { recordRef.current = fn; }, []);
 
   const refreshTrashCount = useCallback(() => {
     fs.trashCount().then(setTrashCount).catch(() => {});
@@ -57,7 +64,6 @@ export function useFileManager() {
         setSelected(null);
         setSelection(new Set());
         anchor.current = null;
-        setOpened(null);
         setError(null);
       } catch (e) {
         setError(String(e));
@@ -200,7 +206,8 @@ export function useFileManager() {
   const rename = useCallback(
     async (path: string, name: string) => {
       try {
-        await fs.renameEntry(path, name);
+        const newPath = await fs.renameEntry(path, name);
+        recordRef.current({ kind: "rename", renames: [{ path: newPath, prevName: baseName(path) }] });
         await refresh();
       } catch (e) {
         setError(String(e));
@@ -248,9 +255,12 @@ export function useFileManager() {
   const renameMany = useCallback(
     async (dir: string, renames: { from: string; to: string }[]) => {
       try {
+        const undo: { path: string; prevName: string }[] = [];
         for (const r of renames) {
-          await fs.renameEntry(`${dir}/${r.from}`, r.to);
+          const newPath = await fs.renameEntry(`${dir}/${r.from}`, r.to);
+          undo.push({ path: newPath, prevName: r.from });
         }
+        if (undo.length) recordRef.current({ kind: "rename", renames: undo });
         await refresh();
       } catch (e) {
         setError(String(e));
@@ -264,6 +274,7 @@ export function useFileManager() {
       try {
         const paths = selection.has(src) ? [...selection] : [src];
         await fs.moveEntries(paths, destDir);
+        recordRef.current({ kind: "move", moves: paths.map((p) => ({ from: p, to: `${destDir}/${baseName(p)}` })) });
         await refresh();
       } catch (e) {
         setError(String(e));
@@ -278,6 +289,7 @@ export function useFileManager() {
     async (paths: string[]) => {
       try {
         await fs.trashEntries(paths);
+        recordRef.current({ kind: "trash", originals: paths });
         await refresh();
         refreshTrashCount();
       } catch (e) {
@@ -328,9 +340,12 @@ export function useFileManager() {
   const paste = useCallback(async () => {
     if (!clipboard) return;
     try {
-      if (clipboard.op === "copy") await fs.copyEntries(clipboard.paths, cwd);
-      else {
+      if (clipboard.op === "copy") {
+        const created = await fs.copyEntries(clipboard.paths, cwd);
+        if (created.length) recordRef.current({ kind: "copy", created });
+      } else {
         await fs.moveEntries(clipboard.paths, cwd);
+        recordRef.current({ kind: "move", moves: clipboard.paths.map((p) => ({ from: p, to: `${cwd}/${baseName(p)}` })) });
         setClipboard(null);
       }
       await refresh();
@@ -366,5 +381,6 @@ export function useFileManager() {
     rename, renameMany, remove, newFolder, createFile, moveEntry,
     trash, deletePermanent, compress,
     trashCount, emptyTrash, openTrash,
+    setRecorder,
   };
 }

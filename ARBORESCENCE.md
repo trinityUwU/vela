@@ -34,7 +34,9 @@ vela/
 │   │   ├── useSearch.ts            Recherche live (debounce 500ms) : mode Nom / Contenu
 │   │   ├── useSort.ts              Tri (name/size/modified/extension, ASC/DESC) + filtre
 │   │   │                           (all/files/dirs) + dirsFirst — persisté localStorage
-│   │   ├── useKeyboard.ts          Raccourcis globaux (C/X/V/A/F, F2/F5, Suppr, Espace, Échap)
+│   │   ├── useKeyboard.ts          Raccourcis globaux (C/X/V/A/F/Z, F2/F5, Suppr, Espace, Échap)
+│   │   ├── useUndo.ts              Pile Ctrl+Z (rename/move/copy/trash) — ops inverses, max 30
+│   │   ├── useEditorTabs.ts        Onglets multi-fichiers mode Édition (sync sur fm.opened)
 │   │   ├── useExtractions.ts       Écoute events Tauri extraction-progress → Map<id, ExtractionJob>
 │   │   │                           auto-dismiss 6s états terminaux
 │   │   ├── useTransfers.ts         Écoute transfer-progress → Map<id, TransferJob> (copie/déplacement)
@@ -49,7 +51,9 @@ vela/
 │       ├── FileList.tsx            Liste pane gauche mode Édition, sélection + élément actif
 │       ├── FileTile.tsx            Tuile grille : drag source + drop target dossiers
 │       ├── FileIcon.tsx            Icônes devicon (20+ langages) + SVG génériques
-│       ├── Editor.tsx              CodeMirror + save + search + MD preview + image + archive + table
+│       ├── Editor.tsx              CodeMirror + save + search + MD preview + image + archive + table (prop active)
+│       ├── EditorArea.tsx          Mode Édition multi-onglets : barre + un Editor monté par fichier
+│       ├── SettingsPanel.tsx       Overlay Réglages : référence des features + raccourcis <kbd>
 │       ├── TableViewer.tsx         CSV/TSV (auto-sep) + XLSX/XLS/ODS (SheetJS), filtre live
 │       ├── ArchiveViewer.tsx       Liste archive + extraction non-bloquante (ici / chemin custom)
 │       ├── ExtractionPanel.tsx     Panel fixe bas-droite : extractions + transferts empilés, progression,
@@ -75,10 +79,11 @@ vela/
     ├── capabilities/default.json   core:default, start-dragging, opener:default + allow-open-path
     └── src/
         ├── main.rs
-        ├── lib.rs                  Builder + manage(ExtractionManager + DirWatcher) + 38 commandes
+        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal Manager) + 47 commandes
         ├── fs_ops.rs               CRUD + chunks + search + move + props + open_native + createFile
-        ├── ops.rs                  trash/delete/copy/move groupés, create_archive, search_content,
-        │                           trash_dir/trash_count/empty_trash (gestion corbeille XDG)
+        ├── ops.rs                  trash/delete/copy/move groupés (copy retourne chemins créés),
+        │                           transfer_pause/resume/cancel, create_archive, search_content,
+        │                           trash_dir/trash_count/empty_trash/restore_trash (corbeille XDG)
         ├── watcher.rs              DirWatcher (state) + watch_dir (notify → event fs-changed)
         ├── terminal.rs             TerminalManager (PTY portable-pty) : term_open/input/resize/close
         ├── thumbs.rs               thumbnail (crate image, PNG base64, cache ~/.cache/vela/thumbs)

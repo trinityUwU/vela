@@ -25,6 +25,7 @@ interface Props {
   entry: DirEntry;
   onClose: () => void;
   onError: (msg: string) => void;
+  active?: boolean;
 }
 
 function fmtSize(b: number): string {
@@ -33,7 +34,7 @@ function fmtSize(b: number): string {
   return `${(b / 1024 / 1024).toFixed(1)} Mo`;
 }
 
-export function Editor({ entry, onClose, onError }: Props) {
+export function Editor({ entry, onClose, onError, active = true }: Props) {
   const kind = previewKind(entry.extension);
   const isMd = kind === "markdown";
   const isTable = kind === "table";
@@ -86,13 +87,14 @@ export function Editor({ entry, onClose, onError }: Props) {
   }, [entry.path, file.content, file.editable, onError]);
 
   useEffect(() => {
+    if (!active) return;
     const h = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "f") { e.preventDefault(); toggleSearch(); }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [save, toggleSearch]);
+  }, [active, save, toggleSearch]);
 
   return (
     <div className="flex-1 flex flex-col min-w-0">

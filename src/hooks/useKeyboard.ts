@@ -13,6 +13,7 @@ export interface KeyHandlers {
   onRefresh?: () => void;
   onFind?: () => void;
   onQuickLook?: () => void;
+  onUndo?: () => void;
 }
 
 function inEditable(target: EventTarget | null): boolean {
@@ -35,6 +36,7 @@ export function useKeyboard(h: KeyHandlers): void {
       if (mod && e.key === "c") { e.preventDefault(); h.onCopy?.(); return; }
       if (mod && e.key === "x") { e.preventDefault(); h.onCut?.(); return; }
       if (mod && e.key === "v") { e.preventDefault(); h.onPaste?.(); return; }
+      if (mod && e.key === "z") { e.preventDefault(); h.onUndo?.(); return; }
       if (mod && e.key === "a") { e.preventDefault(); h.onSelectAll?.(); return; }
       if (mod && e.key === "f") { e.preventDefault(); h.onFind?.(); return; }
       if (e.key === " ") { e.preventDefault(); h.onQuickLook?.(); return; }

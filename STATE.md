@@ -47,7 +47,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - **Aperçu PDF** : `PdfViewer` (pdf.js, worker local `?url`) — canvas page par page, zoom 50-300%, lazy IntersectionObserver au-delà de 20 pages. Branché dans `Editor` (`previewKind` "pdf", non éditable) → dispo en Quick Look
 - **Thumbnails images** : `useThumbnail` (IntersectionObserver lazy, file de concurrence globale 4) + `FileTile` affiche la miniature réelle (fallback `FileIcon` pendant chargement/erreur)
 
-**Commandes Rust** : 45 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager` + `TerminalManager`)
+**Commandes Rust** : 47 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager` + `TerminalManager`)
 
 **Transferts contrôlables** : `TransferManager` (state, AtomicBool paused/cancelled par job) + `transfer_pause`/`transfer_resume`/`transfer_cancel`. La boucle de copie par chunks vérifie le contrôle à chaque tranche (pause = spin-wait 50 ms, annulation = nettoyage du partiel + statut `cancelled`). Boutons Pause/Reprendre + Annuler sur copie ET déplacement. **Déplacement intelligent** : `rename` si même FS (instantané) ; sinon (cross-device EXDEV) copie par chunks pausable/annulable + suppression de la source **différée à la fin** (annuler ne perd jamais de données). Annulation = restauration : rename inverse des renommés, suppression des copies cross-device partielles. `MoveState` (renamed/copied), `undo_move`, `is_cross_device`, `validate_move_target`
 
@@ -82,5 +82,10 @@ Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, paus
 - **Police** : `JetBrainsMono Nerd Font` dans xterm → glyphes Powerlevel10k/powerline rendus (sinon carrés).
 - 46 commandes Rust. Deps : `portable-pty` (Rust) + `@xterm/xterm` + `@xterm/addon-fit` (local).
 
+## v1.7 — Annulation, onglets éditeur, Réglages ✅ (livré, installé)
+- **Ctrl+Z** (`useUndo`) : pile multi-niveaux (30) — renommage, déplacement, copie, mise en corbeille. Réversibilité : rename inverse · re-déplacement vers le parent d'origine (regroupé par dossier source) · copies → corbeille · restauration corbeille. Backend : `restore_trash` (`trash::os_limited::restore_all`, match sur chemin d'origine) + `copy_entries` retourne désormais les chemins créés. Enregistrement des ops via `recordRef` dans `useFileManager` (branché depuis `App` → `setRecorder`).
+- **Onglets multi-fichiers en mode Édition** (`useEditorTabs` + `EditorArea`) : un `Editor` monté par onglet, inactifs masqués (CSS) → **éditions non sauvegardées préservées au changement d'onglet**. Fermeture × ou clic-milieu. `Editor` reçoit `active` → Ctrl+S/Ctrl+F ne s'appliquent qu'à l'onglet visible. `navigate` ne remet plus `opened=null` (onglets indépendants du listing → on browse sans perdre les fichiers ouverts).
+- **Réglages** (`SettingsPanel`) : bouton engrenage dans la section Système de la sidebar → overlay référençant toutes les features groupées + raccourcis en `<kbd>`. Fermeture Échap/clic dehors.
+
 ## Backlog (non priorisé)
-- Onglets multi-fichiers en mode Édition · Diff 2 fichiers (CodeMirror merge) · Tags/couleurs · Annuler (Ctrl+Z)
+- Diff 2 fichiers (CodeMirror merge) · Tags/couleurs sur fichiers

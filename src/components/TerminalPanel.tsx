@@ -126,7 +126,7 @@ function TerminalView({ id, cwd, active, onExit }: {
 
   useEffect(() => {
     const term = new Terminal({
-      fontFamily: '"JetBrains Mono", "Cascadia Code", monospace',
+      fontFamily: '"JetBrainsMono Nerd Font", "JetBrains Mono", "Symbols Nerd Font", monospace',
       fontSize: 13,
       cursorBlink: true,
       theme: { background: "#0b0c10", foreground: "#e6e8ec", cursor: "#6ea8fe" },

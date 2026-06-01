@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import type { DirEntry } from "../types";
 import type { SortBy, SortState } from "../hooks/useSort";
 import { FileIcon } from "./FileIcon";
-import { onTileKey } from "./tile-keys";
 
 interface Props {
   entries: DirEntry[];
@@ -13,12 +12,10 @@ interface Props {
   onToggleBy: (by: SortBy) => void;
   onSelect: (entry: DirEntry, e: React.MouseEvent) => void;
   onOpen: (entry: DirEntry) => void;
-  onActivate: () => void;
   onContext: (e: React.MouseEvent, entry: DirEntry) => void;
   onContextBg: (e: React.MouseEvent) => void;
   onClearBg: () => void;
   onMove: (src: string, destDir: string) => void;
-  onArrow: (delta: number, axis: "x" | "y") => void;
   colorOf: (path: string) => string | undefined;
 }
 
@@ -46,12 +43,9 @@ const COLS: { by: SortBy; label: string; className: string }[] = [
 ];
 
 export function FileTable(props: Props) {
-  const { entries, selection, active, sort, onToggleBy, onSelect, onOpen, onActivate, onContext, onContextBg, onClearBg, onMove, onArrow, colorOf } = props;
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const { entries, selection, active, sort, onToggleBy, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, colorOf } = props;
   const handleBg = (e: React.MouseEvent) => { e.preventDefault(); onContextBg(e); };
   const arrow = (by: SortBy) => (sort.by === by ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
-
-  useEffect(() => { scrollRef.current?.focus({ preventScroll: true }); }, [entries]);
 
   return (
     <div className="flex-1 flex flex-col min-h-0" onContextMenu={handleBg}>
@@ -63,10 +57,7 @@ export function FileTable(props: Props) {
         ))}
       </div>
       <div
-        ref={scrollRef}
-        tabIndex={0}
-        className="flex-1 overflow-y-auto outline-none"
-        onKeyDown={(e) => onTileKey(e, onActivate, onArrow)}
+        className="flex-1 overflow-y-auto"
         onClick={(e) => { if (e.target === e.currentTarget) onClearBg(); }}
       >
         {entries.length === 0 ? (

@@ -152,6 +152,22 @@ export default function App() {
     if (e) fm.openEntry(e);
   }, [entries, fm.selected, fm.openEntry]);
 
+  // Navigation clavier : capture phase → preventDefault annule le scroll natif, indépendant du focus.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (search.open || e.altKey || e.ctrlKey || e.metaKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable || t.closest(".cm-editor"))) return;
+      if (e.key === "Enter") { e.preventDefault(); activateSel(); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); navSel(-1, "y"); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); navSel(1, "y"); return; }
+      if (e.key === "ArrowLeft") { e.preventDefault(); navSel(-1, "x"); return; }
+      if (e.key === "ArrowRight") { e.preventDefault(); navSel(1, "x"); return; }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [search.open, navSel, activateSel]);
+
   const onSelect = (entry: DirEntry, e: React.MouseEvent) => {
     if (e.shiftKey) fm.rangeSelect(entry.path, entries);
     else if (e.ctrlKey || e.metaKey) fm.toggleSelect(entry.path);
@@ -349,12 +365,10 @@ export default function App() {
             onToggleBy={toggleBy}
             onSelect={onSelect}
             onOpen={fm.openEntry}
-            onActivate={activateSel}
             onContext={onContext}
             onContextBg={onContextBg}
             onClearBg={fm.clearSelection}
             onMove={fm.moveEntry}
-            onArrow={navSel}
             colorOf={tagHex}
           />
         ) : (
@@ -364,12 +378,10 @@ export default function App() {
             active={fm.selected}
             onSelect={onSelect}
             onOpen={fm.openEntry}
-            onActivate={activateSel}
             onContext={onContext}
             onContextBg={onContextBg}
             onClearBg={fm.clearSelection}
             onMove={fm.moveEntry}
-            onArrow={navSel}
             onColumns={(c) => { gridCols.current = c; }}
             colorOf={tagHex}
           />

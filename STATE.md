@@ -33,7 +33,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - **Raccourcis clavier** : `useKeyboard` — désactivé dans les champs/CodeMirror (`.cm-editor`)
 - **Recherche** : toggle Nom (récursif) / Contenu (grep) dans la SearchInput
 - **Watch live** : `useFileManager` écoute `fs-changed` → refresh debounce 250ms ; `watch_dir(cwd)` à chaque navigation
-- **Corbeille sidebar** : section Système en bas de `Sidebar` — badge compteur, clic = ouvrir `~/.local/share/Trash/files`, clic droit = « Vider la corbeille » (confirmation)
+- **Corbeille** : section Système en bas de `Sidebar` — badge compteur, clic = ouvrir `~/.local/share/Trash/files`, clic droit = menu « Vider » (ancré top, ouvre vers le haut). Bouton « Vider (N) » aussi dans la topbar quand cwd = corbeille (confirmation dans les deux cas)
 - **Persistance session** : `vela-session` localStorage (cwd, mode, hidden) — restaurée au démarrage
 - Tri : `useSort` — by name/size/modified/extension, ASC/DESC, dossiers en tête, filtre Tout/Dossiers/Fichiers — persisté localStorage (`vela-sort`)
 - `SortBar` : barre compacte 32px toujours visible sous topbar

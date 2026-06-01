@@ -1,6 +1,9 @@
 // Panel fixe bas-droite : liste des extractions en cours, avec progression et contrôles.
 import { useRef, useState } from "react";
-import { extractionPause, extractionResume, extractionCancel, extractionProvidePassword } from "../services/fs";
+import {
+  extractionPause, extractionResume, extractionCancel, extractionProvidePassword,
+  transferPause, transferResume, transferCancel,
+} from "../services/fs";
 import type { ExtractionJob, TransferJob } from "../types";
 
 interface Props {
@@ -42,7 +45,21 @@ function fmtBytes(b: number): string {
 function TransferRow({ job }: { job: TransferJob }) {
   const pct = job.total > 0 ? Math.round((job.current / job.total) * 100) : null;
   const verb = job.kind === "copy" ? "Copie" : "Déplacement";
-  const terminal = job.status === "done" || job.status === "error";
+  const isPaused = job.status === "paused";
+  const terminal = job.status === "done" || job.status === "error" || job.status === "cancelled";
+  const controllable = job.kind === "copy" && !terminal;
+
+  const label =
+    job.status === "done" ? "Terminé"
+    : job.status === "error" ? "Erreur"
+    : job.status === "cancelled" ? "Annulé"
+    : isPaused ? "En pause"
+    : pct !== null ? `${pct}%` : "En cours…";
+  const labelCls =
+    job.status === "done" ? "text-green-400"
+    : job.status === "error" ? "text-[var(--color-danger)]"
+    : isPaused ? "text-amber-400"
+    : "text-[var(--color-text-dim)]";
 
   return (
     <div className="px-3 py-2.5 flex flex-col gap-1.5">
@@ -50,20 +67,28 @@ function TransferRow({ job }: { job: TransferJob }) {
         <span className="flex-1 text-xs text-[var(--color-text)] truncate font-medium" title={job.name}>
           {verb} · {job.name}
         </span>
-        <span className={`text-[10px] shrink-0 ${
-          job.status === "done" ? "text-green-400"
-          : job.status === "error" ? "text-[var(--color-danger)]"
-          : "text-[var(--color-text-dim)]"
-        }`}>
-          {job.status === "done" ? "Terminé" : job.status === "error" ? "Erreur" : pct !== null ? `${pct}%` : "En cours…"}
-        </span>
+        <span className={`text-[10px] shrink-0 ${labelCls}`}>{label}</span>
       </div>
       <span className="text-[10px] text-[var(--color-text-dim)] font-mono">
         {fmtBytes(job.current)} / {fmtBytes(job.total)}
       </span>
-      {!terminal && <ProgressBar pct={pct} paused={false} />}
+      {!terminal && <ProgressBar pct={pct} paused={isPaused} />}
       {job.status === "error" && job.error && (
         <p className="text-[10px] text-[var(--color-danger)] break-words">{job.error}</p>
+      )}
+      {controllable && (
+        <div className="flex items-center gap-1.5">
+          <CtrlBtn
+            onClick={() => isPaused
+              ? transferResume(job.id).catch(() => {})
+              : transferPause(job.id).catch(() => {})}
+          >
+            {isPaused ? "Reprendre" : "Pause"}
+          </CtrlBtn>
+          <CtrlBtn danger onClick={() => transferCancel(job.id).catch(() => {})}>
+            Annuler
+          </CtrlBtn>
+        </div>
       )}
     </div>
   );

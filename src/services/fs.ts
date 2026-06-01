@@ -149,3 +149,15 @@ export function emptyTrash(): Promise<void> {
 export function thumbnail(path: string, max = 128): Promise<string> {
   return invoke<string>("thumbnail", { path, max });
 }
+
+export function transferPause(jobId: string): Promise<void> {
+  return invoke("transfer_pause", { jobId });
+}
+
+export function transferResume(jobId: string): Promise<void> {
+  return invoke("transfer_resume", { jobId });
+}
+
+export function transferCancel(jobId: string): Promise<void> {
+  return invoke("transfer_cancel", { jobId });
+}

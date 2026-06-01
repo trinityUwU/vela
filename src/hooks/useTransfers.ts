@@ -37,7 +37,7 @@ export function useTransfers() {
         return next;
       });
 
-      if (p.status === "done" || p.status === "error") {
+      if (p.status === "done" || p.status === "error" || p.status === "cancelled") {
         const existing = timers.current.get(p.job_id);
         if (existing) clearTimeout(existing);
         const t = setTimeout(() => {

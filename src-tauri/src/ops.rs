@@ -1,12 +1,66 @@
 // Opérations fichiers avancées : corbeille XDG, copie récursive, compression, recherche contenu.
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fs;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
+
+// ── contrôle des transferts (pause / reprise / annulation) ───────────────────
+
+pub struct TransferControl {
+    pub paused: AtomicBool,
+    pub cancelled: AtomicBool,
+}
+
+pub struct TransferManager {
+    jobs: Mutex<HashMap<String, Arc<TransferControl>>>,
+}
+
+impl TransferManager {
+    pub fn new() -> Self {
+        Self { jobs: Mutex::new(HashMap::new()) }
+    }
+    fn add(&self, id: &str) -> Arc<TransferControl> {
+        let c = Arc::new(TransferControl {
+            paused: AtomicBool::new(false),
+            cancelled: AtomicBool::new(false),
+        });
+        self.jobs.lock().unwrap().insert(id.to_string(), c.clone());
+        c
+    }
+    fn get(&self, id: &str) -> Option<Arc<TransferControl>> {
+        self.jobs.lock().unwrap().get(id).cloned()
+    }
+    fn remove(&self, id: &str) {
+        self.jobs.lock().unwrap().remove(id);
+    }
+}
+
+#[tauri::command]
+pub fn transfer_pause(state: tauri::State<'_, TransferManager>, job_id: String) -> Result<(), String> {
+    state.get(&job_id).ok_or("Transfert introuvable")?.paused.store(true, Ordering::Relaxed);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn transfer_resume(state: tauri::State<'_, TransferManager>, job_id: String) -> Result<(), String> {
+    state.get(&job_id).ok_or("Transfert introuvable")?.paused.store(false, Ordering::Relaxed);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn transfer_cancel(state: tauri::State<'_, TransferManager>, job_id: String) -> Result<(), String> {
+    let c = state.get(&job_id).ok_or("Transfert introuvable")?;
+    c.cancelled.store(true, Ordering::Relaxed);
+    c.paused.store(false, Ordering::Relaxed);
+    Ok(())
+}
 
 // ── corbeille ───────────────────────────────────────────────────────────────
 
@@ -106,12 +160,26 @@ fn unique_dest(dest_dir: &Path, name: &str) -> PathBuf {
 
 const COPY_BUF: usize = 1024 * 1024;
 
+// Bloque tant que le transfert est en pause ; renvoie true s'il a été annulé.
+fn wait_if_paused(ctrl: &TransferControl) -> bool {
+    while ctrl.paused.load(Ordering::Relaxed) && !ctrl.cancelled.load(Ordering::Relaxed) {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    ctrl.cancelled.load(Ordering::Relaxed)
+}
+
 // Copie un fichier par tranches de 1 Mo, notifiant les octets écrits (progression intra-fichier).
-fn copy_file_progress(src: &Path, dst: &Path, on_bytes: &mut dyn FnMut(u64)) -> std::io::Result<()> {
+// Renvoie une erreur `Interrupted` si annulé en cours de route.
+fn copy_file_progress(
+    src: &Path, dst: &Path, ctrl: &TransferControl, on_bytes: &mut dyn FnMut(u64),
+) -> std::io::Result<()> {
     let mut reader = fs::File::open(src)?;
     let mut writer = fs::File::create(dst)?;
     let mut buf = vec![0u8; COPY_BUF];
     loop {
+        if wait_if_paused(ctrl) {
+            return Err(std::io::Error::new(ErrorKind::Interrupted, "annulé"));
+        }
         let n = reader.read(&mut buf)?;
         if n == 0 {
             break;
@@ -125,16 +193,21 @@ fn copy_file_progress(src: &Path, dst: &Path, on_bytes: &mut dyn FnMut(u64)) -> 
     Ok(())
 }
 
-fn copy_recursive(src: &Path, dst: &Path, on_bytes: &mut dyn FnMut(u64)) -> std::io::Result<()> {
+fn copy_recursive(
+    src: &Path, dst: &Path, ctrl: &TransferControl, on_bytes: &mut dyn FnMut(u64),
+) -> std::io::Result<()> {
+    if ctrl.cancelled.load(Ordering::Relaxed) {
+        return Err(std::io::Error::new(ErrorKind::Interrupted, "annulé"));
+    }
     if src.is_dir() {
         fs::create_dir_all(dst)?;
         for entry in fs::read_dir(src)? {
             let entry = entry?;
-            copy_recursive(&entry.path(), &dst.join(entry.file_name()), on_bytes)?;
+            copy_recursive(&entry.path(), &dst.join(entry.file_name()), ctrl, on_bytes)?;
         }
         Ok(())
     } else {
-        copy_file_progress(src, dst, on_bytes)
+        copy_file_progress(src, dst, ctrl, on_bytes)
     }
 }
 
@@ -210,10 +283,13 @@ pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
         let notify = files >= NOTIFY_FILE_THRESHOLD || total >= NOTIFY_BYTE_THRESHOLD;
         let job_id = transfer_job_id();
         let label = job_label(&paths);
+        let mgr = app.state::<TransferManager>();
+        let ctrl = mgr.add(&job_id);
         if notify { emit_transfer(&app, &job_id, "copy", &label, 0, total, "transferring", None); }
 
         let mut current = 0u64;
         let mut last = Instant::now();
+        let mut last_paused = false;
         for path in &paths {
             let src = Path::new(path);
             let name = match src.file_name() {
@@ -221,24 +297,37 @@ pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
                 None => {
                     let e = format!("nom invalide: {path}");
                     if notify { emit_transfer(&app, &job_id, "copy", &label, current, total, "error", Some(e.clone())); }
+                    mgr.remove(&job_id);
                     return Err(e);
                 }
             };
             let target = unique_dest(dest, &name);
-            let res = copy_recursive(src, &target, &mut |n| {
+            let res = copy_recursive(src, &target, &ctrl, &mut |n| {
                 current += n;
-                if notify && last.elapsed().as_millis() >= EMIT_THROTTLE_MS {
-                    emit_transfer(&app, &job_id, "copy", &label, current, total, "transferring", None);
+                let paused = ctrl.paused.load(Ordering::Relaxed);
+                let status = if paused { "paused" } else { "transferring" };
+                if notify && (paused != last_paused || last.elapsed().as_millis() >= EMIT_THROTTLE_MS) {
+                    emit_transfer(&app, &job_id, "copy", &label, current, total, status, None);
                     last = Instant::now();
+                    last_paused = paused;
                 }
             });
             if let Err(e) = res {
+                // nettoyage du partiel copié pour cette entrée
+                let _ = if target.is_dir() { fs::remove_dir_all(&target) } else { fs::remove_file(&target) };
+                if e.kind() == ErrorKind::Interrupted {
+                    if notify { emit_transfer(&app, &job_id, "copy", &label, current, total, "cancelled", None); }
+                    mgr.remove(&job_id);
+                    return Ok(());
+                }
                 eprintln!("[copy_entries] {path}: {e}");
                 if notify { emit_transfer(&app, &job_id, "copy", &label, current, total, "error", Some(e.to_string())); }
+                mgr.remove(&job_id);
                 return Err(e.to_string());
             }
         }
         if notify { emit_transfer(&app, &job_id, "copy", &label, total, total, "done", None); }
+        mgr.remove(&job_id);
         Ok(())
     })
     .await

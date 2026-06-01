@@ -13,6 +13,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(archive::ExtractionManager::new())
         .manage(watcher::DirWatcher::new())
+        .manage(ops::TransferManager::new())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             fs_ops::list_dir,
@@ -31,6 +32,9 @@ pub fn run() {
             ops::delete_entries,
             ops::copy_entries,
             ops::move_entries,
+            ops::transfer_pause,
+            ops::transfer_resume,
+            ops::transfer_cancel,
             ops::create_archive,
             ops::search_content,
             ops::trash_dir,

@@ -92,7 +92,7 @@ export interface ExtractionJob {
   error?: string;
 }
 
-export type TransferStatus = "transferring" | "done" | "error";
+export type TransferStatus = "transferring" | "paused" | "done" | "error" | "cancelled";
 
 export interface TransferJob {
   id: string;

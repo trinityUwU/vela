@@ -47,7 +47,9 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - **Aperçu PDF** : `PdfViewer` (pdf.js, worker local `?url`) — canvas page par page, zoom 50-300%, lazy IntersectionObserver au-delà de 20 pages. Branché dans `Editor` (`previewKind` "pdf", non éditable) → dispo en Quick Look
 - **Thumbnails images** : `useThumbnail` (IntersectionObserver lazy, file de concurrence globale 4) + `FileTile` affiche la miniature réelle (fallback `FileIcon` pendant chargement/erreur)
 
-**Commandes Rust** : 38 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher`)
+**Commandes Rust** : 41 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager`)
+
+**Transferts contrôlables** : `TransferManager` (state, AtomicBool paused/cancelled par job) + `transfer_pause`/`transfer_resume`/`transfer_cancel`. La boucle de copie par chunks vérifie le contrôle à chaque tranche (pause = spin-wait 50 ms, annulation = nettoyage du partiel + statut `cancelled`). Boutons Pause/Reprendre/Annuler dans `TransferRow` (copie uniquement — le déplacement est un rename instantané)
 
 **Infra**
 - Build : `bun tauri build` (targets: deb, rpm — AppImage exclu, linuxdeploy absent)

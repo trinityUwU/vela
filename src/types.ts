@@ -62,6 +62,7 @@ export interface AppInfo {
   name: string;
   desktop_id: string;
   is_default: boolean;
+  supports_mime: boolean;
 }
 
 export interface FileApps {

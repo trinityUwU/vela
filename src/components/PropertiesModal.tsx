@@ -189,29 +189,11 @@ export function PropertiesModal({ entry, onClose }: Props) {
                             placeholder="Filtrer les applications…"
                             className="w-full h-7 px-2 text-xs rounded bg-[var(--color-bg)] border border-[var(--color-accent)] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-dim)]"
                           />
-                          <div className="max-h-44 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-bg)]">
-                            {filteredApps.length === 0 ? (
-                              <p className="px-3 py-2 text-xs text-[var(--color-text-dim)]">Aucune application trouvée</p>
-                            ) : (
-                              filteredApps.map((app) => (
-                                <button
-                                  key={app.desktop_id}
-                                  disabled={saving}
-                                  onClick={() => handleSetDefault(app)}
-                                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-[var(--color-surface-hover)] ${
-                                    app.is_default ? "text-[var(--color-accent)]" : "text-[var(--color-text)]"
-                                  }`}
-                                >
-                                  <span className="flex-1 truncate">{app.name}</span>
-                                  {app.is_default && (
-                                    <span className="shrink-0 text-[10px] text-[var(--color-accent)] border border-[var(--color-accent)]/40 px-1 rounded">
-                                      par défaut
-                                    </span>
-                                  )}
-                                </button>
-                              ))
-                            )}
-                          </div>
+                          <AppPicker
+                            apps={filteredApps}
+                            saving={saving}
+                            onPick={handleSetDefault}
+                          />
                           <div className="flex justify-end">
                             <button
                               onClick={() => setPickingApp(false)}
@@ -249,6 +231,63 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-dim)] font-medium mb-2.5">{title}</p>
       <div className="space-y-2">{children}</div>
     </div>
+  );
+}
+
+function AppPicker({ apps, saving, onPick }: {
+  apps: AppInfo[];
+  saving: boolean;
+  onPick: (a: AppInfo) => void;
+}) {
+  const compatible = apps.filter((a) => a.supports_mime);
+  const others = apps.filter((a) => !a.supports_mime);
+
+  if (apps.length === 0) {
+    return (
+      <div className="max-h-44 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-bg)]">
+        <p className="px-3 py-2 text-xs text-[var(--color-text-dim)]">Aucune application trouvée</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-h-52 overflow-y-auto rounded border border-[var(--color-border)] bg-[var(--color-bg)]">
+      {compatible.length > 0 && (
+        <>
+          <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-[var(--color-text-dim)] font-medium sticky top-0 bg-[var(--color-bg)]">
+            Compatible
+          </p>
+          {compatible.map((app) => <AppRow key={app.desktop_id} app={app} saving={saving} onPick={onPick} />)}
+        </>
+      )}
+      {others.length > 0 && (
+        <>
+          <p className={`px-3 pb-1 text-[10px] uppercase tracking-wider text-[var(--color-text-dim)] font-medium sticky top-0 bg-[var(--color-bg)] ${compatible.length > 0 ? "pt-2 border-t border-[var(--color-border)]" : "pt-2"}`}>
+            Autres applications
+          </p>
+          {others.map((app) => <AppRow key={app.desktop_id} app={app} saving={saving} onPick={onPick} />)}
+        </>
+      )}
+    </div>
+  );
+}
+
+function AppRow({ app, saving, onPick }: { app: AppInfo; saving: boolean; onPick: (a: AppInfo) => void }) {
+  return (
+    <button
+      disabled={saving}
+      onClick={() => onPick(app)}
+      className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-[var(--color-surface-hover)] ${
+        app.is_default ? "text-[var(--color-accent)]" : "text-[var(--color-text)]"
+      }`}
+    >
+      <span className="flex-1 truncate">{app.name}</span>
+      {app.is_default && (
+        <span className="shrink-0 text-[10px] text-[var(--color-accent)] border border-[var(--color-accent)]/40 px-1 rounded">
+          par défaut
+        </span>
+      )}
+    </button>
   );
 }
 

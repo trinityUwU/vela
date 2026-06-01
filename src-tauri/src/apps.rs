@@ -8,6 +8,7 @@ pub struct AppInfo {
     pub name: String,
     pub desktop_id: String,
     pub is_default: bool,
+    pub supports_mime: bool,
 }
 
 #[derive(Serialize)]
@@ -96,19 +97,24 @@ fn scan_apps(mime: &str, default_id: Option<&str>) -> Vec<AppInfo> {
             if path.extension().and_then(|e| e.to_str()) != Some("desktop") { continue; }
             let Ok(content) = fs::read_to_string(&path) else { continue };
             if !desktop_is_app(&content) || desktop_hidden(&content) { continue; }
-            if !desktop_supports_mime(&content, mime) { continue; }
             let Some(name) = desktop_name(&content) else { continue };
             let desktop_id = path.file_name().unwrap().to_string_lossy().to_string();
             if !seen.insert(desktop_id.clone()) { continue; }
+            let supports_mime = desktop_supports_mime(&content, mime);
             apps.push(AppInfo {
                 is_default: default_id.map(|d| d == desktop_id).unwrap_or(false),
+                supports_mime,
                 name,
                 desktop_id,
             });
         }
     }
 
-    apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    // Apps compatibles MIME en premier, puis alphabétique dans chaque groupe
+    apps.sort_by(|a, b| {
+        b.supports_mime.cmp(&a.supports_mime)
+            .then(a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+    });
     apps
 }
 

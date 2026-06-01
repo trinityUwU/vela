@@ -46,10 +46,22 @@
 
 ---
 
-# À FAIRE — specs détaillées (chantier v1.5)
+## Livré — v1.5 (aperçus + transferts robustes)
 
-> Ordre d'attaque recommandé : (1) progression copie → (2) PDF → (3) thumbnails.
-> Chaque feature ci-dessous est auto-suffisante : tout le contexte d'implémentation est ici.
+- [x] Indicateur de progression copie/déplacement (event `transfer-progress`, panel bas-droite)
+- [x] Suivi **en octets** (copie par chunks 1 Mo) — déclenché si ≥8 fichiers OU ≥100 Mo
+- [x] Pause / Reprise / Annulation des copies (`TransferManager`, nettoyage du partiel)
+- [x] Déplacement annulable + restauration ; **cross-device** = copie pausable + suppression source différée
+- [x] Aperçu PDF (pdf.js worker local, zoom, lazy >20 pages) → dispo en Quick Look
+- [x] Thumbnails images (crate `image`, cache `~/.cache/vela/thumbs`, lazy IntersectionObserver, concurrence 4)
+- [x] Aperçu HTML rendu (iframe sandboxée) comme le Markdown
+
+---
+
+# À FAIRE — Terminal intégré (chantier v1.6)
+
+> Prochaine étape : terminal parfaitement intégré à l'app. Specs à figer avant code (archi proposée
+> à Chris). Cible : PTY réel, panneau dévoilable, cwd synchronisé sur le dossier courant.
 
 ## 1 · Indicateur de progression copie / déplacement  ✅ LIVRÉ
 

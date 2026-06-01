@@ -71,12 +71,11 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 ## Limitation connue
 WebKitGTK comme couche de rendu (vs GTK natif chez Nemo/Thunar en C). Plus de RAM, démarrage plus lent. Trade-off assumé pour la richesse de l'UI.
 
-## Prochain chantier — v1.5
-**Specs complètes détaillées dans `TODO.md` (section « À FAIRE — specs détaillées »).**
-Ordre : (1) progression copie/déplacement ✅ → (2) aperçu PDF → (3) thumbnails images.
-- (1) ✅ `ops.rs` `copy_entries`/`move_entries` async (spawn_blocking, await fin) + event `transfer-progress` (seuil 8 fichiers anti-flicker, throttle 80ms) + `useTransfers` + `ExtractionPanel` généralisé (TransferRow)
-- (2) ✅ `pdfjs-dist` (worker local `?url`) + `PdfViewer.tsx` (canvas/page, zoom, lazy >20 pages) branché dans `Editor` → Quick Look gratuit. `previewKind` "pdf", `isEditable=false`
-- (3) ✅ `thumbs.rs` (crate `image`, cache PNG `~/.cache/vela/thumbs`, hash std path+mtime+max, Lanczos3, skip >20 Mo) + `useThumbnail` (IntersectionObserver, file concurrence globale 4) + `FileTile`
+## v1.5 — livré ✅
+Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, pause/annulation copie & déplacement, cross-device). Détail dans `TODO.md` section « Livré — v1.5 ».
+
+## Prochain chantier — v1.6 : Terminal intégré
+Objectif : terminal parfaitement intégré à l'app (PTY réel, panneau dévoilable, cwd synchronisé sur le dossier courant). Archi à figer avant code. Specs dans `TODO.md` section « À FAIRE — Terminal intégré ».
 
 ## Backlog (non priorisé)
-- Onglets multi-fichiers en mode Édition · Diff 2 fichiers (CodeMirror merge) · Terminal intégré · Tags/couleurs · Annuler (Ctrl+Z)
+- Onglets multi-fichiers en mode Édition · Diff 2 fichiers (CodeMirror merge) · Tags/couleurs · Annuler (Ctrl+Z)

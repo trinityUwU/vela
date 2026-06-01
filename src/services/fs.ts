@@ -133,3 +133,15 @@ export function searchContent(root: string, query: string): Promise<import("../t
 export function watchDir(path: string): Promise<void> {
   return invoke("watch_dir", { path });
 }
+
+export function trashDir(): Promise<string> {
+  return invoke<string>("trash_dir");
+}
+
+export function trashCount(): Promise<number> {
+  return invoke<number>("trash_count");
+}
+
+export function emptyTrash(): Promise<void> {
+  return invoke("empty_trash");
+}

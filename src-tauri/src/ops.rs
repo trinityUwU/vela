@@ -35,6 +35,53 @@ pub fn delete_entries(paths: Vec<String>) -> Result<(), String> {
     Ok(())
 }
 
+fn trash_root() -> PathBuf {
+    let base = std::env::var("XDG_DATA_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            let home = std::env::var("HOME").unwrap_or_default();
+            Path::new(&home).join(".local/share")
+        });
+    base.join("Trash")
+}
+
+// Retourne le dossier des fichiers de la corbeille XDG (~/.local/share/Trash/files).
+#[tauri::command]
+pub fn trash_dir() -> String {
+    trash_root().join("files").to_string_lossy().to_string()
+}
+
+// Nombre d'éléments premier niveau dans la corbeille (0 si vide ou absente).
+#[tauri::command]
+pub fn trash_count() -> u64 {
+    fs::read_dir(trash_root().join("files"))
+        .map(|r| r.count() as u64)
+        .unwrap_or(0)
+}
+
+// Vide la corbeille : purge files/ et info/.
+#[tauri::command]
+pub fn empty_trash() -> Result<(), String> {
+    let root = trash_root();
+    for sub in ["files", "info"] {
+        let dir = root.join(sub);
+        let Ok(read) = fs::read_dir(&dir) else { continue };
+        for entry in read.filter_map(|e| e.ok()) {
+            let p = entry.path();
+            let res = if p.is_dir() && !p.is_symlink() {
+                fs::remove_dir_all(&p)
+            } else {
+                fs::remove_file(&p)
+            };
+            res.map_err(|e| {
+                eprintln!("[empty_trash] {}: {e}", p.display());
+                e.to_string()
+            })?;
+        }
+    }
+    Ok(())
+}
+
 // ── copie / déplacement groupés ─────────────────────────────────────────────
 
 fn unique_dest(dest_dir: &Path, name: &str) -> PathBuf {

@@ -1,5 +1,5 @@
 // Assemblage du gestionnaire : topbar, sidebar, zone centrale (grille ou éditeur), modals.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFileManager } from "./hooks/useFileManager";
 import { useFavorites } from "./hooks/useFavorites";
 import { useSearch } from "./hooks/useSearch";
@@ -22,7 +22,7 @@ import { CompressModal } from "./components/CompressModal";
 import { BatchRenameModal } from "./components/BatchRenameModal";
 import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
-import { startExtraction } from "./services/fs";
+import { startExtraction, trashDir } from "./services/fs";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
@@ -36,6 +36,7 @@ type Dialog =
   | { kind: "props"; entry: DirEntry }
   | { kind: "compress"; paths: string[] }
   | { kind: "batchrename"; names: string[] }
+  | { kind: "emptytrash" }
   | { kind: "extractto"; archivePath: string; defaultDest: string }
   | null;
 
@@ -67,6 +68,9 @@ export default function App() {
   const [bgMenu, setBgMenu] = useState<BgMenu>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [quickLook, setQuickLook] = useState<DirEntry | null>(null);
+  const [trashPath, setTrashPath] = useState("");
+
+  useEffect(() => { trashDir().then(setTrashPath).catch(() => {}); }, []);
 
   const entries = useMemo(
     () => applySortFilter(fm.listing?.entries ?? [], sort),
@@ -206,9 +210,13 @@ export default function App() {
           favs={favs}
           places={fm.places}
           cwd={fm.cwd}
+          trashDir={trashPath}
+          trashCount={fm.trashCount}
           onSelect={fm.navigate}
           onPinCurrent={pinCurrent}
           onMove={fm.moveEntry}
+          onOpenTrash={fm.openTrash}
+          onEmptyTrash={() => setDialog({ kind: "emptytrash" })}
         />
 
         {fm.mode === "edit" ? (
@@ -353,6 +361,13 @@ export default function App() {
             fm.compress(dialog.paths, `${fm.cwd}/${name}`, format);
             setDialog(null);
           }}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === "emptytrash" && (
+        <ConfirmModal
+          message="Vider la corbeille ? Tous les éléments seront supprimés définitivement."
+          onConfirm={() => { fm.emptyTrash(); setDialog(null); }}
           onCancel={() => setDialog(null)}
         />
       )}

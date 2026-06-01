@@ -1,8 +1,8 @@
 // Sidebar : Favoris (pins libres + groupes) · Emplacements XDG · Montages.
-import { useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import type { FavPin, Place } from "../types";
 import type { useFavorites } from "../hooks/useFavorites";
-import { Home, Folder, Drive } from "./icons";
+import { Home, Folder, Drive, Trash } from "./icons";
 
 type Favs = ReturnType<typeof useFavorites>;
 
@@ -10,12 +10,16 @@ interface Props {
   favs: Favs;
   places: Place[];
   cwd: string;
+  trashDir: string;
+  trashCount: number;
   onSelect: (path: string) => void;
   onPinCurrent: () => void;
   onMove: (src: string, destDir: string) => void;
+  onOpenTrash: () => void;
+  onEmptyTrash: () => void;
 }
 
-export function Sidebar({ favs, places, cwd, onSelect, onPinCurrent, onMove }: Props) {
+export function Sidebar({ favs, places, cwd, trashDir, trashCount, onSelect, onPinCurrent, onMove, onOpenTrash, onEmptyTrash }: Props) {
   const xdg = places.filter((p) => p.kind !== "mount");
   const mounts = places.filter((p) => p.kind === "mount");
 
@@ -40,7 +44,54 @@ export function Sidebar({ favs, places, cwd, onSelect, onPinCurrent, onMove }: P
           ))}
         </>
       )}
+      <div className="flex-1" />
+      <SectionLabel>Système</SectionLabel>
+      <TrashRow active={cwd === trashDir} count={trashCount} onOpen={onOpenTrash} onEmpty={onEmptyTrash} />
     </aside>
+  );
+}
+
+function TrashRow({ active, count, onOpen, onEmpty }: {
+  active: boolean; count: number; onOpen: () => void; onEmpty: () => void;
+}) {
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [menu]);
+
+  return (
+    <>
+      <button
+        onClick={onOpen}
+        onContextMenu={(e) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY }); }}
+        className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-left transition-colors
+          ${active ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]" : "text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"}`}
+      >
+        <span className="shrink-0 opacity-80"><Trash /></span>
+        <span className="truncate flex-1">Corbeille</span>
+        {count > 0 && (
+          <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--color-bg)] text-[var(--color-text-dim)]">{count}</span>
+        )}
+      </button>
+      {menu && (
+        <div
+          style={{ top: menu.y, left: menu.x }}
+          className="fixed z-50 min-w-44 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
+        >
+          <button
+            onClick={() => { onEmpty(); setMenu(null); }}
+            disabled={count === 0}
+            className="w-full text-left px-3 py-1.5 text-sm text-[var(--color-danger)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            Vider la corbeille
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 

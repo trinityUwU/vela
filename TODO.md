@@ -40,6 +40,7 @@
 - [x] Recherche dans le contenu des fichiers (grep récursif) — `search_content`, toggle Nom/Contenu
 - [x] Quick Look (Espace → overlay viewer sans mode Édition)
 - [x] Renommage par lot (rechercher/remplacer + jeton `{n}`, aperçu live)
+- [x] Corbeille dans la sidebar (badge compteur, ouvrir, clic droit → vider) — `trash_dir`/`trash_count`/`empty_trash`
 
 ## Backlog
 - [ ] Thumbnails images en mode Fichiers (backend resize + crate `image`)

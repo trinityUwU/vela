@@ -40,7 +40,7 @@ vela/
 │   │
 │   └── components/
 │       ├── Topbar.tsx              Toggle modes, PathBar éditable, search (Nom/Contenu), drop crumbs
-│       ├── Sidebar.tsx             Favoris/groupes (collapse) + Emplacements + Montages, drop targets
+│       ├── Sidebar.tsx             Favoris/groupes + Emplacements + Montages + Corbeille (badge, vider)
 │       ├── SortBar.tsx             Barre tri/filtre compacte (32px) sous topbar
 │       ├── FileGrid.tsx            Grille mode Fichiers, sélection multiple, clic fond = clear
 │       ├── FileList.tsx            Liste pane gauche mode Édition, sélection + élément actif
@@ -70,9 +70,10 @@ vela/
     ├── capabilities/default.json   core:default, start-dragging, opener:default + allow-open-path
     └── src/
         ├── main.rs
-        ├── lib.rs                  Builder + manage(ExtractionManager + DirWatcher) + 34 commandes
+        ├── lib.rs                  Builder + manage(ExtractionManager + DirWatcher) + 37 commandes
         ├── fs_ops.rs               CRUD + chunks + search + move + props + open_native + createFile
-        ├── ops.rs                  trash/delete/copy/move groupés, create_archive (zip/targz), search_content
+        ├── ops.rs                  trash/delete/copy/move groupés, create_archive, search_content,
+        │                           trash_dir/trash_count/empty_trash (gestion corbeille XDG)
         ├── watcher.rs              DirWatcher (state) + watch_dir (notify → event fs-changed)
         ├── places.rs               home_dir, list_places (XDG + mounts)
         ├── favorites.rs            load/save favorites (JSON ~/.config/vela/)

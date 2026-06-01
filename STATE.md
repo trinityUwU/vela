@@ -7,7 +7,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 
 **Backend Rust — modules**
 - `fs_ops.rs` : `list_dir`, `read_file`, `write_file` (crée si absent), `rename_entry`, `delete_entry`, `create_dir`, `move_entry`, `open_native` (xdg-open), `read_file_chunk`, `read_file_base64`, `search_dir` (async spawn_blocking), `get_entry_props` (taille récursive, permissions Unix, item/file/dir count)
-- `ops.rs` : `trash_entries` (corbeille XDG via crate `trash`), `delete_entries` (définitif), `copy_entries` (récursif, suffixe « copie N » anti-écrasement), `move_entries`, `create_archive` (ZIP Deflated / TAR.GZ via `walkdir`), `search_content` (grep récursif async, skip binaires + dirs lourds, 200 matchs max)
+- `ops.rs` : `trash_entries` (corbeille XDG via crate `trash`), `delete_entries` (définitif), `copy_entries` (récursif, suffixe « copie N » anti-écrasement), `move_entries`, `create_archive` (ZIP Deflated / TAR.GZ via `walkdir`), `search_content` (grep récursif async, skip binaires + dirs lourds, 200 matchs max), `trash_dir`/`trash_count`/`empty_trash` (gestion corbeille XDG : files/ + info/)
 - `watcher.rs` : `DirWatcher` (state Tauri), `watch_dir` (notify non-récursif, émet event `fs-changed`)
 - `places.rs` : `home_dir`, `list_places` (XDG + /proc/mounts, kind: home/dir/mount)
 - `favorites.rs` : `load_favorites`, `save_favorites` → `~/.config/vela/favorites.json`
@@ -33,6 +33,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - **Raccourcis clavier** : `useKeyboard` — désactivé dans les champs/CodeMirror (`.cm-editor`)
 - **Recherche** : toggle Nom (récursif) / Contenu (grep) dans la SearchInput
 - **Watch live** : `useFileManager` écoute `fs-changed` → refresh debounce 250ms ; `watch_dir(cwd)` à chaque navigation
+- **Corbeille sidebar** : section Système en bas de `Sidebar` — badge compteur, clic = ouvrir `~/.local/share/Trash/files`, clic droit = « Vider la corbeille » (confirmation)
 - **Persistance session** : `vela-session` localStorage (cwd, mode, hidden) — restaurée au démarrage
 - Tri : `useSort` — by name/size/modified/extension, ASC/DESC, dossiers en tête, filtre Tout/Dossiers/Fichiers — persisté localStorage (`vela-sort`)
 - `SortBar` : barre compacte 32px toujours visible sous topbar
@@ -42,7 +43,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - Propriétés : Informations / Contenu dossier / Taille / Ouvrir avec — scan PATH + commande custom, création `.desktop` auto
 - Extraction asynchrone : `ExtractionPanel` bas-droite fixe — jobs empilés scrollables, progression temps réel (Tauri events), pause/reprise/annulation, mot de passe inline, "Aller au dossier", auto-dismiss 6s après fin
 
-**Commandes Rust** : 34 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher`)
+**Commandes Rust** : 37 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher`)
 
 **Infra**
 - Build : `bun tauri build` (targets: deb, rpm — AppImage exclu, linuxdeploy absent)

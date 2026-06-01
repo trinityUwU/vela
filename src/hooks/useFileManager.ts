@@ -41,7 +41,12 @@ export function useFileManager() {
   const [opened, setOpened] = useState<DirEntry | null>(null);
   const [showHidden, setShowHidden] = useState(session.showHidden ?? false);
   const [error, setError] = useState<string | null>(null);
+  const [trashCount, setTrashCount] = useState(0);
   const anchor = useRef<string | null>(null);
+
+  const refreshTrashCount = useCallback(() => {
+    fs.trashCount().then(setTrashCount).catch(() => {});
+  }, []);
 
   const navigate = useCallback(
     async (path: string) => {
@@ -179,6 +184,7 @@ export function useFileManager() {
 
   const refresh = useCallback(() => navigate(cwd), [cwd, navigate]);
   useEffect(() => { refreshRef.current = refresh; }, [refresh]);
+  useEffect(() => { refreshTrashCount(); }, [refreshTrashCount]);
 
   useEffect(() => {
     if (cwd) navigate(cwd);
@@ -273,12 +279,32 @@ export function useFileManager() {
       try {
         await fs.trashEntries(paths);
         await refresh();
+        refreshTrashCount();
       } catch (e) {
         setError(String(e));
       }
     },
-    [refresh],
+    [refresh, refreshTrashCount],
   );
+
+  const emptyTrash = useCallback(async () => {
+    try {
+      await fs.emptyTrash();
+      refreshTrashCount();
+      const dir = await fs.trashDir();
+      if (cwd === dir) await refresh();
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [cwd, refresh, refreshTrashCount]);
+
+  const openTrash = useCallback(async () => {
+    try {
+      await navigate(await fs.trashDir());
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [navigate]);
 
   const deletePermanent = useCallback(
     async (paths: string[]) => {
@@ -339,5 +365,6 @@ export function useFileManager() {
     navigate, openEntry, previewEntry, goUp, refresh,
     rename, renameMany, remove, newFolder, createFile, moveEntry,
     trash, deletePermanent, compress,
+    trashCount, emptyTrash, openTrash,
   };
 }

@@ -5,6 +5,7 @@ mod favorites;
 mod fs_ops;
 mod ops;
 mod places;
+mod thumbs;
 mod watcher;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -36,6 +37,7 @@ pub fn run() {
             ops::trash_count,
             ops::empty_trash,
             watcher::watch_dir,
+            thumbs::thumbnail,
             places::home_dir,
             places::list_places,
             favorites::load_favorites,

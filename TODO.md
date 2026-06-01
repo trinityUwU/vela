@@ -117,7 +117,7 @@ un PDF multi-pages et un PDF lourd (>10 Mo).
 
 ---
 
-## 3 · Thumbnails images (mode Fichiers)  ⏱️ effort moyen, le plus de code
+## 3 · Thumbnails images (mode Fichiers)  ✅ LIVRÉ
 
 **Objectif** : miniatures réelles pour les images dans la grille, au lieu de l'icône générique.
 

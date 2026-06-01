@@ -35,8 +35,10 @@ vela/
 │   │   ├── useSort.ts              Tri (name/size/modified/extension, ASC/DESC) + filtre
 │   │   │                           (all/files/dirs) + dirsFirst — persisté localStorage
 │   │   ├── useKeyboard.ts          Raccourcis globaux (C/X/V/A/F, F2/F5, Suppr, Espace, Échap)
-│   │   └── useExtractions.ts       Écoute events Tauri extraction-progress → Map<id, ExtractionJob>
-│   │                               auto-dismiss 6s états terminaux
+│   │   ├── useExtractions.ts       Écoute events Tauri extraction-progress → Map<id, ExtractionJob>
+│   │   │                           auto-dismiss 6s états terminaux
+│   │   ├── useTransfers.ts         Écoute transfer-progress → Map<id, TransferJob> (copie/déplacement)
+│   │   └── useThumbnail.ts         Miniature lazy (IntersectionObserver) + file concurrence globale 4
 │   │
 │   └── components/
 │       ├── Topbar.tsx              Toggle modes, PathBar éditable, search (Nom/Contenu), drop crumbs
@@ -49,8 +51,9 @@ vela/
 │       ├── Editor.tsx              CodeMirror + save + search + MD preview + image + archive + table
 │       ├── TableViewer.tsx         CSV/TSV (auto-sep) + XLSX/XLS/ODS (SheetJS), filtre live
 │       ├── ArchiveViewer.tsx       Liste archive + extraction non-bloquante (ici / chemin custom)
-│       ├── ExtractionPanel.tsx     Panel fixe bas-droite : jobs empilés, progression, pause/reprise/
-│       │                           annulation, mot de passe inline, aller au dossier
+│       ├── ExtractionPanel.tsx     Panel fixe bas-droite : extractions + transferts empilés, progression,
+│       │                           pause/reprise/annulation, mot de passe inline, aller au dossier
+│       ├── PdfViewer.tsx           Aperçu PDF (pdf.js worker local) : canvas/page, zoom, lazy >20 pages
 │       ├── PropertiesModal.tsx     Métadonnées + contenu dossier + app par défaut (PATH + custom)
 │       ├── ContextMenu.tsx         Mono/multi : ouvrir, extraire, copier/couper, compresser,
 │       │                           renommer (mono) / par lot (multi), corbeille, suppr définitive
@@ -65,16 +68,17 @@ vela/
 │       └── icons.tsx               SVG inline (ArrowUp, Refresh, Eye, Search, Save…)
 │
 └── src-tauri/
-    ├── Cargo.toml                  zip, tar, flate2, bzip2, xz2, base64, mime_guess, trash, walkdir, notify
+    ├── Cargo.toml                  zip, tar, flate2, bzip2, xz2, base64, mime_guess, trash, walkdir, notify, image
     ├── tauri.conf.json             1200×780, decorations:false, devUrl:1430, targets:deb+rpm
     ├── capabilities/default.json   core:default, start-dragging, opener:default + allow-open-path
     └── src/
         ├── main.rs
-        ├── lib.rs                  Builder + manage(ExtractionManager + DirWatcher) + 37 commandes
+        ├── lib.rs                  Builder + manage(ExtractionManager + DirWatcher) + 38 commandes
         ├── fs_ops.rs               CRUD + chunks + search + move + props + open_native + createFile
         ├── ops.rs                  trash/delete/copy/move groupés, create_archive, search_content,
         │                           trash_dir/trash_count/empty_trash (gestion corbeille XDG)
         ├── watcher.rs              DirWatcher (state) + watch_dir (notify → event fs-changed)
+        ├── thumbs.rs               thumbnail (crate image, PNG base64, cache ~/.cache/vela/thumbs)
         ├── places.rs               home_dir, list_places (XDG + mounts)
         ├── favorites.rs            load/save favorites (JSON ~/.config/vela/)
         ├── archive.rs              list_archive, ExtractionManager (Tauri state), start_extraction,

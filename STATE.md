@@ -3,12 +3,13 @@
 ## Objectif
 File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation classique et édition intégrée. Alternative souveraine à Nemo.
 
-## État — v1.4 (fonctionnel, installé)
+## État — v1.5 (fonctionnel, installé)
 
 **Backend Rust — modules**
 - `fs_ops.rs` : `list_dir`, `read_file`, `write_file` (crée si absent), `rename_entry`, `delete_entry`, `create_dir`, `move_entry`, `open_native` (xdg-open), `read_file_chunk`, `read_file_base64`, `search_dir` (async spawn_blocking), `get_entry_props` (taille récursive, permissions Unix, item/file/dir count)
-- `ops.rs` : `trash_entries` (corbeille XDG via crate `trash`), `delete_entries` (définitif), `copy_entries` (récursif, suffixe « copie N » anti-écrasement), `move_entries`, `create_archive` (ZIP Deflated / TAR.GZ via `walkdir`), `search_content` (grep récursif async, skip binaires + dirs lourds, 200 matchs max), `trash_dir`/`trash_count`/`empty_trash` (gestion corbeille XDG : files/ + info/)
+- `ops.rs` : `trash_entries` (corbeille XDG via crate `trash`), `delete_entries` (définitif), `copy_entries`/`move_entries` (async, récursif, suffixe « copie N » anti-écrasement, émission `transfer-progress` au-delà de 8 fichiers, throttle 80 ms), `create_archive` (ZIP Deflated / TAR.GZ via `walkdir`), `search_content` (grep récursif async, skip binaires + dirs lourds, 200 matchs max), `trash_dir`/`trash_count`/`empty_trash` (gestion corbeille XDG : files/ + info/)
 - `watcher.rs` : `DirWatcher` (state Tauri), `watch_dir` (notify non-récursif, émet event `fs-changed`)
+- `thumbs.rs` : `thumbnail` (crate `image`, miniature PNG base64, cache `~/.cache/vela/thumbs`, clé hash path+mtime+max, resize Lanczos3, skip > 20 Mo, async spawn_blocking)
 - `places.rs` : `home_dir`, `list_places` (XDG + /proc/mounts, kind: home/dir/mount)
 - `favorites.rs` : `load_favorites`, `save_favorites` → `~/.config/vela/favorites.json`
 - `archive.rs` : `list_archive`, `ExtractionManager` (state Tauri managé), `start_extraction`, `extraction_pause`, `extraction_resume`, `extraction_cancel`, `extraction_provide_password` — ZIP natif (par entrée, pause AtomicBool, détection chiffrement `by_index_raw().encrypted()`), TAR/GZ/BZ2/XZ natifs, RAR/7Z via `7z` (SIGSTOP/SIGCONT, parsing stdout `-bsp1`)
@@ -42,8 +43,11 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - Clic droit zone vide : `BgContextMenu` — nouveau fichier/dossier, **coller** (si presse-papier), actualiser, toggle hidden, épingler dossier, propriétés dossier
 - Propriétés : Informations / Contenu dossier / Taille / Ouvrir avec — scan PATH + commande custom, création `.desktop` auto
 - Extraction asynchrone : `ExtractionPanel` bas-droite fixe — jobs empilés scrollables, progression temps réel (Tauri events), pause/reprise/annulation, mot de passe inline, "Aller au dossier", auto-dismiss 6s après fin
+- **Progression transferts** : `useTransfers` écoute `transfer-progress`, `ExtractionPanel` empile les `TransferRow` (copie/déplacement, %, n/total fichiers) avec les extractions
+- **Aperçu PDF** : `PdfViewer` (pdf.js, worker local `?url`) — canvas page par page, zoom 50-300%, lazy IntersectionObserver au-delà de 20 pages. Branché dans `Editor` (`previewKind` "pdf", non éditable) → dispo en Quick Look
+- **Thumbnails images** : `useThumbnail` (IntersectionObserver lazy, file de concurrence globale 4) + `FileTile` affiche la miniature réelle (fallback `FileIcon` pendant chargement/erreur)
 
-**Commandes Rust** : 37 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher`)
+**Commandes Rust** : 38 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher`)
 
 **Infra**
 - Build : `bun tauri build` (targets: deb, rpm — AppImage exclu, linuxdeploy absent)
@@ -70,7 +74,7 @@ WebKitGTK comme couche de rendu (vs GTK natif chez Nemo/Thunar en C). Plus de RA
 Ordre : (1) progression copie/déplacement ✅ → (2) aperçu PDF → (3) thumbnails images.
 - (1) ✅ `ops.rs` `copy_entries`/`move_entries` async (spawn_blocking, await fin) + event `transfer-progress` (seuil 8 fichiers anti-flicker, throttle 80ms) + `useTransfers` + `ExtractionPanel` généralisé (TransferRow)
 - (2) ✅ `pdfjs-dist` (worker local `?url`) + `PdfViewer.tsx` (canvas/page, zoom, lazy >20 pages) branché dans `Editor` → Quick Look gratuit. `previewKind` "pdf", `isEditable=false`
-- (3) `thumbs.rs` (crate `image`, cache `~/.cache/vela/thumbs`) + `useThumbnail` (IntersectionObserver, concurrence 4) + `FileTile`
+- (3) ✅ `thumbs.rs` (crate `image`, cache PNG `~/.cache/vela/thumbs`, hash std path+mtime+max, Lanczos3, skip >20 Mo) + `useThumbnail` (IntersectionObserver, file concurrence globale 4) + `FileTile`
 
 ## Backlog (non priorisé)
 - Onglets multi-fichiers en mode Édition · Diff 2 fichiers (CodeMirror merge) · Terminal intégré · Tags/couleurs · Annuler (Ctrl+Z)

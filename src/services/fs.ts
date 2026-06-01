@@ -145,3 +145,7 @@ export function trashCount(): Promise<number> {
 export function emptyTrash(): Promise<void> {
   return invoke("empty_trash");
 }
+
+export function thumbnail(path: string, max = 128): Promise<string> {
+  return invoke<string>("thumbnail", { path, max });
+}

@@ -2,6 +2,8 @@
 import { useState } from "react";
 import type { DirEntry } from "../types";
 import { FileIcon } from "./FileIcon";
+import { previewKind } from "../services/file-kind";
+import { useThumbnail } from "../hooks/useThumbnail";
 
 interface Props {
   entry: DirEntry;
@@ -14,6 +16,8 @@ interface Props {
 
 export function FileTile({ entry, selected, onClick, onDouble, onContext, onMove }: Props) {
   const [dragOver, setDragOver] = useState(false);
+  const isImage = !entry.is_dir && previewKind(entry.extension) === "image";
+  const thumb = useThumbnail(entry.path, isImage);
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("application/vela", entry.path);
@@ -38,6 +42,7 @@ export function FileTile({ entry, selected, onClick, onDouble, onContext, onMove
 
   return (
     <button
+      ref={thumb.ref}
       draggable
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
@@ -55,7 +60,16 @@ export function FileTile({ entry, selected, onClick, onDouble, onContext, onMove
             : "hover:bg-[var(--color-surface-hover)]"
       }`}
     >
-      <FileIcon entry={entry} size={34} />
+      {isImage && thumb.src && !thumb.error ? (
+        <img
+          src={thumb.src}
+          alt={entry.name}
+          draggable={false}
+          className="w-[34px] h-[34px] object-cover rounded"
+        />
+      ) : (
+        <FileIcon entry={entry} size={34} />
+      )}
       <span className="text-xs text-center text-[var(--color-text)] leading-tight break-words line-clamp-2 w-full">
         {entry.name}
       </span>

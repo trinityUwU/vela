@@ -16,6 +16,7 @@ pub fn run() {
             fs_ops::delete_entry,
             fs_ops::create_dir,
             fs_ops::search_dir,
+            fs_ops::read_file_base64,
             places::home_dir,
             places::list_places,
             favorites::load_favorites,

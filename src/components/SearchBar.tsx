@@ -21,7 +21,7 @@ export function SearchInput({ query, onChange, onClose }: BarProps) {
         value={query}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.key === "Escape" && onClose()}
-        placeholder="Rechercher dans ce dossier…"
+        placeholder="Rechercher (min. 2 caractères)…"
         className="flex-1 bg-transparent text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-dim)]"
       />
       {query && (

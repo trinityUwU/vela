@@ -23,7 +23,7 @@ export function useSearch(cwd: string) {
   }, [cwd]);
 
   useEffect(() => {
-    if (!open || query.trim().length < 1) {
+    if (!open || query.trim().length < 2) {
       setResults([]);
       setSearching(false);
       return;
@@ -39,7 +39,7 @@ export function useSearch(cwd: string) {
       } finally {
         setSearching(false);
       }
-    }, 300);
+    }, 500);
     return () => { if (timer.current) clearTimeout(timer.current); };
   }, [query, cwd, open]);
 

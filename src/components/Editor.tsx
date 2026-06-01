@@ -11,6 +11,7 @@ import { useFileContent } from "../hooks/useFileContent";
 import { langExtension, previewKind } from "../services/file-kind";
 import type { DirEntry } from "../types";
 import { Save, Eye, Code, Search } from "./icons";
+import { TableViewer } from "./TableViewer";
 
 interface Props {
   entry: DirEntry;
@@ -30,7 +31,9 @@ export function Editor({ entry, onClose, onError }: Props) {
   const [preview, setPreview] = useState(false);
   const [searchOn, setSearchOn] = useState(false);
   const viewRef = useRef<EditorView | null>(null);
-  const isMd = previewKind(entry.extension) === "markdown";
+  const kind = previewKind(entry.extension);
+  const isMd = kind === "markdown";
+  const isTable = kind === "table";
 
   useEffect(() => {
     setDirty(false);
@@ -76,7 +79,7 @@ export function Editor({ entry, onClose, onError }: Props) {
         {dirty && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" title="Non sauvegardé" />}
         <span className="text-[11px] text-[var(--color-text-dim)]">{fmtSize(entry.size)}</span>
         <div className="flex-1" />
-        {!preview && (
+        {!preview && !isTable && (
           <HBtn onClick={toggleSearch} active={searchOn} title="Rechercher dans le fichier (Ctrl+F)">
             <Search />
           </HBtn>
@@ -86,7 +89,7 @@ export function Editor({ entry, onClose, onError }: Props) {
             {preview ? <Code /> : <Eye />}
           </HBtn>
         )}
-        {file.editable && (
+        {file.editable && !isTable && (
           <HBtn onClick={save} title="Sauvegarder (Ctrl+S)"><Save /></HBtn>
         )}
         <button
@@ -109,7 +112,9 @@ export function Editor({ entry, onClose, onError }: Props) {
         </div>
       )}
 
-      {file.loading && file.content === "" ? (
+      {isTable ? (
+        <TableViewer entry={entry} onError={onError} />
+      ) : file.loading && file.content === "" ? (
         <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)]">
           Chargement…
         </div>

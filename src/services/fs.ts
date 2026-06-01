@@ -30,6 +30,10 @@ export function createDir(path: string, name: string): Promise<string> {
   return invoke<string>("create_dir", { path, name });
 }
 
+export function readFileBase64(path: string): Promise<string> {
+  return invoke<string>("read_file_base64", { path });
+}
+
 export function searchDir(root: string, query: string): Promise<import("../types").DirEntry[]> {
   return invoke("search_dir", { root, query });
 }

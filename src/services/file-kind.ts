@@ -8,7 +8,7 @@ import { rust } from "@codemirror/lang-rust";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 
-export type Preview = "code" | "markdown" | "image" | "binary";
+export type Preview = "code" | "markdown" | "image" | "table" | "binary";
 
 const IMAGE_EXT = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"]);
 
@@ -22,16 +22,19 @@ const TEXT_EXT = new Set([
   "sql", "lua", "vim", "dockerfile", "gitignore", "lock",
 ]);
 
+const TABLE_EXT = new Set(["csv", "tsv", "xlsx", "xls", "ods"]);
+
 export function previewKind(ext: string): Preview {
   if (ext === "md" || ext === "markdown") return "markdown";
   if (IMAGE_EXT.has(ext)) return "image";
+  if (TABLE_EXT.has(ext)) return "table";
   if (TEXT_EXT.has(ext)) return "code";
   return "binary";
 }
 
 export function isEditable(ext: string): boolean {
   const k = previewKind(ext);
-  return k === "code" || k === "markdown";
+  return k === "code" || k === "markdown" || k === "table";
 }
 
 export function langExtension(ext: string): Extension[] {

@@ -1,4 +1,5 @@
 // Opérations filesystem exposées au front : listing, lecture, écriture, CRUD entrées.
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use serde::Serialize;
 use std::fs;
 use std::io::{Read, Seek, SeekFrom};
@@ -163,30 +164,45 @@ pub fn delete_entry(path: String) -> Result<(), String> {
     })
 }
 
-// Recherche récursive par nom de fichier/dossier, insensible à la casse, limité à 200 résultats.
+// Recherche récursive async — spawn_blocking pour ne pas bloquer le thread IPC.
 #[tauri::command]
-pub fn search_dir(root: String, query: String) -> Vec<DirEntry> {
-    let q = query.to_lowercase();
-    let mut results = Vec::new();
-    walk_search(Path::new(&root), &q, &mut results);
-    results
+pub async fn search_dir(root: String, query: String) -> Vec<DirEntry> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let q = query.to_lowercase();
+        let mut results = Vec::new();
+        walk_search(Path::new(&root), &q, &mut results);
+        results
+    })
+    .await
+    .unwrap_or_default()
 }
 
 fn walk_search(dir: &Path, query: &str, out: &mut Vec<DirEntry>) {
-    if out.len() >= 200 { return; }
+    if out.len() >= 150 { return; }
     let Ok(read) = fs::read_dir(dir) else { return };
     for entry in read.filter_map(|r| r.ok()) {
-        if out.len() >= 200 { return; }
+        if out.len() >= 150 { return; }
         let path = entry.path();
-        let name = path.file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
+        let name = match path.file_name() {
+            Some(n) => n.to_string_lossy().to_string(),
+            None => continue,
+        };
         if name.starts_with('.') { continue; }
         if name.to_lowercase().contains(query) {
             if let Some(e) = to_entry(&path) { out.push(e); }
         }
         if path.is_dir() { walk_search(&path, query, out); }
     }
+}
+
+// Lecture binaire d'un fichier encodé en base64 (pour SheetJS côté front).
+#[tauri::command]
+pub fn read_file_base64(path: String) -> Result<String, String> {
+    let bytes = fs::read(&path).map_err(|e| {
+        eprintln!("[read_file_base64] {path}: {e}");
+        e.to_string()
+    })?;
+    Ok(BASE64.encode(bytes))
 }
 
 #[tauri::command]

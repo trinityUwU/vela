@@ -147,6 +147,11 @@ export default function App() {
     moveSel(axis === "y" ? delta * gridCols.current : delta);
   }, [view, fm.mode, moveSel]);
 
+  const activateSel = useCallback(() => {
+    const e = entries.find((x) => x.path === fm.selected);
+    if (e) fm.openEntry(e);
+  }, [entries, fm.selected, fm.openEntry]);
+
   const onSelect = (entry: DirEntry, e: React.MouseEvent) => {
     if (e.shiftKey) fm.rangeSelect(entry.path, entries);
     else if (e.ctrlKey || e.metaKey) fm.toggleSelect(entry.path);
@@ -344,6 +349,7 @@ export default function App() {
             onToggleBy={toggleBy}
             onSelect={onSelect}
             onOpen={fm.openEntry}
+            onActivate={activateSel}
             onContext={onContext}
             onContextBg={onContextBg}
             onClearBg={fm.clearSelection}
@@ -358,6 +364,7 @@ export default function App() {
             active={fm.selected}
             onSelect={onSelect}
             onOpen={fm.openEntry}
+            onActivate={activateSel}
             onContext={onContext}
             onContextBg={onContextBg}
             onClearBg={fm.clearSelection}

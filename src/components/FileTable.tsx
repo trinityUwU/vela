@@ -13,6 +13,7 @@ interface Props {
   onToggleBy: (by: SortBy) => void;
   onSelect: (entry: DirEntry, e: React.MouseEvent) => void;
   onOpen: (entry: DirEntry) => void;
+  onActivate: () => void;
   onContext: (e: React.MouseEvent, entry: DirEntry) => void;
   onContextBg: (e: React.MouseEvent) => void;
   onClearBg: () => void;
@@ -45,9 +46,12 @@ const COLS: { by: SortBy; label: string; className: string }[] = [
 ];
 
 export function FileTable(props: Props) {
-  const { entries, selection, active, sort, onToggleBy, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, onArrow, colorOf } = props;
+  const { entries, selection, active, sort, onToggleBy, onSelect, onOpen, onActivate, onContext, onContextBg, onClearBg, onMove, onArrow, colorOf } = props;
+  const scrollRef = useRef<HTMLDivElement>(null);
   const handleBg = (e: React.MouseEvent) => { e.preventDefault(); onContextBg(e); };
   const arrow = (by: SortBy) => (sort.by === by ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
+
+  useEffect(() => { scrollRef.current?.focus({ preventScroll: true }); }, [entries]);
 
   return (
     <div className="flex-1 flex flex-col min-h-0" onContextMenu={handleBg}>
@@ -59,7 +63,10 @@ export function FileTable(props: Props) {
         ))}
       </div>
       <div
-        className="flex-1 overflow-y-auto"
+        ref={scrollRef}
+        tabIndex={0}
+        className="flex-1 overflow-y-auto outline-none"
+        onKeyDown={(e) => onTileKey(e, onActivate, onArrow)}
         onClick={(e) => { if (e.target === e.currentTarget) onClearBg(); }}
       >
         {entries.length === 0 ? (
@@ -75,7 +82,6 @@ export function FileTable(props: Props) {
               onSelect={onSelect}
               onOpen={onOpen}
               onContext={onContext}
-              onArrow={onArrow}
               onMove={onMove}
             />
           ))
@@ -85,7 +91,7 @@ export function FileTable(props: Props) {
   );
 }
 
-function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onArrow, onMove }: {
+function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onMove }: {
   entry: DirEntry;
   selected: boolean;
   active: boolean;
@@ -93,17 +99,13 @@ function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onAr
   onSelect: (e: DirEntry, ev: React.MouseEvent) => void;
   onOpen: (e: DirEntry) => void;
   onContext: (ev: React.MouseEvent, e: DirEntry) => void;
-  onArrow: (delta: number, axis: "x" | "y") => void;
   onMove: (src: string, destDir: string) => void;
 }) {
   const [dragOver, setDragOver] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (active && btnRef.current) {
-      btnRef.current.focus({ preventScroll: true });
-      btnRef.current.scrollIntoView({ block: "nearest" });
-    }
+    if (active && btnRef.current) btnRef.current.scrollIntoView({ block: "nearest" });
   }, [active]);
   const handleDrop = (e: React.DragEvent) => {
     if (!entry.is_dir) return;
@@ -116,6 +118,7 @@ function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onAr
   return (
     <button
       ref={btnRef}
+      tabIndex={-1}
       draggable
       onDragStart={(e) => { e.dataTransfer.setData("application/vela", entry.path); e.dataTransfer.effectAllowed = "move"; }}
       onDragOver={(e) => { if (entry.is_dir) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOver(true); } }}
@@ -123,7 +126,6 @@ function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onAr
       onDrop={handleDrop}
       onClick={(ev) => onSelect(entry, ev)}
       onDoubleClick={() => onOpen(entry)}
-      onKeyDown={(e) => onTileKey(e, () => onOpen(entry), onArrow)}
       onContextMenu={(ev) => { ev.stopPropagation(); onContext(ev, entry); }}
       title={entry.name}
       className={`w-full flex items-center gap-3 px-3 py-1 text-left transition-colors ${

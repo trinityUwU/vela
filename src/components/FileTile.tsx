@@ -4,7 +4,6 @@ import type { DirEntry } from "../types";
 import { FileIcon } from "./FileIcon";
 import { previewKind } from "../services/file-kind";
 import { useThumbnail } from "../hooks/useThumbnail";
-import { onTileKey } from "./tile-keys";
 
 interface Props {
   entry: DirEntry;
@@ -14,21 +13,17 @@ interface Props {
   onClick: (e: React.MouseEvent) => void;
   onDouble: () => void;
   onContext: (e: React.MouseEvent) => void;
-  onArrow: (delta: number, axis: "x" | "y") => void;
   onMove: (src: string, destDir: string) => void;
 }
 
-export function FileTile({ entry, selected, active, color, onClick, onDouble, onContext, onArrow, onMove }: Props) {
+export function FileTile({ entry, selected, active, color, onClick, onDouble, onContext, onMove }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const isImage = !entry.is_dir && previewKind(entry.extension) === "image";
   const thumb = useThumbnail(entry.path, isImage);
 
   useEffect(() => {
-    if (active && btnRef.current) {
-      btnRef.current.focus({ preventScroll: true });
-      btnRef.current.scrollIntoView({ block: "nearest" });
-    }
+    if (active && btnRef.current) btnRef.current.scrollIntoView({ block: "nearest" });
   }, [active]);
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -55,6 +50,7 @@ export function FileTile({ entry, selected, active, color, onClick, onDouble, on
   return (
     <button
       ref={(el) => { btnRef.current = el; thumb.ref.current = el; }}
+      tabIndex={-1}
       draggable
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
@@ -62,7 +58,6 @@ export function FileTile({ entry, selected, active, color, onClick, onDouble, on
       onDrop={handleDrop}
       onClick={onClick}
       onDoubleClick={onDouble}
-      onKeyDown={(e) => onTileKey(e, onDouble, onArrow)}
       onContextMenu={(e) => { e.stopPropagation(); onContext(e); }}
       title={entry.name}
       className={`flex flex-col items-center gap-1.5 w-24 p-2 rounded-lg transition-colors ${

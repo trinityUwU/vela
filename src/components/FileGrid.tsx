@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import type { DirEntry } from "../types";
 import { FileTile } from "./FileTile";
+import { onTileKey } from "./tile-keys";
 
 interface Props {
   entries: DirEntry[];
@@ -9,6 +10,7 @@ interface Props {
   active: string | null;
   onSelect: (entry: DirEntry, e: React.MouseEvent) => void;
   onOpen: (entry: DirEntry) => void;
+  onActivate: () => void;
   onContext: (e: React.MouseEvent, entry: DirEntry) => void;
   onContextBg: (e: React.MouseEvent) => void;
   onClearBg: () => void;
@@ -18,12 +20,15 @@ interface Props {
   colorOf: (path: string) => string | undefined;
 }
 
-export function FileGrid({ entries, selection, active, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, onArrow, onColumns, colorOf }: Props) {
+export function FileGrid({ entries, selection, active, onSelect, onOpen, onActivate, onContext, onContextBg, onClearBg, onMove, onArrow, onColumns, colorOf }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const handleBg = (e: React.MouseEvent) => {
     e.preventDefault();
     onContextBg(e);
   };
+
+  useEffect(() => { scrollRef.current?.focus({ preventScroll: true }); }, [entries]);
 
   useEffect(() => {
     const measure = () => {
@@ -53,8 +58,11 @@ export function FileGrid({ entries, selection, active, onSelect, onOpen, onConte
   }
   return (
     <div
-      className="flex-1 overflow-y-auto p-3"
+      ref={scrollRef}
+      tabIndex={0}
+      className="flex-1 overflow-y-auto p-3 outline-none"
       onContextMenu={handleBg}
+      onKeyDown={(e) => onTileKey(e, onActivate, onArrow)}
       onClick={(e) => { if (e.target === e.currentTarget) onClearBg(); }}
     >
       <div
@@ -72,7 +80,6 @@ export function FileGrid({ entries, selection, active, onSelect, onOpen, onConte
             onClick={(ev) => onSelect(e, ev)}
             onDouble={() => onOpen(e)}
             onContext={(ev) => onContext(ev, e)}
-            onArrow={onArrow}
             onMove={onMove}
           />
         ))}

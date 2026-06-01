@@ -83,7 +83,11 @@ function banner(cwd: string): string {
   const accent = "\x1b[38;2;110;168;254m";
   const dim = "\x1b[2m";
   const reset = "\x1b[0m";
-  return `${accent}▌ Vela terminal${reset}  ${dim}${cwd}${reset}\r\n\r\n`;
+  const date = new Date().toLocaleString("fr-FR", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+  return `${accent}▌${reset} ${dim}${cwd}${reset}\r\n${accent}▌${reset} ${dim}${date}${reset}\r\n\r\n`;
 }
 
 function TerminalView({ id, cwd, active, onExit }: {

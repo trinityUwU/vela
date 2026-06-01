@@ -51,7 +51,7 @@
 > Ordre d'attaque recommandé : (1) progression copie → (2) PDF → (3) thumbnails.
 > Chaque feature ci-dessous est auto-suffisante : tout le contexte d'implémentation est ici.
 
-## 1 · Indicateur de progression copie / déplacement  ⏱️ effort faible
+## 1 · Indicateur de progression copie / déplacement  ✅ LIVRÉ
 
 **Objectif** : sur une copie/déplacement volumineux, l'UI ne doit plus paraître figée. Réutilise
 intégralement le pattern existant `ExtractionManager` + events Tauri + `ExtractionPanel`.

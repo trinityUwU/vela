@@ -5,6 +5,7 @@ import { useFavorites } from "./hooks/useFavorites";
 import { useSearch } from "./hooks/useSearch";
 import { useSort, applySortFilter } from "./hooks/useSort";
 import { useExtractions } from "./hooks/useExtractions";
+import { useTransfers } from "./hooks/useTransfers";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { Topbar } from "./components/Topbar";
 import { SearchResults } from "./components/SearchBar";
@@ -64,6 +65,7 @@ export default function App() {
   const search = useSearch(fm.cwd);
   const { sort, toggleBy, update: updateSort } = useSort();
   const { jobs: extractionJobs } = useExtractions();
+  const { jobs: transferJobs } = useTransfers();
   const [menu, setMenu] = useState<Menu>(null);
   const [bgMenu, setBgMenu] = useState<BgMenu>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -398,7 +400,7 @@ export default function App() {
         <QuickLook entry={quickLook} onClose={() => setQuickLook(null)} onError={fm.setError} />
       )}
 
-      <ExtractionPanel jobs={extractionJobs} onNavigate={fm.navigate} />
+      <ExtractionPanel jobs={extractionJobs} transfers={transferJobs} onNavigate={fm.navigate} />
     </div>
   );
 }

@@ -67,8 +67,8 @@ WebKitGTK comme couche de rendu (vs GTK natif chez Nemo/Thunar en C). Plus de RA
 
 ## Prochain chantier — v1.5
 **Specs complètes détaillées dans `TODO.md` (section « À FAIRE — specs détaillées »).**
-Ordre : (1) progression copie/déplacement → (2) aperçu PDF → (3) thumbnails images.
-- (1) `ops.rs` async + event `transfer-progress` + `useTransfers` + généraliser `ExtractionPanel`
+Ordre : (1) progression copie/déplacement ✅ → (2) aperçu PDF → (3) thumbnails images.
+- (1) ✅ `ops.rs` `copy_entries`/`move_entries` async (spawn_blocking, await fin) + event `transfer-progress` (seuil 8 fichiers anti-flicker, throttle 80ms) + `useTransfers` + `ExtractionPanel` généralisé (TransferRow)
 - (2) `pdfjs-dist` (worker local) + `PdfViewer.tsx` branché dans `Editor` (→ Quick Look gratuit)
 - (3) `thumbs.rs` (crate `image`, cache `~/.cache/vela/thumbs`) + `useThumbnail` (IntersectionObserver, concurrence 4) + `FileTile`
 

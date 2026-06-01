@@ -1,27 +1,63 @@
 // Panel fixe bas-droite : liste des extractions en cours, avec progression et contrôles.
 import { useRef, useState } from "react";
 import { extractionPause, extractionResume, extractionCancel, extractionProvidePassword } from "../services/fs";
-import type { ExtractionJob } from "../types";
+import type { ExtractionJob, TransferJob } from "../types";
 
 interface Props {
   jobs: Map<string, ExtractionJob>;
+  transfers: Map<string, TransferJob>;
   onNavigate: (path: string) => void;
 }
 
-export function ExtractionPanel({ jobs, onNavigate }: Props) {
-  if (jobs.size === 0) return null;
-  const active = [...jobs.values()].filter((j) => !["done", "error", "cancelled"].includes(j.status)).length;
+export function ExtractionPanel({ jobs, transfers, onNavigate }: Props) {
+  if (jobs.size === 0 && transfers.size === 0) return null;
+  const active =
+    [...jobs.values()].filter((j) => !["done", "error", "cancelled"].includes(j.status)).length +
+    [...transfers.values()].filter((t) => t.status === "transferring").length;
 
   return (
     <div className="fixed bottom-3 right-3 z-50 w-80 flex flex-col gap-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl overflow-hidden">
       <div className="px-3 py-2 text-[11px] font-medium text-[var(--color-text-dim)] border-b border-[var(--color-border)] bg-[var(--color-bg)] shrink-0">
-        {active > 0 ? `${active} extraction${active > 1 ? "s" : ""} en cours` : "Extractions"}
+        {active > 0 ? `${active} opération${active > 1 ? "s" : ""} en cours` : "Activité"}
       </div>
       <div className="max-h-64 overflow-y-auto divide-y divide-[var(--color-border)]/50">
+        {[...transfers.values()].map((t) => (
+          <TransferRow key={t.id} job={t} />
+        ))}
         {[...jobs.values()].map((job) => (
           <JobRow key={job.id} job={job} onNavigate={onNavigate} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function TransferRow({ job }: { job: TransferJob }) {
+  const pct = job.total > 0 ? Math.round((job.current / job.total) * 100) : null;
+  const verb = job.kind === "copy" ? "Copie" : "Déplacement";
+  const terminal = job.status === "done" || job.status === "error";
+
+  return (
+    <div className="px-3 py-2.5 flex flex-col gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className="flex-1 text-xs text-[var(--color-text)] truncate font-medium" title={job.name}>
+          {verb} · {job.name}
+        </span>
+        <span className={`text-[10px] shrink-0 ${
+          job.status === "done" ? "text-green-400"
+          : job.status === "error" ? "text-[var(--color-danger)]"
+          : "text-[var(--color-text-dim)]"
+        }`}>
+          {job.status === "done" ? "Terminé" : job.status === "error" ? "Erreur" : pct !== null ? `${pct}%` : "En cours…"}
+        </span>
+      </div>
+      <span className="text-[10px] text-[var(--color-text-dim)] font-mono">
+        {job.current} / {job.total} fichiers
+      </span>
+      {!terminal && <ProgressBar pct={pct} paused={false} />}
+      {job.status === "error" && job.error && (
+        <p className="text-[10px] text-[var(--color-danger)] break-words">{job.error}</p>
+      )}
     </div>
   );
 }

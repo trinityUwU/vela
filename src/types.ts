@@ -92,6 +92,18 @@ export interface ExtractionJob {
   error?: string;
 }
 
+export type TransferStatus = "transferring" | "done" | "error";
+
+export interface TransferJob {
+  id: string;
+  kind: "copy" | "move";
+  name: string;
+  current: number;
+  total: number;
+  status: TransferStatus;
+  error?: string;
+}
+
 export type ClipboardOp = "copy" | "cut";
 
 export interface Clipboard {

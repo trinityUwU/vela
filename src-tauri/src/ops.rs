@@ -3,6 +3,8 @@ use serde::Serialize;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::time::Instant;
+use tauri::{AppHandle, Emitter};
 use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 
@@ -102,55 +104,167 @@ fn unique_dest(dest_dir: &Path, name: &str) -> PathBuf {
     }
 }
 
-fn copy_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
+fn copy_recursive(src: &Path, dst: &Path, on_file: &mut dyn FnMut()) -> std::io::Result<()> {
     if src.is_dir() {
         fs::create_dir_all(dst)?;
         for entry in fs::read_dir(src)? {
             let entry = entry?;
-            copy_recursive(&entry.path(), &dst.join(entry.file_name()))?;
+            copy_recursive(&entry.path(), &dst.join(entry.file_name()), on_file)?;
         }
         Ok(())
     } else {
-        fs::copy(src, dst).map(|_| ())
+        fs::copy(src, dst)?;
+        on_file();
+        Ok(())
+    }
+}
+
+// ── progression des transferts ───────────────────────────────────────────────
+
+#[derive(Clone, Serialize)]
+struct TransferPayload {
+    job_id: String,
+    kind: String,
+    name: String,
+    current: u64,
+    total: u64,
+    status: String,
+    error: Option<String>,
+}
+
+// En dessous de ce nombre de fichiers, le transfert est instantané : aucun panneau (anti-flicker).
+const TRANSFER_NOTIFY_THRESHOLD: u64 = 8;
+const EMIT_THROTTLE_MS: u128 = 80;
+
+fn transfer_job_id() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let ts = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis();
+    format!("transfer-{ts}")
+}
+
+fn emit_transfer(
+    app: &AppHandle, job_id: &str, kind: &str, name: &str,
+    current: u64, total: u64, status: &str, error: Option<String>,
+) {
+    let _ = app.emit("transfer-progress", TransferPayload {
+        job_id: job_id.to_string(),
+        kind: kind.to_string(),
+        name: name.to_string(),
+        current, total,
+        status: status.to_string(),
+        error,
+    });
+}
+
+fn count_files(paths: &[String]) -> u64 {
+    paths.iter().map(|p| {
+        WalkDir::new(p).into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file())
+            .count() as u64
+    }).sum()
+}
+
+fn job_label(paths: &[String]) -> String {
+    match paths.split_first() {
+        Some((first, rest)) => {
+            let name = Path::new(first).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            if rest.is_empty() { name } else { format!("{name} +{}", rest.len()) }
+        }
+        None => String::new(),
     }
 }
 
 // Copie plusieurs entrées dans dest_dir, en évitant l'écrasement (suffixe « copie N »).
 #[tauri::command]
-pub fn copy_entries(paths: Vec<String>, dest_dir: String) -> Result<(), String> {
-    let dest = Path::new(&dest_dir);
-    for path in &paths {
-        let src = Path::new(path);
-        let name = src.file_name().ok_or_else(|| format!("nom invalide: {path}"))?;
-        let target = unique_dest(dest, &name.to_string_lossy());
-        copy_recursive(src, &target).map_err(|e| {
-            eprintln!("[copy_entries] {path}: {e}");
-            e.to_string()
-        })?;
-    }
-    Ok(())
+pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let dest = Path::new(&dest_dir);
+        let total = count_files(&paths);
+        let notify = total >= TRANSFER_NOTIFY_THRESHOLD;
+        let job_id = transfer_job_id();
+        let label = job_label(&paths);
+        if notify { emit_transfer(&app, &job_id, "copy", &label, 0, total, "transferring", None); }
+
+        let mut current = 0u64;
+        let mut last = Instant::now();
+        for path in &paths {
+            let src = Path::new(path);
+            let name = match src.file_name() {
+                Some(n) => n.to_string_lossy().to_string(),
+                None => {
+                    let e = format!("nom invalide: {path}");
+                    if notify { emit_transfer(&app, &job_id, "copy", &label, current, total, "error", Some(e.clone())); }
+                    return Err(e);
+                }
+            };
+            let target = unique_dest(dest, &name);
+            let res = copy_recursive(src, &target, &mut || {
+                current += 1;
+                if notify && last.elapsed().as_millis() >= EMIT_THROTTLE_MS {
+                    emit_transfer(&app, &job_id, "copy", &label, current, total, "transferring", None);
+                    last = Instant::now();
+                }
+            });
+            if let Err(e) = res {
+                eprintln!("[copy_entries] {path}: {e}");
+                if notify { emit_transfer(&app, &job_id, "copy", &label, current, total, "error", Some(e.to_string())); }
+                return Err(e.to_string());
+            }
+        }
+        if notify { emit_transfer(&app, &job_id, "copy", &label, total, total, "done", None); }
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 // Déplace plusieurs entrées dans dest_dir.
 #[tauri::command]
-pub fn move_entries(paths: Vec<String>, dest_dir: String) -> Result<(), String> {
-    let dest = Path::new(&dest_dir);
-    for path in &paths {
-        let src = Path::new(path);
-        if dest.starts_with(src) {
-            return Err("Impossible de déplacer un dossier dans lui-même".to_string());
+pub async fn move_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let dest = Path::new(&dest_dir);
+        let total = paths.len() as u64;
+        let notify = total >= TRANSFER_NOTIFY_THRESHOLD;
+        let job_id = transfer_job_id();
+        let label = job_label(&paths);
+        if notify { emit_transfer(&app, &job_id, "move", &label, 0, total, "transferring", None); }
+
+        let mut current = 0u64;
+        for path in &paths {
+            let src = Path::new(path);
+            if dest.starts_with(src) {
+                let e = "Impossible de déplacer un dossier dans lui-même".to_string();
+                if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.clone())); }
+                return Err(e);
+            }
+            let name = match src.file_name() {
+                Some(n) => n.to_string_lossy().to_string(),
+                None => {
+                    let e = format!("nom invalide: {path}");
+                    if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.clone())); }
+                    return Err(e);
+                }
+            };
+            let target = dest.join(&name);
+            if target.exists() {
+                let e = format!("«{name}» existe déjà dans ce dossier");
+                if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.clone())); }
+                return Err(e);
+            }
+            if let Err(e) = fs::rename(src, &target) {
+                eprintln!("[move_entries] {path}: {e}");
+                if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.to_string())); }
+                return Err(e.to_string());
+            }
+            current += 1;
+            if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "transferring", None); }
         }
-        let name = src.file_name().ok_or_else(|| format!("nom invalide: {path}"))?;
-        let target = dest.join(name);
-        if target.exists() {
-            return Err(format!("«{}» existe déjà dans ce dossier", name.to_string_lossy()));
-        }
-        fs::rename(src, &target).map_err(|e| {
-            eprintln!("[move_entries] {path}: {e}");
-            e.to_string()
-        })?;
-    }
-    Ok(())
+        if notify { emit_transfer(&app, &job_id, "move", &label, total, total, "done", None); }
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 // ── compression ─────────────────────────────────────────────────────────────

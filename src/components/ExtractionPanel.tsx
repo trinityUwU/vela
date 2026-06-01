@@ -47,7 +47,7 @@ function TransferRow({ job }: { job: TransferJob }) {
   const verb = job.kind === "copy" ? "Copie" : "Déplacement";
   const isPaused = job.status === "paused";
   const terminal = job.status === "done" || job.status === "error" || job.status === "cancelled";
-  const canPause = job.kind === "copy" && !terminal;
+  const canPause = !terminal;
   const canCancel = !terminal;
 
   const label =

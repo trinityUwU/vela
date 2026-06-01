@@ -49,7 +49,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 
 **Commandes Rust** : 41 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager`)
 
-**Transferts contrôlables** : `TransferManager` (state, AtomicBool paused/cancelled par job) + `transfer_pause`/`transfer_resume`/`transfer_cancel`. La boucle de copie par chunks vérifie le contrôle à chaque tranche (pause = spin-wait 50 ms, annulation = nettoyage du partiel + statut `cancelled`). Boutons Pause/Reprendre (copie) + Annuler (copie ET déplacement) dans `TransferRow`. Annulation d'un déplacement = restauration des entrées déjà déplacées à leur place d'origine (rename inverse). Note : sur le même FS le rename est instantané, la fenêtre d'annulation n'existe que pour un déplacement multi-entrées
+**Transferts contrôlables** : `TransferManager` (state, AtomicBool paused/cancelled par job) + `transfer_pause`/`transfer_resume`/`transfer_cancel`. La boucle de copie par chunks vérifie le contrôle à chaque tranche (pause = spin-wait 50 ms, annulation = nettoyage du partiel + statut `cancelled`). Boutons Pause/Reprendre + Annuler sur copie ET déplacement. **Déplacement intelligent** : `rename` si même FS (instantané) ; sinon (cross-device EXDEV) copie par chunks pausable/annulable + suppression de la source **différée à la fin** (annuler ne perd jamais de données). Annulation = restauration : rename inverse des renommés, suppression des copies cross-device partielles. `MoveState` (renamed/copied), `undo_move`, `is_cross_device`, `validate_move_target`
 
 **Infra**
 - Build : `bun tauri build` (targets: deb, rpm — AppImage exclu, linuxdeploy absent)

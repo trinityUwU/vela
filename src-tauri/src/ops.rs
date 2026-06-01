@@ -334,7 +334,42 @@ pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
     .map_err(|e| e.to_string())?
 }
 
-// Déplace plusieurs entrées dans dest_dir.
+// État d'un déplacement, pour annuler proprement. Les sources cross-device sont supprimées
+// seulement à la fin → l'annulation ne perd jamais de données.
+#[derive(Default)]
+struct MoveState {
+    renamed: Vec<(PathBuf, PathBuf)>, // même FS : annuler = rename inverse
+    copied: Vec<(PathBuf, PathBuf)>,  // cross-device : source intacte, target à supprimer si annulé
+}
+
+fn is_cross_device(e: &std::io::Error) -> bool {
+    e.raw_os_error() == Some(18) // EXDEV
+}
+
+// Restaure l'état initial : remet les renommés en place, supprime les copies cross-device.
+fn undo_move(st: &MoveState) {
+    for (src, target) in st.renamed.iter().rev() {
+        let _ = fs::rename(target, src);
+    }
+    for (_, target) in &st.copied {
+        let _ = if target.is_dir() { fs::remove_dir_all(target) } else { fs::remove_file(target) };
+    }
+}
+
+fn validate_move_target(src: &Path, dest: &Path) -> Result<PathBuf, String> {
+    if dest.starts_with(src) {
+        return Err("Impossible de déplacer un dossier dans lui-même".to_string());
+    }
+    let name = src.file_name().ok_or_else(|| format!("nom invalide: {}", src.display()))?;
+    let target = dest.join(name);
+    if target.exists() {
+        return Err(format!("«{}» existe déjà dans ce dossier", name.to_string_lossy()));
+    }
+    Ok(target)
+}
+
+// Déplace plusieurs entrées dans dest_dir. Même FS = rename instantané ; cross-device = copie
+// par chunks (pausable/annulable) + suppression différée de la source.
 #[tauri::command]
 pub async fn move_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -347,55 +382,73 @@ pub async fn move_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
         let ctrl = mgr.add(&job_id);
         if notify { emit_transfer(&app, &job_id, "move", &label, 0, total, "transferring", None); }
 
-        // Remet à leur place d'origine les entrées déjà déplacées (annulation).
-        let restore = |done: &[(PathBuf, PathBuf)]| {
-            for (src, target) in done.iter().rev() {
-                let _ = fs::rename(target, src);
-            }
-        };
-
         let mut current = 0u64;
-        let mut done: Vec<(PathBuf, PathBuf)> = Vec::new();
+        let mut last = Instant::now();
+        let mut last_paused = false;
+        let mut st = MoveState::default();
+
         for path in &paths {
             if ctrl.cancelled.load(Ordering::Relaxed) {
-                restore(&done);
+                undo_move(&st);
                 if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "cancelled", None); }
                 mgr.remove(&job_id);
                 return Ok(());
             }
             let src = Path::new(path);
-            if dest.starts_with(src) {
-                let e = "Impossible de déplacer un dossier dans lui-même".to_string();
-                if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.clone())); }
-                mgr.remove(&job_id);
-                return Err(e);
-            }
-            let name = match src.file_name() {
-                Some(n) => n.to_string_lossy().to_string(),
-                None => {
-                    let e = format!("nom invalide: {path}");
+            let target = match validate_move_target(src, dest) {
+                Ok(t) => t,
+                Err(e) => {
                     if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.clone())); }
                     mgr.remove(&job_id);
                     return Err(e);
                 }
             };
-            let target = dest.join(&name);
-            if target.exists() {
-                let e = format!("«{name}» existe déjà dans ce dossier");
-                if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.clone())); }
-                mgr.remove(&job_id);
-                return Err(e);
-            }
             let entry_bytes = count_files_bytes(std::slice::from_ref(path)).1;
-            if let Err(e) = fs::rename(src, &target) {
-                eprintln!("[move_entries] {path}: {e}");
-                if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.to_string())); }
-                mgr.remove(&job_id);
-                return Err(e.to_string());
+
+            match fs::rename(src, &target) {
+                Ok(()) => {
+                    st.renamed.push((src.to_path_buf(), target));
+                    current += entry_bytes;
+                    if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "transferring", None); }
+                }
+                Err(e) if is_cross_device(&e) => {
+                    let res = copy_recursive(src, &target, &ctrl, &mut |n| {
+                        current += n;
+                        let paused = ctrl.paused.load(Ordering::Relaxed);
+                        let status = if paused { "paused" } else { "transferring" };
+                        if notify && (paused != last_paused || last.elapsed().as_millis() >= EMIT_THROTTLE_MS) {
+                            emit_transfer(&app, &job_id, "move", &label, current, total, status, None);
+                            last = Instant::now();
+                            last_paused = paused;
+                        }
+                    });
+                    if let Err(e) = res {
+                        let _ = if target.is_dir() { fs::remove_dir_all(&target) } else { fs::remove_file(&target) };
+                        undo_move(&st);
+                        if e.kind() == ErrorKind::Interrupted {
+                            if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "cancelled", None); }
+                            mgr.remove(&job_id);
+                            return Ok(());
+                        }
+                        if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.to_string())); }
+                        mgr.remove(&job_id);
+                        return Err(e.to_string());
+                    }
+                    st.copied.push((src.to_path_buf(), target));
+                }
+                Err(e) => {
+                    undo_move(&st);
+                    eprintln!("[move_entries] {path}: {e}");
+                    if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.to_string())); }
+                    mgr.remove(&job_id);
+                    return Err(e.to_string());
+                }
             }
-            done.push((src.to_path_buf(), target));
-            current += entry_bytes;
-            if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "transferring", None); }
+        }
+
+        // Succès : suppression différée des sources cross-device (jamais avant la fin).
+        for (src, _) in &st.copied {
+            let _ = if src.is_dir() { fs::remove_dir_all(src) } else { fs::remove_file(src) };
         }
         if notify { emit_transfer(&app, &job_id, "move", &label, total, total, "done", None); }
         mgr.remove(&job_id);

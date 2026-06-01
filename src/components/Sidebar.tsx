@@ -79,7 +79,7 @@ function TrashRow({ active, count, onOpen, onEmpty }: {
       </button>
       {menu && (
         <div
-          style={{ bottom: window.innerHeight - menu.y + 4, left: menu.x }}
+          style={{ top: Math.max(4, menu.y - 52), left: menu.x }}
           onClick={(e) => e.stopPropagation()}
           className="fixed z-50 min-w-48 p-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
         >

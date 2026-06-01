@@ -39,7 +39,6 @@ export function Editor({ entry, onClose, onError, onNavigate }: Props) {
   const isTable = kind === "table";
   const isImage = kind === "image";
   const isArchive = kind === "archive";
-  const isBinary = kind === "binary";
   const file = useFileContent(entry.path, entry.size, onError, isImage || isArchive);
   const [dirty, setDirty] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -100,7 +99,7 @@ export function Editor({ entry, onClose, onError, onNavigate }: Props) {
         {dirty && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" title="Non sauvegardé" />}
         <span className="text-[11px] text-[var(--color-text-dim)]">{fmtSize(entry.size)}</span>
         <div className="flex-1" />
-        {!preview && !isTable && !isImage && !isArchive && !isBinary && (
+        {!preview && !isTable && !isImage && !isArchive && (
           <HBtn onClick={toggleSearch} active={searchOn} title="Rechercher dans le fichier (Ctrl+F)">
             <Search />
           </HBtn>
@@ -110,7 +109,7 @@ export function Editor({ entry, onClose, onError, onNavigate }: Props) {
             {preview ? <Code /> : <Eye />}
           </HBtn>
         )}
-        {file.editable && !isTable && !isImage && !isArchive && !isBinary && (
+        {file.editable && !isTable && !isImage && !isArchive && (
           <HBtn onClick={save} title="Sauvegarder (Ctrl+S)"><Save /></HBtn>
         )}
         <button
@@ -163,10 +162,10 @@ export function Editor({ entry, onClose, onError, onNavigate }: Props) {
           value={file.content}
           height="100%"
           theme={vscodeDark}
-          editable={file.editable && !isBinary}
+          editable={file.editable}
           extensions={[
             search({ top: true }),
-            ...((file.editable && !isBinary) ? langExtension(entry.extension) : []),
+            ...(file.editable ? langExtension(entry.extension) : []),
           ]}
           basicSetup={file.editable
             ? undefined

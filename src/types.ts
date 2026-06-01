@@ -22,6 +22,22 @@ export interface FileChunk {
   eof: boolean;
 }
 
+export interface FavPin {
+  name: string;
+  path: string;
+}
+
+export interface FavGroup {
+  name: string;
+  pins: FavPin[];
+  collapsed: boolean;
+}
+
+export interface Favorites {
+  pins: FavPin[];
+  groups: FavGroup[];
+}
+
 export interface Place {
   name: string;
   path: string;

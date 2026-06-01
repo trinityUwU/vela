@@ -1,42 +1,182 @@
-// Sidebar gauche : raccourcis (home, dossiers XDG, points de montage).
-import type { Place } from "../types";
+// Sidebar : Favoris (pins libres + groupes) · Emplacements XDG · Montages.
+import { useRef, useState } from "react";
+import type { FavPin, Place } from "../types";
+import type { useFavorites } from "../hooks/useFavorites";
 import { Home, Folder, Drive } from "./icons";
 
+type Favs = ReturnType<typeof useFavorites>;
+
 interface Props {
+  favs: Favs;
   places: Place[];
   cwd: string;
   onSelect: (path: string) => void;
+  onPinCurrent: () => void;
 }
 
-function placeIcon(kind: Place["kind"]) {
-  if (kind === "home") return <Home />;
-  if (kind === "mount") return <Drive />;
-  return <Folder />;
-}
+export function Sidebar({ favs, places, cwd, onSelect, onPinCurrent }: Props) {
+  const xdg = places.filter((p) => p.kind !== "mount");
+  const mounts = places.filter((p) => p.kind === "mount");
 
-export function Sidebar({ places, cwd, onSelect }: Props) {
   return (
-    <aside className="w-56 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] overflow-y-auto py-2">
-      <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-[var(--color-text-dim)]">
-        Emplacements
-      </div>
-      {places.map((p) => {
-        const active = cwd === p.path;
-        return (
-          <button
-            key={p.path}
-            onClick={() => onSelect(p.path)}
-            className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-left transition-colors ${
-              active
-                ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]"
-                : "text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-            }`}
-          >
-            <span className="shrink-0 opacity-80">{placeIcon(p.kind)}</span>
-            <span className="truncate">{p.name}</span>
-          </button>
-        );
-      })}
+    <aside className="w-56 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] overflow-y-auto flex flex-col">
+      <FavSection favs={favs} cwd={cwd} onSelect={onSelect} onPinCurrent={onPinCurrent} />
+      {xdg.length > 0 && (
+        <>
+          <SectionLabel>Emplacements</SectionLabel>
+          {xdg.map((p) => (
+            <PlaceRow key={p.path} label={p.name} path={p.path} active={cwd === p.path}
+              icon={p.kind === "home" ? <Home /> : <Folder />} onSelect={onSelect} />
+          ))}
+        </>
+      )}
+      {mounts.length > 0 && (
+        <>
+          <SectionLabel>Montages</SectionLabel>
+          {mounts.map((p) => (
+            <PlaceRow key={p.path} label={p.name} path={p.path} active={cwd === p.path}
+              icon={<Drive />} onSelect={onSelect} />
+          ))}
+        </>
+      )}
     </aside>
+  );
+}
+
+function FavSection({ favs, cwd, onSelect, onPinCurrent }: {
+  favs: Favs; cwd: string; onSelect: (p: string) => void; onPinCurrent: () => void;
+}) {
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const submitGroup = () => {
+    const n = groupName.trim();
+    if (n) favs.addGroup(n);
+    setGroupName("");
+    setAddingGroup(false);
+  };
+
+  return (
+    <div className="py-1">
+      <div className="flex items-center px-3 py-1 gap-1">
+        <SectionLabel inline>Favoris</SectionLabel>
+        <div className="flex-1" />
+        <IconAction title="Épingler le dossier actuel" onClick={onPinCurrent}>＋</IconAction>
+        <IconAction title="Créer un groupe" onClick={() => { setAddingGroup(true); setTimeout(() => inputRef.current?.focus(), 50); }}>⊞</IconAction>
+      </div>
+
+      {favs.favs.pins.map((pin) => (
+        <PinRow key={pin.path} pin={pin} active={cwd === pin.path} onSelect={onSelect}
+          onRemove={() => favs.unpin(pin.path)} />
+      ))}
+
+      {favs.favs.groups.map((g, gi) => (
+        <div key={gi}>
+          <GroupHeader
+            name={g.name}
+            collapsed={g.collapsed}
+            onToggle={() => favs.toggleGroup(gi)}
+            onRemove={() => favs.removeGroup(gi)}
+            onPin={() => favs.pinPath(cwd, cwd.split("/").filter(Boolean).pop() ?? cwd, gi)}
+          />
+          {!g.collapsed && g.pins.map((pin) => (
+            <PinRow key={pin.path} pin={pin} active={cwd === pin.path} onSelect={onSelect}
+              onRemove={() => favs.unpin(pin.path, gi)} indent />
+          ))}
+        </div>
+      ))}
+
+      {addingGroup && (
+        <div className="px-3 py-1">
+          <input
+            ref={inputRef}
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitGroup();
+              if (e.key === "Escape") { setAddingGroup(false); setGroupName(""); }
+            }}
+            onBlur={submitGroup}
+            placeholder="Nom du groupe…"
+            className="w-full px-2 py-1 text-xs rounded bg-[var(--color-bg)] border border-[var(--color-accent)] text-[var(--color-text)] outline-none"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroupHeader({ name, collapsed, onToggle, onRemove, onPin }: {
+  name: string; collapsed: boolean;
+  onToggle: () => void; onRemove: () => void; onPin: () => void;
+}) {
+  return (
+    <div className="group flex items-center gap-1 px-3 py-1 text-xs text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]">
+      <button onClick={onToggle} className="shrink-0 w-3 text-center">{collapsed ? "▶" : "▼"}</button>
+      <button onClick={onToggle} className="flex-1 text-left truncate">{name}</button>
+      <span className="hidden group-hover:flex gap-1">
+        <IconAction title="Épingler le dossier actuel dans ce groupe" onClick={onPin}>＋</IconAction>
+        <IconAction title="Supprimer le groupe" onClick={onRemove} danger>✕</IconAction>
+      </span>
+    </div>
+  );
+}
+
+function PinRow({ pin, active, onSelect, onRemove, indent }: {
+  pin: FavPin; active: boolean; onSelect: (p: string) => void; onRemove: () => void; indent?: boolean;
+}) {
+  return (
+    <div className={`group flex items-center gap-2 px-3 py-1.5 text-sm transition-colors cursor-pointer
+      ${indent ? "pl-7" : ""}
+      ${active ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]" : "text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"}`}
+    >
+      <span className="shrink-0 opacity-70"><Folder /></span>
+      <button className="flex-1 text-left truncate text-inherit" onClick={() => onSelect(pin.path)} title={pin.path}>
+        {pin.name}
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        className="hidden group-hover:block text-[var(--color-text-dim)] hover:text-[var(--color-danger)] text-xs px-0.5"
+        title="Retirer des favoris"
+      >✕</button>
+    </div>
+  );
+}
+
+function PlaceRow({ label, path, active, icon, onSelect }: {
+  label: string; path: string; active: boolean; icon: React.ReactNode; onSelect: (p: string) => void;
+}) {
+  return (
+    <button
+      onClick={() => onSelect(path)}
+      className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-left transition-colors
+        ${active ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]" : "text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"}`}
+    >
+      <span className="shrink-0 opacity-80">{icon}</span>
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+function SectionLabel({ children, inline }: { children: React.ReactNode; inline?: boolean }) {
+  const cls = "text-[10px] uppercase tracking-wider text-[var(--color-text-dim)] font-medium";
+  return inline
+    ? <span className={cls}>{children}</span>
+    : <div className={`px-3 pt-3 pb-1 ${cls}`}>{children}</div>;
+}
+
+function IconAction({ title, onClick, danger, children }: {
+  title: string; onClick: () => void; danger?: boolean; children: React.ReactNode;
+}) {
+  return (
+    <button
+      title={title}
+      onClick={onClick}
+      className={`px-1 text-xs rounded transition-colors hover:bg-[var(--color-surface-hover)]
+        ${danger ? "hover:text-[var(--color-danger)]" : "hover:text-[var(--color-text)]"}`}
+    >
+      {children}
+    </button>
   );
 }

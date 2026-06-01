@@ -1,6 +1,7 @@
 // Assemblage du gestionnaire : topbar, sidebar, zone centrale (grille ou éditeur), modals.
 import { useState } from "react";
 import { useFileManager } from "./hooks/useFileManager";
+import { useFavorites } from "./hooks/useFavorites";
 import { Topbar } from "./components/Topbar";
 import { Sidebar } from "./components/Sidebar";
 import { FileGrid } from "./components/FileGrid";
@@ -20,6 +21,7 @@ type Dialog =
 
 export default function App() {
   const fm = useFileManager();
+  const favs = useFavorites();
   const [menu, setMenu] = useState<Menu>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
 
@@ -27,6 +29,11 @@ export default function App() {
     e.preventDefault();
     fm.setSelected(entry.path);
     setMenu({ x: e.clientX, y: e.clientY, entry });
+  };
+
+  const pinCurrent = () => {
+    const name = fm.cwd.split("/").filter(Boolean).pop() ?? fm.cwd;
+    favs.pinPath(fm.cwd, name);
   };
 
   return (
@@ -44,7 +51,13 @@ export default function App() {
       />
 
       <div className="flex-1 flex min-h-0">
-        <Sidebar places={fm.places} cwd={fm.cwd} onSelect={fm.navigate} />
+        <Sidebar
+          favs={favs}
+          places={fm.places}
+          cwd={fm.cwd}
+          onSelect={fm.navigate}
+          onPinCurrent={pinCurrent}
+        />
 
         {fm.mode === "edit" ? (
           <div className="flex-1 flex min-w-0">

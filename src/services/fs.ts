@@ -1,6 +1,6 @@
 // Wrappers typés autour des commandes Tauri (backend Rust).
 import { invoke } from "@tauri-apps/api/core";
-import type { DirListing, FileChunk, Place } from "../types";
+import type { DirListing, Favorites, FileChunk, Place } from "../types";
 
 export function listDir(path: string, showHidden = false): Promise<DirListing> {
   return invoke<DirListing>("list_dir", { path, showHidden });
@@ -28,6 +28,14 @@ export function deleteEntry(path: string): Promise<void> {
 
 export function createDir(path: string, name: string): Promise<string> {
   return invoke<string>("create_dir", { path, name });
+}
+
+export function loadFavorites(): Promise<Favorites> {
+  return invoke<Favorites>("load_favorites");
+}
+
+export function saveFavorites(favorites: Favorites): Promise<void> {
+  return invoke("save_favorites", { favorites });
 }
 
 export function homeDir(): Promise<string> {

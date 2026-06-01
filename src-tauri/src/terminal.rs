@@ -56,6 +56,23 @@ fn reader_loop(app: AppHandle, id: String, mut reader: Box<dyn Read + Send>) {
 }
 
 // Ouvre une session shell dans `cwd` et démarre le thread de lecture. Retourne l'id de session.
+// Liste les shells disponibles (présents dans /etc/shells et existants sur disque).
+#[tauri::command]
+pub fn available_shells() -> Vec<String> {
+    let content = std::fs::read_to_string("/etc/shells").unwrap_or_default();
+    let mut out = Vec::new();
+    for line in content.lines() {
+        let p = line.trim();
+        if p.is_empty() || p.starts_with('#') {
+            continue;
+        }
+        if std::path::Path::new(p).exists() && !out.contains(&p.to_string()) {
+            out.push(p.to_string());
+        }
+    }
+    out
+}
+
 #[tauri::command]
 pub fn term_open(
     app: AppHandle,
@@ -63,12 +80,15 @@ pub fn term_open(
     cwd: String,
     cols: u16,
     rows: u16,
+    shell: Option<String>,
 ) -> Result<String, String> {
     let pair = native_pty_system()
         .openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })
         .map_err(|e| e.to_string())?;
 
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
+    let shell = shell
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into()));
     let mut cmd = CommandBuilder::new(shell);
     cmd.cwd(cwd);
     cmd.env("TERM", "xterm-256color");

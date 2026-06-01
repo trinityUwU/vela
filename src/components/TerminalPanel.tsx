@@ -1,5 +1,5 @@
 // Panneau terminal bas : barre d'onglets + instances xterm.js (une par session PTY).
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -12,10 +12,16 @@ interface Props {
   activeId: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;
+  onNewShell: (shell: string) => void;
+  shells: string[];
   onClose: (id: string) => void;
   onExit: (id: string) => void;
   onFollow: () => void;
   onHide: () => void;
+}
+
+function shellName(path: string): string {
+  return path.split("/").filter(Boolean).pop() || path;
 }
 
 function b64ToBytes(b64: string): Uint8Array {
@@ -27,6 +33,7 @@ function b64ToBytes(b64: string): Uint8Array {
 
 export function TerminalPanel(props: Props) {
   const { tabs, activeId } = props;
+  const [shellMenu, setShellMenu] = useState(false);
   return (
     <div className="flex flex-col h-full bg-[#0b0c10] border-t border-[var(--color-border)]">
       <div className="flex items-center gap-1 h-8 px-2 bg-[var(--color-surface)] border-b border-[var(--color-border)] shrink-0">
@@ -50,10 +57,31 @@ export function TerminalPanel(props: Props) {
               </button>
             </div>
           ))}
-          <button onClick={props.onNew} title="Nouveau terminal"
-            className="h-6 px-2 rounded text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]">
+          <button onClick={props.onNew} title="Nouveau terminal (shell par défaut)"
+            className="h-6 px-1.5 rounded text-sm text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]">
             +
           </button>
+          {props.shells.length > 0 && (
+            <div className="relative">
+              <button onClick={() => setShellMenu((v) => !v)} title="Choisir un shell"
+                className="h-6 px-1 rounded text-[11px] text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]">
+                ▾
+              </button>
+              {shellMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShellMenu(false)} />
+                  <div className="absolute z-50 top-7 left-0 min-w-32 p-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+                    {props.shells.map((s) => (
+                      <button key={s} onClick={() => { props.onNewShell(s); setShellMenu(false); }}
+                        className="w-full text-left px-2 py-1 text-xs rounded text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] font-mono">
+                        {shellName(s)}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
         <button onClick={props.onFollow} title="Suivre le dossier courant"
           className="h-6 px-2 rounded text-[11px] text-[var(--color-text-dim)] hover:text-[var(--color-accent)]">
@@ -106,10 +134,14 @@ function TerminalView({ id, cwd, active, onExit }: {
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.open(ref.current!);
-    try { fit.fit(); } catch { /* conteneur masqué */ }
-    term.write(banner(cwd));
     inst.current = { term, fit };
-    termResize(id, term.cols, term.rows).catch(() => {});
+    term.write(banner(cwd));
+
+    const fitNow = () => {
+      try { fit.fit(); termResize(id, term.cols, term.rows).catch(() => {}); } catch { /* masqué */ }
+    };
+    // Double rAF : la taille finale du conteneur n'est connue qu'après le layout.
+    requestAnimationFrame(() => { fitNow(); requestAnimationFrame(fitNow); });
 
     const onData = term.onData((data) => termInput(id, data).catch(() => {}));
     const unOut = listen<{ id: string; data: string }>("term-output", ({ payload }) => {

@@ -9,7 +9,7 @@ import { useTransfers } from "./hooks/useTransfers";
 import { useTerminals } from "./hooks/useTerminals";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TerminalPanel } from "./components/TerminalPanel";
-import { termInput } from "./services/term";
+import { termInput, availableShells } from "./services/term";
 import { Topbar } from "./components/Topbar";
 import { SearchResults } from "./components/SearchBar";
 import { SortBar } from "./components/SortBar";
@@ -77,8 +77,10 @@ export default function App() {
   const terminals = useTerminals();
   const [termVisible, setTermVisible] = useState(false);
   const [termHeight, setTermHeight] = useState(280);
+  const [shells, setShells] = useState<string[]>([]);
 
   useEffect(() => { trashDir().then(setTrashPath).catch(() => {}); }, []);
+  useEffect(() => { availableShells().then(setShells).catch(() => {}); }, []);
 
   const toggleTerm = useCallback(() => {
     setTermVisible((v) => {
@@ -302,6 +304,8 @@ export default function App() {
               activeId={terminals.activeId}
               onSelect={terminals.setActiveId}
               onNew={newTerm}
+              onNewShell={(s) => terminals.open(fm.cwd, s)}
+              shells={shells}
               onClose={terminals.close}
               onExit={terminals.exit}
               onFollow={followTerm}

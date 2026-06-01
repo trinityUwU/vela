@@ -17,9 +17,9 @@ export function useTerminals() {
   const [tabs, setTabs] = useState<TermTab[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const open = useCallback(async (cwd: string) => {
+  const open = useCallback(async (cwd: string, shell?: string) => {
     try {
-      const id = await termOpen(cwd, 80, 24);
+      const id = await termOpen(cwd, 80, 24, shell);
       setTabs((t) => [...t, { id, title: basename(cwd), cwd }]);
       setActiveId(id);
       return id;

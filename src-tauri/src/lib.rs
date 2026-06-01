@@ -44,6 +44,7 @@ pub fn run() {
             ops::empty_trash,
             watcher::watch_dir,
             thumbs::thumbnail,
+            terminal::available_shells,
             terminal::term_open,
             terminal::term_input,
             terminal::term_resize,

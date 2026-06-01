@@ -1,5 +1,5 @@
 // Assemblage du gestionnaire : topbar, sidebar, zone centrale (grille ou éditeur), modals.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFileManager } from "./hooks/useFileManager";
 import { useFavorites } from "./hooks/useFavorites";
 import { useSearch } from "./hooks/useSearch";
@@ -133,17 +133,13 @@ export default function App() {
     [fm.listing, sort],
   );
 
+  const gridCols = useRef(1);
   const moveSel = useCallback((delta: number) => {
     if (!entries.length) return;
     const i = entries.findIndex((e) => e.path === fm.selected);
     const next = i < 0 ? (delta > 0 ? 0 : entries.length - 1) : Math.max(0, Math.min(entries.length - 1, i + delta));
     fm.selectOne(entries[next].path);
   }, [entries, fm.selected, fm.selectOne]);
-
-  const activateSel = useCallback(() => {
-    const e = entries.find((x) => x.path === fm.selected);
-    if (e) fm.openEntry(e);
-  }, [entries, fm.selected, fm.openEntry]);
 
   const onSelect = (entry: DirEntry, e: React.MouseEvent) => {
     if (e.shiftKey) fm.rangeSelect(entry.path, entries);
@@ -243,10 +239,10 @@ export default function App() {
     onUndo: undo.undo,
     onBack: fm.goBack,
     onForward: fm.goForward,
-    onActivate: activateSel,
     onMoveSelection: (delta, axis) => {
-      if ((view === "list" || fm.mode === "edit") && axis === "x") return;
-      moveSel(delta);
+      const grid = view === "grid" && fm.mode === "files";
+      if (!grid) { if (axis === "x") return; moveSel(delta); return; }
+      moveSel(axis === "y" ? delta * gridCols.current : delta);
     },
   });
 
@@ -342,6 +338,7 @@ export default function App() {
           <FileTable
             entries={entries}
             selection={fm.selection}
+            active={fm.selected}
             sort={sort}
             onToggleBy={toggleBy}
             onSelect={onSelect}
@@ -356,12 +353,14 @@ export default function App() {
           <FileGrid
             entries={entries}
             selection={fm.selection}
+            active={fm.selected}
             onSelect={onSelect}
             onOpen={fm.openEntry}
             onContext={onContext}
             onContextBg={onContextBg}
             onClearBg={fm.clearSelection}
             onMove={fm.moveEntry}
+            onColumns={(c) => { gridCols.current = c; }}
             colorOf={tagHex}
           />
         )}

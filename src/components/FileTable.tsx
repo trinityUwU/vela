@@ -1,5 +1,5 @@
 // Vue liste détaillée du mode Fichiers : colonnes Nom/Taille/Date/Type, tri au clic d'en-tête.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DirEntry } from "../types";
 import type { SortBy, SortState } from "../hooks/useSort";
 import { FileIcon } from "./FileIcon";
@@ -7,6 +7,7 @@ import { FileIcon } from "./FileIcon";
 interface Props {
   entries: DirEntry[];
   selection: Set<string>;
+  active: string | null;
   sort: SortState;
   onToggleBy: (by: SortBy) => void;
   onSelect: (entry: DirEntry, e: React.MouseEvent) => void;
@@ -42,7 +43,7 @@ const COLS: { by: SortBy; label: string; className: string }[] = [
 ];
 
 export function FileTable(props: Props) {
-  const { entries, selection, sort, onToggleBy, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, colorOf } = props;
+  const { entries, selection, active, sort, onToggleBy, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, colorOf } = props;
   const handleBg = (e: React.MouseEvent) => { e.preventDefault(); onContextBg(e); };
   const arrow = (by: SortBy) => (sort.by === by ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
 
@@ -67,6 +68,7 @@ export function FileTable(props: Props) {
               key={e.path}
               entry={e}
               selected={selection.has(e.path)}
+              active={active === e.path}
               color={colorOf(e.path)}
               onSelect={onSelect}
               onOpen={onOpen}
@@ -80,9 +82,10 @@ export function FileTable(props: Props) {
   );
 }
 
-function Row({ entry, selected, color, onSelect, onOpen, onContext, onMove }: {
+function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onMove }: {
   entry: DirEntry;
   selected: boolean;
+  active: boolean;
   color?: string;
   onSelect: (e: DirEntry, ev: React.MouseEvent) => void;
   onOpen: (e: DirEntry) => void;
@@ -90,6 +93,14 @@ function Row({ entry, selected, color, onSelect, onOpen, onContext, onMove }: {
   onMove: (src: string, destDir: string) => void;
 }) {
   const [dragOver, setDragOver] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (active && btnRef.current) {
+      btnRef.current.focus({ preventScroll: true });
+      btnRef.current.scrollIntoView({ block: "nearest" });
+    }
+  }, [active]);
   const handleDrop = (e: React.DragEvent) => {
     if (!entry.is_dir) return;
     e.preventDefault();
@@ -100,6 +111,7 @@ function Row({ entry, selected, color, onSelect, onOpen, onContext, onMove }: {
 
   return (
     <button
+      ref={btnRef}
       draggable
       onDragStart={(e) => { e.dataTransfer.setData("application/vela", entry.path); e.dataTransfer.effectAllowed = "move"; }}
       onDragOver={(e) => { if (entry.is_dir) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOver(true); } }}
@@ -107,6 +119,7 @@ function Row({ entry, selected, color, onSelect, onOpen, onContext, onMove }: {
       onDrop={handleDrop}
       onClick={(ev) => onSelect(entry, ev)}
       onDoubleClick={() => onOpen(entry)}
+      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onOpen(entry); } }}
       onContextMenu={(ev) => { ev.stopPropagation(); onContext(ev, entry); }}
       title={entry.name}
       className={`w-full flex items-center gap-3 px-3 py-1 text-left transition-colors ${

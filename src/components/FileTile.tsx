@@ -1,5 +1,5 @@
 // Tuile fichier/dossier : icône typée + nom. Drag source, drop target si dossier.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DirEntry } from "../types";
 import { FileIcon } from "./FileIcon";
 import { previewKind } from "../services/file-kind";
@@ -8,6 +8,7 @@ import { useThumbnail } from "../hooks/useThumbnail";
 interface Props {
   entry: DirEntry;
   selected: boolean;
+  active: boolean;
   color?: string;
   onClick: (e: React.MouseEvent) => void;
   onDouble: () => void;
@@ -15,10 +16,18 @@ interface Props {
   onMove: (src: string, destDir: string) => void;
 }
 
-export function FileTile({ entry, selected, color, onClick, onDouble, onContext, onMove }: Props) {
+export function FileTile({ entry, selected, active, color, onClick, onDouble, onContext, onMove }: Props) {
   const [dragOver, setDragOver] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const isImage = !entry.is_dir && previewKind(entry.extension) === "image";
   const thumb = useThumbnail(entry.path, isImage);
+
+  useEffect(() => {
+    if (active && btnRef.current) {
+      btnRef.current.focus({ preventScroll: true });
+      btnRef.current.scrollIntoView({ block: "nearest" });
+    }
+  }, [active]);
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("application/vela", entry.path);
@@ -43,7 +52,7 @@ export function FileTile({ entry, selected, color, onClick, onDouble, onContext,
 
   return (
     <button
-      ref={thumb.ref}
+      ref={(el) => { btnRef.current = el; thumb.ref.current = el; }}
       draggable
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
@@ -51,6 +60,7 @@ export function FileTile({ entry, selected, color, onClick, onDouble, onContext,
       onDrop={handleDrop}
       onClick={onClick}
       onDoubleClick={onDouble}
+      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onDouble(); } }}
       onContextMenu={(e) => { e.stopPropagation(); onContext(e); }}
       title={entry.name}
       className={`flex flex-col items-center gap-1.5 w-24 p-2 rounded-lg transition-colors ${

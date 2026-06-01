@@ -3,8 +3,10 @@ import { useState } from "react";
 import { useFileManager } from "./hooks/useFileManager";
 import { useFavorites } from "./hooks/useFavorites";
 import { useSearch } from "./hooks/useSearch";
+import { useSort, applySortFilter } from "./hooks/useSort";
 import { Topbar } from "./components/Topbar";
 import { SearchResults } from "./components/SearchBar";
+import { SortBar } from "./components/SortBar";
 import { Sidebar } from "./components/Sidebar";
 import { FileGrid } from "./components/FileGrid";
 import { FileList } from "./components/FileList";
@@ -21,6 +23,7 @@ type BgMenu = { x: number; y: number } | null;
 type Dialog =
   | { kind: "rename"; entry: DirEntry }
   | { kind: "newfolder" }
+  | { kind: "newfile" }
   | { kind: "delete"; entry: DirEntry }
   | { kind: "props"; entry: DirEntry }
   | null;
@@ -29,9 +32,12 @@ export default function App() {
   const fm = useFileManager();
   const favs = useFavorites();
   const search = useSearch(fm.cwd);
+  const { sort, toggleBy, update: updateSort } = useSort();
   const [menu, setMenu] = useState<Menu>(null);
   const [bgMenu, setBgMenu] = useState<BgMenu>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
+
+  const entries = applySortFilter(fm.listing?.entries ?? [], sort);
 
   const onContext = (e: React.MouseEvent, entry: DirEntry) => {
     e.preventDefault();
@@ -88,6 +94,13 @@ export default function App() {
         />
       )}
 
+      <SortBar
+        sort={sort}
+        onToggleBy={toggleBy}
+        onFilter={(f) => updateSort({ filter: f })}
+        onToggleDirsFirst={() => updateSort({ dirsFirst: !sort.dirsFirst })}
+      />
+
       <div className="flex-1 flex min-h-0">
         <Sidebar
           favs={favs}
@@ -101,7 +114,7 @@ export default function App() {
         {fm.mode === "edit" ? (
           <div className="flex-1 flex min-w-0">
             <FileList
-              entries={fm.listing?.entries ?? []}
+              entries={entries}
               selected={fm.selected}
               onSelect={fm.previewEntry}
               onOpen={fm.openEntry}
@@ -119,7 +132,7 @@ export default function App() {
           </div>
         ) : (
           <FileGrid
-            entries={fm.listing?.entries ?? []}
+            entries={entries}
             selected={fm.selected}
             onSelect={fm.setSelected}
             onOpen={fm.openEntry}
@@ -154,6 +167,7 @@ export default function App() {
           y={bgMenu.y}
           showHidden={fm.showHidden}
           onClose={() => setBgMenu(null)}
+          onNewFile={() => { setDialog({ kind: "newfile" }); setBgMenu(null); }}
           onNewFolder={() => { setDialog({ kind: "newfolder" }); setBgMenu(null); }}
           onRefresh={() => { fm.refresh(); setBgMenu(null); }}
           onToggleHidden={() => { fm.toggleHidden(); setBgMenu(null); }}
@@ -175,6 +189,15 @@ export default function App() {
           title="Nouveau dossier"
           confirmLabel="Créer"
           onSubmit={(name) => { fm.newFolder(name); setDialog(null); }}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === "newfile" && (
+        <InputModal
+          title="Nouveau fichier"
+          confirmLabel="Créer"
+          placeholder="nom.txt"
+          onSubmit={(name) => { fm.createFile(name); setDialog(null); }}
           onCancel={() => setDialog(null)}
         />
       )}

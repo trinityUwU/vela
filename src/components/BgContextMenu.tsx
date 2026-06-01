@@ -6,6 +6,7 @@ interface Props {
   y: number;
   showHidden: boolean;
   onClose: () => void;
+  onNewFile: () => void;
   onNewFolder: () => void;
   onRefresh: () => void;
   onToggleHidden: () => void;
@@ -13,7 +14,7 @@ interface Props {
   onProperties: () => void;
 }
 
-export function BgContextMenu({ x, y, showHidden, onClose, onNewFolder, onRefresh, onToggleHidden, onPinCurrent, onProperties }: Props) {
+export function BgContextMenu({ x, y, showHidden, onClose, onNewFile, onNewFolder, onRefresh, onToggleHidden, onPinCurrent, onProperties }: Props) {
   useEffect(() => {
     window.addEventListener("click", onClose);
     return () => window.removeEventListener("click", onClose);
@@ -24,6 +25,7 @@ export function BgContextMenu({ x, y, showHidden, onClose, onNewFolder, onRefres
       style={{ top: y, left: x }}
       className="fixed z-50 min-w-52 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
     >
+      <Item label="Nouveau fichier" onClick={onNewFile} />
       <Item label="Nouveau dossier" onClick={onNewFolder} />
       <Item label="Actualiser" onClick={onRefresh} />
       <Divider />

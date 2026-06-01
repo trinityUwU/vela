@@ -5,11 +5,12 @@ interface Props {
   title: string;
   initial?: string;
   confirmLabel?: string;
+  placeholder?: string;
   onSubmit: (value: string) => void;
   onCancel: () => void;
 }
 
-export function InputModal({ title, initial = "", confirmLabel = "Valider", onSubmit, onCancel }: Props) {
+export function InputModal({ title, initial = "", confirmLabel = "Valider", placeholder, onSubmit, onCancel }: Props) {
   const [value, setValue] = useState(initial);
   const ref = useRef<HTMLInputElement>(null);
 
@@ -34,7 +35,8 @@ export function InputModal({ title, initial = "", confirmLabel = "Valider", onSu
           if (e.key === "Enter") submit();
           if (e.key === "Escape") onCancel();
         }}
-        className="w-full px-3 py-2 rounded-md bg-[var(--color-bg)] border border-[var(--color-border)] text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
+        placeholder={placeholder}
+        className="w-full px-3 py-2 rounded-md bg-[var(--color-bg)] border border-[var(--color-border)] text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-dim)]"
       />
       <div className="flex justify-end gap-2 mt-4">
         <Btn onClick={onCancel}>Annuler</Btn>

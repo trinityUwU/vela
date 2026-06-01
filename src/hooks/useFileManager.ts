@@ -118,6 +118,18 @@ export function useFileManager() {
     [cwd, refresh],
   );
 
+  const createFile = useCallback(
+    async (name: string) => {
+      try {
+        await fs.writeFile(`${cwd}/${name}`, "");
+        await refresh();
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [cwd, refresh],
+  );
+
   const moveEntry = useCallback(
     async (src: string, destDir: string) => {
       try {
@@ -140,6 +152,6 @@ export function useFileManager() {
     showHidden, toggleHidden,
     error, setError,
     navigate, openEntry, previewEntry, goUp, refresh,
-    rename, remove, newFolder, moveEntry,
+    rename, remove, newFolder, createFile, moveEntry,
   };
 }

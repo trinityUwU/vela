@@ -12,6 +12,7 @@ import { Editor } from "./components/Editor";
 import { ContextMenu } from "./components/ContextMenu";
 import { InputModal } from "./components/InputModal";
 import { ConfirmModal } from "./components/ConfirmModal";
+import { PropertiesModal } from "./components/PropertiesModal";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
@@ -19,6 +20,7 @@ type Dialog =
   | { kind: "rename"; entry: DirEntry }
   | { kind: "newfolder" }
   | { kind: "delete"; entry: DirEntry }
+  | { kind: "props"; entry: DirEntry }
   | null;
 
 export default function App() {
@@ -51,6 +53,7 @@ export default function App() {
         onToggleHidden={fm.toggleHidden}
         onNewFolder={() => setDialog({ kind: "newfolder" })}
         onCrumb={fm.navigate}
+        onMove={fm.moveEntry}
         searchOpen={search.open}
         searchQuery={search.query}
         onSearchOpen={() => search.setOpen(true)}
@@ -74,6 +77,7 @@ export default function App() {
           cwd={fm.cwd}
           onSelect={fm.navigate}
           onPinCurrent={pinCurrent}
+          onMove={fm.moveEntry}
         />
 
         {fm.mode === "edit" ? (
@@ -84,6 +88,7 @@ export default function App() {
               onSelect={fm.previewEntry}
               onOpen={fm.openEntry}
               onContext={onContext}
+              onMove={fm.moveEntry}
             />
             {fm.opened ? (
               <Editor entry={fm.opened} onClose={() => fm.setOpened(null)} onError={fm.setError} onNavigate={fm.navigate} />
@@ -100,6 +105,7 @@ export default function App() {
             onSelect={fm.setSelected}
             onOpen={fm.openEntry}
             onContext={onContext}
+            onMove={fm.moveEntry}
           />
         )}
       </div>
@@ -118,6 +124,7 @@ export default function App() {
           onOpen={() => { fm.openEntry(menu.entry); setMenu(null); }}
           onRename={() => { setDialog({ kind: "rename", entry: menu.entry }); setMenu(null); }}
           onDelete={() => { setDialog({ kind: "delete", entry: menu.entry }); setMenu(null); }}
+          onProperties={() => { setDialog({ kind: "props", entry: menu.entry }); setMenu(null); }}
         />
       )}
 
@@ -143,6 +150,9 @@ export default function App() {
           onConfirm={() => { fm.remove(dialog.entry.path); setDialog(null); }}
           onCancel={() => setDialog(null)}
         />
+      )}
+      {dialog?.kind === "props" && (
+        <PropertiesModal entry={dialog.entry} onClose={() => setDialog(null)} />
       )}
     </div>
   );

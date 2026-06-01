@@ -6,6 +6,14 @@ export function openNative(path: string): Promise<void> {
   return invoke("open_native", { path });
 }
 
+export function moveEntry(src: string, destDir: string): Promise<void> {
+  return invoke("move_entry", { src, destDir });
+}
+
+export function getEntryProps(path: string): Promise<import("../types").EntryProps> {
+  return invoke("get_entry_props", { path });
+}
+
 export function listDir(path: string, showHidden = false): Promise<DirListing> {
   return invoke<DirListing>("list_dir", { path, showHidden });
 }

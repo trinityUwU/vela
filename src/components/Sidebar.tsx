@@ -1,5 +1,5 @@
 // Sidebar : Favoris (pins libres + groupes) · Emplacements XDG · Montages.
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import type { FavPin, Place } from "../types";
 import type { useFavorites } from "../hooks/useFavorites";
 import { Home, Folder, Drive } from "./icons";
@@ -12,21 +12,22 @@ interface Props {
   cwd: string;
   onSelect: (path: string) => void;
   onPinCurrent: () => void;
+  onMove: (src: string, destDir: string) => void;
 }
 
-export function Sidebar({ favs, places, cwd, onSelect, onPinCurrent }: Props) {
+export function Sidebar({ favs, places, cwd, onSelect, onPinCurrent, onMove }: Props) {
   const xdg = places.filter((p) => p.kind !== "mount");
   const mounts = places.filter((p) => p.kind === "mount");
 
   return (
     <aside className="w-56 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] overflow-y-auto flex flex-col">
-      <FavSection favs={favs} cwd={cwd} onSelect={onSelect} onPinCurrent={onPinCurrent} />
+      <FavSection favs={favs} cwd={cwd} onSelect={onSelect} onPinCurrent={onPinCurrent} onMove={onMove} />
       {xdg.length > 0 && (
         <>
           <SectionLabel>Emplacements</SectionLabel>
           {xdg.map((p) => (
             <PlaceRow key={p.path} label={p.name} path={p.path} active={cwd === p.path}
-              icon={p.kind === "home" ? <Home /> : <Folder />} onSelect={onSelect} />
+              icon={p.kind === "home" ? <Home /> : <Folder />} onSelect={onSelect} onMove={onMove} />
           ))}
         </>
       )}
@@ -35,7 +36,7 @@ export function Sidebar({ favs, places, cwd, onSelect, onPinCurrent }: Props) {
           <SectionLabel>Montages</SectionLabel>
           {mounts.map((p) => (
             <PlaceRow key={p.path} label={p.name} path={p.path} active={cwd === p.path}
-              icon={<Drive />} onSelect={onSelect} />
+              icon={<Drive />} onSelect={onSelect} onMove={onMove} />
           ))}
         </>
       )}
@@ -43,8 +44,8 @@ export function Sidebar({ favs, places, cwd, onSelect, onPinCurrent }: Props) {
   );
 }
 
-function FavSection({ favs, cwd, onSelect, onPinCurrent }: {
-  favs: Favs; cwd: string; onSelect: (p: string) => void; onPinCurrent: () => void;
+function FavSection({ favs, cwd, onSelect, onPinCurrent, onMove }: {
+  favs: Favs; cwd: string; onSelect: (p: string) => void; onPinCurrent: () => void; onMove: (src: string, destDir: string) => void;
 }) {
   const [addingGroup, setAddingGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -68,7 +69,7 @@ function FavSection({ favs, cwd, onSelect, onPinCurrent }: {
 
       {favs.favs.pins.map((pin) => (
         <PinRow key={pin.path} pin={pin} active={cwd === pin.path} onSelect={onSelect}
-          onRemove={() => favs.unpin(pin.path)} />
+          onRemove={() => favs.unpin(pin.path)} onMove={onMove} />
       ))}
 
       {favs.favs.groups.map((g, gi) => (
@@ -82,7 +83,7 @@ function FavSection({ favs, cwd, onSelect, onPinCurrent }: {
           />
           {!g.collapsed && g.pins.map((pin) => (
             <PinRow key={pin.path} pin={pin} active={cwd === pin.path} onSelect={onSelect}
-              onRemove={() => favs.unpin(pin.path, gi)} indent />
+              onRemove={() => favs.unpin(pin.path, gi)} onMove={onMove} indent />
           ))}
         </div>
       ))}
@@ -123,13 +124,31 @@ function GroupHeader({ name, collapsed, onToggle, onRemove, onPin }: {
   );
 }
 
-function PinRow({ pin, active, onSelect, onRemove, indent }: {
-  pin: FavPin; active: boolean; onSelect: (p: string) => void; onRemove: () => void; indent?: boolean;
+function useDrop(destPath: string, onMove: (src: string, dest: string) => void) {
+  const [dragOver, setDragOver] = useState(false);
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOver(true);
+  }, []);
+  const onDragLeave = useCallback(() => setDragOver(false), []);
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false);
+    const src = e.dataTransfer.getData("application/vela");
+    if (src && src !== destPath) onMove(src, destPath);
+  }, [destPath, onMove]);
+  return { dragOver, onDragOver, onDragLeave, onDrop };
+}
+
+function PinRow({ pin, active, onSelect, onRemove, onMove, indent }: {
+  pin: FavPin; active: boolean; onSelect: (p: string) => void; onRemove: () => void;
+  onMove: (src: string, dest: string) => void; indent?: boolean;
 }) {
+  const drop = useDrop(pin.path, onMove);
   return (
-    <div className={`group flex items-center gap-2 px-3 py-1.5 text-sm transition-colors cursor-pointer
-      ${indent ? "pl-7" : ""}
-      ${active ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]" : "text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"}`}
+    <div
+      {...drop}
+      className={`group flex items-center gap-2 px-3 py-1.5 text-sm transition-colors cursor-pointer
+        ${indent ? "pl-7" : ""}
+        ${drop.dragOver ? "bg-[var(--color-accent-dim)]/20 ring-1 ring-[var(--color-accent)] ring-inset" : active ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]" : "text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"}`}
     >
       <span className="shrink-0 opacity-70"><Folder /></span>
       <button className="flex-1 text-left truncate text-inherit" onClick={() => onSelect(pin.path)} title={pin.path}>
@@ -144,14 +163,17 @@ function PinRow({ pin, active, onSelect, onRemove, indent }: {
   );
 }
 
-function PlaceRow({ label, path, active, icon, onSelect }: {
-  label: string; path: string; active: boolean; icon: React.ReactNode; onSelect: (p: string) => void;
+function PlaceRow({ label, path, active, icon, onSelect, onMove }: {
+  label: string; path: string; active: boolean; icon: React.ReactNode;
+  onSelect: (p: string) => void; onMove: (src: string, dest: string) => void;
 }) {
+  const drop = useDrop(path, onMove);
   return (
     <button
+      {...drop}
       onClick={() => onSelect(path)}
       className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-left transition-colors
-        ${active ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]" : "text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"}`}
+        ${drop.dragOver ? "bg-[var(--color-accent-dim)]/20 ring-1 ring-[var(--color-accent)] ring-inset" : active ? "bg-[var(--color-surface-hover)] text-[var(--color-text)]" : "text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"}`}
     >
       <span className="shrink-0 opacity-80">{icon}</span>
       <span className="truncate">{label}</span>

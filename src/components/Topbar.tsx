@@ -14,6 +14,7 @@ interface Props {
   onToggleHidden: () => void;
   onNewFolder: () => void;
   onCrumb: (path: string) => void;
+  onMove: (src: string, destDir: string) => void;
   searchOpen: boolean;
   searchQuery: string;
   onSearchOpen: () => void;
@@ -33,7 +34,7 @@ function crumbs(path: string): { label: string; path: string }[] {
 }
 
 export function Topbar(props: Props) {
-  const { mode, onMode, path, searchOpen } = props;
+  const { mode, onMode, path, searchOpen, onMove } = props;
   return (
     <div
       data-tauri-drag-region
@@ -61,7 +62,7 @@ export function Topbar(props: Props) {
       {searchOpen ? (
         <SearchInput query={props.searchQuery} onChange={props.onSearchQuery} onClose={props.onSearchClose} />
       ) : (
-        <PathBar path={path} onSubmit={props.onCrumb} />
+        <PathBar path={path} onSubmit={props.onCrumb} onMove={onMove} />
       )}
 
       <IconBtn onClick={searchOpen ? props.onSearchClose : props.onSearchOpen} active={searchOpen} title="Rechercher">
@@ -75,9 +76,14 @@ export function Topbar(props: Props) {
   );
 }
 
-function PathBar({ path, onSubmit }: { path: string; onSubmit: (p: string) => void }) {
+function PathBar({ path, onSubmit, onMove }: {
+  path: string;
+  onSubmit: (p: string) => void;
+  onMove: (src: string, destDir: string) => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(path);
+  const [dragOver, setDragOver] = useState<string | null>(null);
   const ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -118,7 +124,17 @@ function PathBar({ path, onSubmit }: { path: string; onSubmit: (p: string) => vo
           {i > 0 && <span className="opacity-40">/</span>}
           <button
             onClick={(e) => { e.stopPropagation(); onSubmit(c.path); }}
-            className="hover:text-[var(--color-text)] transition-colors"
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOver(c.path); }}
+            onDragLeave={() => setDragOver(null)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(null);
+              const src = e.dataTransfer.getData("application/vela");
+              if (src && src !== c.path) onMove(src, c.path);
+            }}
+            className={`hover:text-[var(--color-text)] transition-colors px-0.5 rounded ${
+              dragOver === c.path ? "text-[var(--color-accent)] bg-[var(--color-accent-dim)]/20" : ""
+            }`}
           >
             {c.label}
           </button>

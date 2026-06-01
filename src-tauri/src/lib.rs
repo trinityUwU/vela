@@ -19,6 +19,8 @@ pub fn run() {
             fs_ops::search_dir,
             fs_ops::read_file_base64,
             fs_ops::open_native,
+            fs_ops::move_entry,
+            fs_ops::get_entry_props,
             places::home_dir,
             places::list_places,
             favorites::load_favorites,

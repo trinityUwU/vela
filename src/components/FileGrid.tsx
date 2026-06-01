@@ -8,9 +8,10 @@ interface Props {
   onSelect: (path: string) => void;
   onOpen: (entry: DirEntry) => void;
   onContext: (e: React.MouseEvent, entry: DirEntry) => void;
+  onMove: (src: string, destDir: string) => void;
 }
 
-export function FileGrid({ entries, selected, onSelect, onOpen, onContext }: Props) {
+export function FileGrid({ entries, selected, onSelect, onOpen, onContext, onMove }: Props) {
   if (entries.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)]">
@@ -29,6 +30,7 @@ export function FileGrid({ entries, selected, onSelect, onOpen, onContext }: Pro
             onClick={() => onSelect(e.path)}
             onDouble={() => onOpen(e)}
             onContext={(ev) => onContext(ev, e)}
+            onMove={onMove}
           />
         ))}
       </div>

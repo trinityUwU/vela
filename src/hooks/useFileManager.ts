@@ -118,6 +118,18 @@ export function useFileManager() {
     [cwd, refresh],
   );
 
+  const moveEntry = useCallback(
+    async (src: string, destDir: string) => {
+      try {
+        await fs.moveEntry(src, destDir);
+        await refresh();
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [refresh],
+  );
+
   const toggleHidden = useCallback(() => setShowHidden((v) => !v), []);
 
   return {
@@ -128,6 +140,6 @@ export function useFileManager() {
     showHidden, toggleHidden,
     error, setError,
     navigate, openEntry, previewEntry, goUp, refresh,
-    rename, remove, newFolder,
+    rename, remove, newFolder, moveEntry,
   };
 }

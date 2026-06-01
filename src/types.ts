@@ -44,6 +44,17 @@ export interface Place {
   kind: "home" | "dir" | "mount";
 }
 
+export interface EntryProps {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  size: number;
+  modified: number;
+  permissions: string;
+  permissions_octal: number;
+  extension: string;
+}
+
 export interface ArchiveEntry {
   name: string;
   size: number;

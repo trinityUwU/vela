@@ -206,6 +206,108 @@ fn walk_search(dir: &Path, query: &str, out: &mut Vec<DirEntry>) {
     }
 }
 
+// Déplace src dans dest_dir. Refuse si dest_dir est un descendant de src.
+#[tauri::command]
+pub fn move_entry(src: String, dest_dir: String) -> Result<(), String> {
+    let src_path = Path::new(&src);
+    let dest_dir_path = Path::new(&dest_dir);
+    if dest_dir_path.starts_with(src_path) {
+        return Err("Impossible de déplacer un dossier dans lui-même".to_string());
+    }
+    let name = src_path
+        .file_name()
+        .ok_or_else(|| "Nom de fichier invalide".to_string())?;
+    let dest = dest_dir_path.join(name);
+    if dest.exists() {
+        return Err(format!(
+            "«{}» existe déjà dans ce dossier",
+            name.to_string_lossy()
+        ));
+    }
+    fs::rename(&src, &dest).map_err(|e| {
+        eprintln!("[move_entry] {src} -> {dest_dir}: {e}");
+        e.to_string()
+    })
+}
+
+#[derive(Serialize)]
+pub struct EntryProps {
+    pub name: String,
+    pub path: String,
+    pub is_dir: bool,
+    pub size: u64,
+    pub modified: u64,
+    pub permissions: String,
+    pub permissions_octal: u32,
+    pub extension: String,
+}
+
+#[tauri::command]
+pub async fn get_entry_props(path: String) -> Result<EntryProps, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        use std::os::unix::fs::PermissionsExt;
+        let p = Path::new(&path);
+        let meta = p.symlink_metadata().map_err(|e| e.to_string())?;
+        let mode = meta.permissions().mode();
+        let name = p
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let extension = compound_extension(&name);
+        let modified = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let size = if meta.is_dir() {
+            dir_size_recursive(p)
+        } else {
+            meta.len()
+        };
+        Ok(EntryProps {
+            name,
+            path,
+            is_dir: meta.is_dir(),
+            size,
+            modified,
+            permissions: format_permissions(mode),
+            permissions_octal: mode & 0o777,
+            extension,
+        })
+    })
+    .await
+    .unwrap_or_else(|e| Err(e.to_string()))
+}
+
+fn dir_size_recursive(dir: &Path) -> u64 {
+    let Ok(read) = fs::read_dir(dir) else { return 0 };
+    read.filter_map(|e| e.ok())
+        .map(|e| {
+            let p = e.path();
+            match p.symlink_metadata() {
+                Ok(m) if m.is_dir() => dir_size_recursive(&p),
+                Ok(m) => m.len(),
+                Err(_) => 0,
+            }
+        })
+        .sum()
+}
+
+fn format_permissions(mode: u32) -> String {
+    let prefix = if mode & 0o40000 != 0 { 'd' } else { '-' };
+    let bits = [
+        (0o400, 'r'), (0o200, 'w'), (0o100, 'x'),
+        (0o040, 'r'), (0o020, 'w'), (0o010, 'x'),
+        (0o004, 'r'), (0o002, 'w'), (0o001, 'x'),
+    ];
+    let perms: String = bits
+        .iter()
+        .map(|(b, c)| if mode & b != 0 { *c } else { '-' })
+        .collect();
+    format!("{}{}", prefix, perms)
+}
+
 // Ouvre un fichier avec l'application système par défaut (xdg-open).
 #[tauri::command]
 pub fn open_native(path: String) -> Result<(), String> {

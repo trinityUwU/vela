@@ -1,6 +1,5 @@
 // État central du gestionnaire : navigation, listing, mode, sélection, ouverture, ops CRUD.
 import { useCallback, useEffect, useState } from "react";
-import { openPath } from "@tauri-apps/plugin-opener";
 import * as fs from "../services/fs";
 import { isEditable } from "../services/file-kind";
 import type { DirEntry, DirListing, Mode, Place } from "../types";
@@ -52,7 +51,7 @@ export function useFileManager() {
         return;
       }
       try {
-        await openPath(entry.path);
+        await fs.openNative(entry.path);
       } catch (e) {
         setError(String(e));
       }

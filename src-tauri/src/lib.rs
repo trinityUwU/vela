@@ -18,6 +18,7 @@ pub fn run() {
             fs_ops::create_dir,
             fs_ops::search_dir,
             fs_ops::read_file_base64,
+            fs_ops::open_native,
             places::home_dir,
             places::list_places,
             favorites::load_favorites,

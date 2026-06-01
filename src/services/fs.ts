@@ -2,6 +2,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { DirListing, Favorites, FileChunk, Place } from "../types";
 
+export function openNative(path: string): Promise<void> {
+  return invoke("open_native", { path });
+}
+
 export function listDir(path: string, showHidden = false): Promise<DirListing> {
   return invoke<DirListing>("list_dir", { path, showHidden });
 }

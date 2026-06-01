@@ -206,6 +206,19 @@ fn walk_search(dir: &Path, query: &str, out: &mut Vec<DirEntry>) {
     }
 }
 
+// Ouvre un fichier avec l'application système par défaut (xdg-open).
+#[tauri::command]
+pub fn open_native(path: String) -> Result<(), String> {
+    std::process::Command::new("xdg-open")
+        .arg(&path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| {
+            eprintln!("[open_native] {path}: {e}");
+            e.to_string()
+        })
+}
+
 // Lecture binaire d'un fichier encodé en base64 (pour SheetJS côté front).
 #[tauri::command]
 pub fn read_file_base64(path: String) -> Result<String, String> {

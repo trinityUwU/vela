@@ -1,14 +1,16 @@
 // Mode Édition : éditeur central. Édite+sauve les petits fichiers, lit par chunks les volumineux.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
+import { search, openSearchPanel, closeSearchPanel } from "@codemirror/search";
+import type { EditorView } from "@codemirror/view";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import * as fs from "../services/fs";
 import { useFileContent } from "../hooks/useFileContent";
 import { langExtension, previewKind } from "../services/file-kind";
 import type { DirEntry } from "../types";
-import { Save, Eye, Code } from "./icons";
+import { Save, Eye, Code, Search } from "./icons";
 
 interface Props {
   entry: DirEntry;
@@ -26,12 +28,27 @@ export function Editor({ entry, onClose, onError }: Props) {
   const file = useFileContent(entry.path, entry.size, onError);
   const [dirty, setDirty] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [searchOn, setSearchOn] = useState(false);
+  const viewRef = useRef<EditorView | null>(null);
   const isMd = previewKind(entry.extension) === "markdown";
 
   useEffect(() => {
     setDirty(false);
     setPreview(false);
+    setSearchOn(false);
   }, [entry.path]);
+
+  const toggleSearch = useCallback(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    if (searchOn) {
+      closeSearchPanel(view);
+      setSearchOn(false);
+    } else {
+      openSearchPanel(view);
+      setSearchOn(true);
+    }
+  }, [searchOn]);
 
   const save = useCallback(async () => {
     if (!file.editable) return;
@@ -45,14 +62,12 @@ export function Editor({ entry, onClose, onError }: Props) {
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        save();
-      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") { e.preventDefault(); toggleSearch(); }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [save]);
+  }, [save, toggleSearch]);
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
@@ -61,6 +76,11 @@ export function Editor({ entry, onClose, onError }: Props) {
         {dirty && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" title="Non sauvegardé" />}
         <span className="text-[11px] text-[var(--color-text-dim)]">{fmtSize(entry.size)}</span>
         <div className="flex-1" />
+        {!preview && (
+          <HBtn onClick={toggleSearch} active={searchOn} title="Rechercher dans le fichier (Ctrl+F)">
+            <Search />
+          </HBtn>
+        )}
         {file.editable && isMd && (
           <HBtn onClick={() => setPreview((v) => !v)} active={preview} title="Aperçu">
             {preview ? <Code /> : <Eye />}
@@ -79,15 +99,10 @@ export function Editor({ entry, onClose, onError }: Props) {
 
       {!file.editable && (
         <div className="flex items-center justify-between gap-3 px-3 py-1.5 text-[11px] bg-[var(--color-accent-dim)]/20 border-b border-[var(--color-border)] text-[var(--color-text-dim)]">
-          <span>
-            Fichier volumineux — lecture seule · {fmtSize(file.offset)} / {fmtSize(file.totalSize)} chargés
-          </span>
+          <span>Fichier volumineux — lecture seule · {fmtSize(file.offset)} / {fmtSize(file.totalSize)} chargés</span>
           {!file.eof && (
-            <button
-              onClick={file.loadMore}
-              disabled={file.loading}
-              className="px-2 py-0.5 rounded bg-[var(--color-surface-hover)] text-[var(--color-text)] disabled:opacity-50"
-            >
+            <button onClick={file.loadMore} disabled={file.loading}
+              className="px-2 py-0.5 rounded bg-[var(--color-surface-hover)] text-[var(--color-text)] disabled:opacity-50">
               {file.loading ? "…" : "Charger la suite"}
             </button>
           )}
@@ -108,8 +123,15 @@ export function Editor({ entry, onClose, onError }: Props) {
           height="100%"
           theme={vscodeDark}
           editable={file.editable}
-          extensions={file.editable ? langExtension(entry.extension) : []}
-          basicSetup={file.editable ? undefined : { foldGutter: false, highlightActiveLine: false }}
+          extensions={[
+            search({ top: true }),
+            ...(file.editable ? langExtension(entry.extension) : []),
+          ]}
+          basicSetup={file.editable
+            ? undefined
+            : { foldGutter: false, highlightActiveLine: false }
+          }
+          onCreateEditor={(view) => { viewRef.current = view; }}
           onChange={(v) => {
             if (!file.editable) return;
             file.setContent(v);
@@ -122,19 +144,16 @@ export function Editor({ entry, onClose, onError }: Props) {
   );
 }
 
-function HBtn({
-  children, onClick, title, active,
-}: { children: React.ReactNode; onClick: () => void; title: string; active?: boolean }) {
+function HBtn({ children, onClick, title, active }: {
+  children: React.ReactNode; onClick: () => void; title: string; active?: boolean;
+}) {
   return (
-    <button
-      onClick={onClick}
-      title={title}
+    <button onClick={onClick} title={title}
       className={`p-1.5 rounded-md transition-colors ${
         active
           ? "text-[var(--color-accent)] bg-[var(--color-surface-hover)]"
           : "text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
-      }`}
-    >
+      }`}>
       {children}
     </button>
   );

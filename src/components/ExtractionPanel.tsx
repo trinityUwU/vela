@@ -47,7 +47,8 @@ function TransferRow({ job }: { job: TransferJob }) {
   const verb = job.kind === "copy" ? "Copie" : "Déplacement";
   const isPaused = job.status === "paused";
   const terminal = job.status === "done" || job.status === "error" || job.status === "cancelled";
-  const controllable = job.kind === "copy" && !terminal;
+  const canPause = job.kind === "copy" && !terminal;
+  const canCancel = !terminal;
 
   const label =
     job.status === "done" ? "Terminé"
@@ -76,18 +77,22 @@ function TransferRow({ job }: { job: TransferJob }) {
       {job.status === "error" && job.error && (
         <p className="text-[10px] text-[var(--color-danger)] break-words">{job.error}</p>
       )}
-      {controllable && (
+      {(canPause || canCancel) && (
         <div className="flex items-center gap-1.5">
-          <CtrlBtn
-            onClick={() => isPaused
-              ? transferResume(job.id).catch(() => {})
-              : transferPause(job.id).catch(() => {})}
-          >
-            {isPaused ? "Reprendre" : "Pause"}
-          </CtrlBtn>
-          <CtrlBtn danger onClick={() => transferCancel(job.id).catch(() => {})}>
-            Annuler
-          </CtrlBtn>
+          {canPause && (
+            <CtrlBtn
+              onClick={() => isPaused
+                ? transferResume(job.id).catch(() => {})
+                : transferPause(job.id).catch(() => {})}
+            >
+              {isPaused ? "Reprendre" : "Pause"}
+            </CtrlBtn>
+          )}
+          {canCancel && (
+            <CtrlBtn danger onClick={() => transferCancel(job.id).catch(() => {})}>
+              Annuler
+            </CtrlBtn>
+          )}
         </div>
       )}
     </div>

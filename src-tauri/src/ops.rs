@@ -343,14 +343,31 @@ pub async fn move_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
         let notify = files >= NOTIFY_FILE_THRESHOLD || total >= NOTIFY_BYTE_THRESHOLD;
         let job_id = transfer_job_id();
         let label = job_label(&paths);
+        let mgr = app.state::<TransferManager>();
+        let ctrl = mgr.add(&job_id);
         if notify { emit_transfer(&app, &job_id, "move", &label, 0, total, "transferring", None); }
 
+        // Remet à leur place d'origine les entrées déjà déplacées (annulation).
+        let restore = |done: &[(PathBuf, PathBuf)]| {
+            for (src, target) in done.iter().rev() {
+                let _ = fs::rename(target, src);
+            }
+        };
+
         let mut current = 0u64;
+        let mut done: Vec<(PathBuf, PathBuf)> = Vec::new();
         for path in &paths {
+            if ctrl.cancelled.load(Ordering::Relaxed) {
+                restore(&done);
+                if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "cancelled", None); }
+                mgr.remove(&job_id);
+                return Ok(());
+            }
             let src = Path::new(path);
             if dest.starts_with(src) {
                 let e = "Impossible de déplacer un dossier dans lui-même".to_string();
                 if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.clone())); }
+                mgr.remove(&job_id);
                 return Err(e);
             }
             let name = match src.file_name() {
@@ -358,6 +375,7 @@ pub async fn move_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
                 None => {
                     let e = format!("nom invalide: {path}");
                     if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.clone())); }
+                    mgr.remove(&job_id);
                     return Err(e);
                 }
             };
@@ -365,18 +383,22 @@ pub async fn move_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
             if target.exists() {
                 let e = format!("«{name}» existe déjà dans ce dossier");
                 if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.clone())); }
+                mgr.remove(&job_id);
                 return Err(e);
             }
             let entry_bytes = count_files_bytes(std::slice::from_ref(path)).1;
             if let Err(e) = fs::rename(src, &target) {
                 eprintln!("[move_entries] {path}: {e}");
                 if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.to_string())); }
+                mgr.remove(&job_id);
                 return Err(e.to_string());
             }
+            done.push((src.to_path_buf(), target));
             current += entry_bytes;
             if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "transferring", None); }
         }
         if notify { emit_transfer(&app, &job_id, "move", &label, total, total, "done", None); }
+        mgr.remove(&job_id);
         Ok(())
     })
     .await

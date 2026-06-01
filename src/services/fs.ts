@@ -1,0 +1,39 @@
+// Wrappers typés autour des commandes Tauri (backend Rust).
+import { invoke } from "@tauri-apps/api/core";
+import type { DirListing, FileChunk, Place } from "../types";
+
+export function listDir(path: string, showHidden = false): Promise<DirListing> {
+  return invoke<DirListing>("list_dir", { path, showHidden });
+}
+
+export function readFile(path: string): Promise<string> {
+  return invoke<string>("read_file", { path });
+}
+
+export function readFileChunk(path: string, offset: number, maxBytes: number): Promise<FileChunk> {
+  return invoke<FileChunk>("read_file_chunk", { path, offset, maxBytes });
+}
+
+export function writeFile(path: string, content: string): Promise<void> {
+  return invoke("write_file", { path, content });
+}
+
+export function renameEntry(path: string, newName: string): Promise<string> {
+  return invoke<string>("rename_entry", { path, newName });
+}
+
+export function deleteEntry(path: string): Promise<void> {
+  return invoke("delete_entry", { path });
+}
+
+export function createDir(path: string, name: string): Promise<string> {
+  return invoke<string>("create_dir", { path, name });
+}
+
+export function homeDir(): Promise<string> {
+  return invoke<string>("home_dir");
+}
+
+export function listPlaces(): Promise<Place[]> {
+  return invoke<Place[]>("list_places");
+}

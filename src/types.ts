@@ -53,6 +53,20 @@ export interface EntryProps {
   permissions: string;
   permissions_octal: number;
   extension: string;
+  item_count: number | null;
+  file_count: number | null;
+  dir_count: number | null;
+}
+
+export interface AppInfo {
+  name: string;
+  desktop_id: string;
+  is_default: boolean;
+}
+
+export interface FileApps {
+  mime: string;
+  apps: AppInfo[];
 }
 
 export interface ArchiveEntry {

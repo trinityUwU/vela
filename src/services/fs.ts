@@ -14,6 +14,14 @@ export function getEntryProps(path: string): Promise<import("../types").EntryPro
   return invoke("get_entry_props", { path });
 }
 
+export function getAppsForFile(path: string): Promise<import("../types").FileApps> {
+  return invoke("get_apps_for_file", { path });
+}
+
+export function setDefaultApp(desktopId: string, mime: string): Promise<void> {
+  return invoke("set_default_app", { desktopId, mime });
+}
+
 export function listDir(path: string, showHidden = false): Promise<DirListing> {
   return invoke<DirListing>("list_dir", { path, showHidden });
 }

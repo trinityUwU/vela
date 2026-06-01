@@ -240,6 +240,9 @@ pub struct EntryProps {
     pub permissions: String,
     pub permissions_octal: u32,
     pub extension: String,
+    pub item_count: Option<u64>,    // nb éléments premier niveau (dossier seulement)
+    pub file_count: Option<u64>,    // nb fichiers récursifs (dossier seulement)
+    pub dir_count: Option<u64>,     // nb sous-dossiers récursifs (dossier seulement)
 }
 
 #[tauri::command]
@@ -260,20 +263,27 @@ pub async fn get_entry_props(path: String) -> Result<EntryProps, String> {
             .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
             .map(|d| d.as_secs())
             .unwrap_or(0);
-        let size = if meta.is_dir() {
-            dir_size_recursive(p)
+        let is_dir = meta.is_dir();
+        let size = if is_dir { dir_size_recursive(p) } else { meta.len() };
+        let (item_count, file_count, dir_count) = if is_dir {
+            let counts = dir_counts_recursive(p);
+            let first = fs::read_dir(p).map(|r| r.count() as u64).unwrap_or(0);
+            (Some(first), Some(counts.0), Some(counts.1))
         } else {
-            meta.len()
+            (None, None, None)
         };
         Ok(EntryProps {
             name,
             path,
-            is_dir: meta.is_dir(),
+            is_dir,
             size,
             modified,
             permissions: format_permissions(mode),
             permissions_octal: mode & 0o777,
             extension,
+            item_count,
+            file_count,
+            dir_count,
         })
     })
     .await
@@ -292,6 +302,22 @@ fn dir_size_recursive(dir: &Path) -> u64 {
             }
         })
         .sum()
+}
+
+// Retourne (nb_fichiers, nb_dossiers) récursifs
+fn dir_counts_recursive(dir: &Path) -> (u64, u64) {
+    let Ok(read) = fs::read_dir(dir) else { return (0, 0) };
+    read.filter_map(|e| e.ok()).fold((0, 0), |acc, e| {
+        let p = e.path();
+        match p.symlink_metadata() {
+            Ok(m) if m.is_dir() => {
+                let (f, d) = dir_counts_recursive(&p);
+                (acc.0 + f, acc.1 + 1 + d)
+            }
+            Ok(_) => (acc.0 + 1, acc.1),
+            Err(_) => acc,
+        }
+    })
 }
 
 fn format_permissions(mode: u32) -> String {

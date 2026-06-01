@@ -42,7 +42,7 @@ export function previewKind(ext: string): Preview {
 
 export function isEditable(ext: string): boolean {
   const k = previewKind(ext);
-  return k === "code" || k === "markdown" || k === "table" || k === "archive" || k === "image";
+  return k === "code" || k === "markdown" || k === "table" || k === "archive" || k === "image" || k === "binary";
 }
 
 export function langExtension(ext: string): Extension[] {

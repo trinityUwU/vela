@@ -4,6 +4,7 @@ import { useFileManager } from "./hooks/useFileManager";
 import { useFavorites } from "./hooks/useFavorites";
 import { useSearch } from "./hooks/useSearch";
 import { useSort, applySortFilter } from "./hooks/useSort";
+import { useExtractions } from "./hooks/useExtractions";
 import { Topbar } from "./components/Topbar";
 import { SearchResults } from "./components/SearchBar";
 import { SortBar } from "./components/SortBar";
@@ -16,6 +17,7 @@ import { BgContextMenu } from "./components/BgContextMenu";
 import { InputModal } from "./components/InputModal";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { PropertiesModal } from "./components/PropertiesModal";
+import { ExtractionPanel } from "./components/ExtractionPanel";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
@@ -33,6 +35,7 @@ export default function App() {
   const favs = useFavorites();
   const search = useSearch(fm.cwd);
   const { sort, toggleBy, update: updateSort } = useSort();
+  const { jobs: extractionJobs } = useExtractions();
   const [menu, setMenu] = useState<Menu>(null);
   const [bgMenu, setBgMenu] = useState<BgMenu>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -123,7 +126,7 @@ export default function App() {
               onMove={fm.moveEntry}
             />
             {fm.opened ? (
-              <Editor entry={fm.opened} onClose={() => fm.setOpened(null)} onError={fm.setError} onNavigate={fm.navigate} />
+              <Editor entry={fm.opened} onClose={() => fm.setOpened(null)} onError={fm.setError} />
             ) : (
               <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)]">
                 Sélectionne un fichier pour l'éditer
@@ -211,6 +214,8 @@ export default function App() {
       {dialog?.kind === "props" && (
         <PropertiesModal entry={dialog.entry} onClose={() => setDialog(null)} />
       )}
+
+      <ExtractionPanel jobs={extractionJobs} onNavigate={fm.navigate} />
     </div>
   );
 }

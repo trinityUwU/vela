@@ -24,7 +24,6 @@ interface Props {
   entry: DirEntry;
   onClose: () => void;
   onError: (msg: string) => void;
-  onNavigate?: (path: string) => void;
 }
 
 function fmtSize(b: number): string {
@@ -33,7 +32,7 @@ function fmtSize(b: number): string {
   return `${(b / 1024 / 1024).toFixed(1)} Mo`;
 }
 
-export function Editor({ entry, onClose, onError, onNavigate }: Props) {
+export function Editor({ entry, onClose, onError }: Props) {
   const kind = previewKind(entry.extension);
   const isMd = kind === "markdown";
   const isTable = kind === "table";
@@ -133,7 +132,7 @@ export function Editor({ entry, onClose, onError, onNavigate }: Props) {
       )}
 
       {isArchive ? (
-        <ArchiveViewer entry={entry} onError={onError} onNavigate={onNavigate ?? (() => {})} />
+        <ArchiveViewer entry={entry} onError={onError} />
       ) : isImage ? (
         <div className="flex-1 flex items-center justify-center overflow-auto p-4 bg-[var(--color-bg)]">
           {imgSrc ? (

@@ -86,6 +86,22 @@ export function listArchive(path: string): Promise<import("../types").ArchiveEnt
   return invoke("list_archive", { path });
 }
 
-export function extractArchive(path: string, dest: string): Promise<void> {
-  return invoke("extract_archive", { path, dest });
+export function startExtraction(path: string, dest: string): Promise<string> {
+  return invoke("start_extraction", { path, dest });
+}
+
+export function extractionPause(jobId: string): Promise<void> {
+  return invoke("extraction_pause", { jobId });
+}
+
+export function extractionResume(jobId: string): Promise<void> {
+  return invoke("extraction_resume", { jobId });
+}
+
+export function extractionCancel(jobId: string): Promise<void> {
+  return invoke("extraction_cancel", { jobId });
+}
+
+export function extractionProvidePassword(jobId: string, password: string): Promise<void> {
+  return invoke("extraction_provide_password", { jobId, password });
 }

@@ -1,13 +1,12 @@
 // Visualiseur d'archives : liste le contenu, propose extraction ici ou vers un chemin choisi.
 import { useEffect, useRef, useState } from "react";
-import { listArchive, extractArchive } from "../services/fs";
+import { listArchive, startExtraction } from "../services/fs";
 import type { ArchiveEntry, DirEntry } from "../types";
 import { FolderGlyph, DocGlyph } from "./FileIcon";
 
 interface Props {
   entry: DirEntry;
   onError: (msg: string) => void;
-  onNavigate: (path: string) => void;
 }
 
 function fmtSize(b: number): string {
@@ -32,11 +31,9 @@ function parentDir(filePath: string): string {
   return slash > 0 ? filePath.slice(0, slash) : "/";
 }
 
-export function ArchiveViewer({ entry, onError, onNavigate }: Props) {
+export function ArchiveViewer({ entry, onError }: Props) {
   const [items, setItems] = useState<ArchiveEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [extracting, setExtracting] = useState(false);
-  const [done, setDone] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [showPathInput, setShowPathInput] = useState(false);
   const [customPath, setCustomPath] = useState("");
@@ -48,7 +45,6 @@ export function ArchiveViewer({ entry, onError, onNavigate }: Props) {
     let alive = true;
     setLoading(true);
     setFilter("");
-    setDone(null);
     setShowPathInput(false);
     listArchive(entry.path)
       .then((es) => alive && setItems(es))
@@ -64,19 +60,10 @@ export function ArchiveViewer({ entry, onError, onNavigate }: Props) {
     }
   }, [showPathInput, extractHereDest]);
 
-  const extract = async (dest: string) => {
+  const extract = (dest: string) => {
     if (!dest.trim()) return;
-    setExtracting(true);
-    setDone(null);
-    try {
-      await extractArchive(entry.path, dest.trim());
-      setDone(dest.trim());
-      setShowPathInput(false);
-    } catch (e) {
-      onError(String(e));
-    } finally {
-      setExtracting(false);
-    }
+    startExtraction(entry.path, dest.trim()).catch((e) => onError(String(e)));
+    setShowPathInput(false);
   };
 
   const q = filter.toLowerCase();
@@ -103,15 +90,13 @@ export function ArchiveViewer({ entry, onError, onNavigate }: Props) {
         <div className="flex-1" />
         <button
           onClick={() => extract(extractHereDest)}
-          disabled={extracting}
-          className="px-2.5 py-1 text-xs rounded bg-[var(--color-accent)] text-[var(--color-bg)] font-medium disabled:opacity-50 hover:opacity-90 transition-opacity shrink-0"
+          className="px-2.5 py-1 text-xs rounded bg-[var(--color-accent)] text-[var(--color-bg)] font-medium hover:opacity-90 transition-opacity shrink-0"
         >
-          {extracting ? "Extraction…" : "Extraire ici"}
+          Extraire ici
         </button>
         <button
           onClick={() => setShowPathInput((v) => !v)}
-          disabled={extracting}
-          className="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:border-[var(--color-text-dim)] transition-colors disabled:opacity-50 shrink-0"
+          className="px-2.5 py-1 text-xs rounded border border-[var(--color-border)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] hover:border-[var(--color-text-dim)] transition-colors shrink-0"
         >
           Choisir l'emplacement…
         </button>
@@ -133,7 +118,7 @@ export function ArchiveViewer({ entry, onError, onNavigate }: Props) {
           />
           <button
             onClick={() => extract(customPath)}
-            disabled={extracting || !customPath.trim()}
+            disabled={!customPath.trim()}
             className="px-2.5 py-1 text-xs rounded bg-[var(--color-accent)] text-[var(--color-bg)] font-medium disabled:opacity-50"
           >
             Extraire
@@ -147,23 +132,6 @@ export function ArchiveViewer({ entry, onError, onNavigate }: Props) {
         </div>
       )}
 
-      {/* Succès */}
-      {done && (
-        <div className="flex items-center gap-3 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-accent-dim)]/10 text-xs text-[var(--color-text)] shrink-0">
-          <span className="flex-1">
-            Extrait dans <span className="font-mono text-[var(--color-accent)]">{done}</span>
-          </span>
-          <button
-            onClick={() => onNavigate(done)}
-            className="px-2 py-0.5 rounded bg-[var(--color-surface-hover)] text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
-          >
-            Ouvrir le dossier
-          </button>
-          <button onClick={() => setDone(null)} className="text-[var(--color-text-dim)] hover:text-[var(--color-text)]">
-            ✕
-          </button>
-        </div>
-      )}
 
       {/* Liste */}
       <div className="flex-1 overflow-auto">

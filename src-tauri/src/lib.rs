@@ -8,6 +8,7 @@ mod places;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(archive::ExtractionManager::new())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             fs_ops::list_dir,
@@ -27,7 +28,11 @@ pub fn run() {
             favorites::load_favorites,
             favorites::save_favorites,
             archive::list_archive,
-            archive::extract_archive,
+            archive::start_extraction,
+            archive::extraction_pause,
+            archive::extraction_resume,
+            archive::extraction_cancel,
+            archive::extraction_provide_password,
             apps::get_apps_for_file,
             apps::search_path_bins,
             apps::set_default_app,

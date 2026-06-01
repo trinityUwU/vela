@@ -78,3 +78,16 @@ export interface ArchiveEntry {
   is_dir: boolean;
   compressed_size: number;
 }
+
+export type ExtractionStatus =
+  | "extracting" | "paused" | "done" | "error" | "cancelled" | "password_required";
+
+export interface ExtractionJob {
+  id: string;
+  archiveName: string;
+  dest: string;
+  current: number;
+  total: number;
+  status: ExtractionStatus;
+  error?: string;
+}

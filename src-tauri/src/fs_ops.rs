@@ -23,6 +23,20 @@ pub struct DirListing {
     pub entries: Vec<DirEntry>,
 }
 
+fn compound_extension(name: &str) -> String {
+    let lower = name.to_lowercase();
+    const COMPOUNDS: &[&str] = &["tar.gz", "tar.bz2", "tar.xz", "tar.zst", "tar.lz4"];
+    for c in COMPOUNDS {
+        if lower.ends_with(&format!(".{c}")) {
+            return c.to_string();
+        }
+    }
+    Path::new(name)
+        .extension()
+        .map(|e| e.to_string_lossy().to_lowercase())
+        .unwrap_or_default()
+}
+
 fn to_entry(path: &Path) -> Option<DirEntry> {
     let meta = fs::symlink_metadata(path).ok()?;
     let name = path.file_name()?.to_string_lossy().to_string();
@@ -32,10 +46,7 @@ fn to_entry(path: &Path) -> Option<DirEntry> {
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    let extension = path
-        .extension()
-        .map(|e| e.to_string_lossy().to_lowercase())
-        .unwrap_or_default();
+    let extension = compound_extension(&name);
     Some(DirEntry {
         name,
         path: path.to_string_lossy().to_string(),

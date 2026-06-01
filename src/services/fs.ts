@@ -53,3 +53,11 @@ export function homeDir(): Promise<string> {
 export function listPlaces(): Promise<Place[]> {
   return invoke<Place[]>("list_places");
 }
+
+export function listArchive(path: string): Promise<import("../types").ArchiveEntry[]> {
+  return invoke("list_archive", { path });
+}
+
+export function extractArchive(path: string, dest: string): Promise<void> {
+  return invoke("extract_archive", { path, dest });
+}

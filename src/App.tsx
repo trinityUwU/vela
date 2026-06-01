@@ -86,7 +86,7 @@ export default function App() {
               onContext={onContext}
             />
             {fm.opened ? (
-              <Editor entry={fm.opened} onClose={() => fm.setOpened(null)} onError={fm.setError} />
+              <Editor entry={fm.opened} onClose={() => fm.setOpened(null)} onError={fm.setError} onNavigate={fm.navigate} />
             ) : (
               <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)]">
                 Sélectionne un fichier pour l'éditer

@@ -12,6 +12,7 @@ import { langExtension, previewKind } from "../services/file-kind";
 import type { DirEntry } from "../types";
 import { Save, Eye, Code, Search } from "./icons";
 import { TableViewer } from "./TableViewer";
+import { ArchiveViewer } from "./ArchiveViewer";
 
 const MIME: Record<string, string> = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
@@ -23,6 +24,7 @@ interface Props {
   entry: DirEntry;
   onClose: () => void;
   onError: (msg: string) => void;
+  onNavigate?: (path: string) => void;
 }
 
 function fmtSize(b: number): string {
@@ -31,12 +33,13 @@ function fmtSize(b: number): string {
   return `${(b / 1024 / 1024).toFixed(1)} Mo`;
 }
 
-export function Editor({ entry, onClose, onError }: Props) {
+export function Editor({ entry, onClose, onError, onNavigate }: Props) {
   const kind = previewKind(entry.extension);
   const isMd = kind === "markdown";
   const isTable = kind === "table";
   const isImage = kind === "image";
-  const file = useFileContent(entry.path, entry.size, onError, isImage);
+  const isArchive = kind === "archive";
+  const file = useFileContent(entry.path, entry.size, onError, isImage || isArchive);
   const [dirty, setDirty] = useState(false);
   const [preview, setPreview] = useState(false);
   const [searchOn, setSearchOn] = useState(false);
@@ -96,7 +99,7 @@ export function Editor({ entry, onClose, onError }: Props) {
         {dirty && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" title="Non sauvegardé" />}
         <span className="text-[11px] text-[var(--color-text-dim)]">{fmtSize(entry.size)}</span>
         <div className="flex-1" />
-        {!preview && !isTable && !isImage && (
+        {!preview && !isTable && !isImage && !isArchive && (
           <HBtn onClick={toggleSearch} active={searchOn} title="Rechercher dans le fichier (Ctrl+F)">
             <Search />
           </HBtn>
@@ -106,7 +109,7 @@ export function Editor({ entry, onClose, onError }: Props) {
             {preview ? <Code /> : <Eye />}
           </HBtn>
         )}
-        {file.editable && !isTable && !isImage && (
+        {file.editable && !isTable && !isImage && !isArchive && (
           <HBtn onClick={save} title="Sauvegarder (Ctrl+S)"><Save /></HBtn>
         )}
         <button
@@ -129,7 +132,9 @@ export function Editor({ entry, onClose, onError }: Props) {
         </div>
       )}
 
-      {isImage ? (
+      {isArchive ? (
+        <ArchiveViewer entry={entry} onError={onError} onNavigate={onNavigate ?? (() => {})} />
+      ) : isImage ? (
         <div className="flex-1 flex items-center justify-center overflow-auto p-4 bg-[var(--color-bg)]">
           {imgSrc ? (
             <img

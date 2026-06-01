@@ -72,7 +72,7 @@ export function FileIcon({ entry, size = 32 }: Props) {
 
 // --- Génériques sobres (duotone discret) ---
 
-function FolderGlyph({ size }: { size: number }) {
+export function FolderGlyph({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <path d="M3 7a2 2 0 0 1 2-2h3.4a2 2 0 0 1 1.4.6L11 7h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
@@ -81,7 +81,7 @@ function FolderGlyph({ size }: { size: number }) {
   );
 }
 
-function DocGlyph({ size }: { size: number }) {
+export function DocGlyph({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <path d="M6 3h8l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="var(--color-surface-hover)" />

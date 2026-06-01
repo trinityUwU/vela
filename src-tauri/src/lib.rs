@@ -1,4 +1,5 @@
 // Point d'entrée Tauri : enregistre les commandes filesystem exposées au front.
+mod archive;
 mod favorites;
 mod fs_ops;
 mod places;
@@ -21,6 +22,8 @@ pub fn run() {
             places::list_places,
             favorites::load_favorites,
             favorites::save_favorites,
+            archive::list_archive,
+            archive::extract_archive,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

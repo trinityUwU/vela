@@ -43,3 +43,10 @@ export interface Place {
   path: string;
   kind: "home" | "dir" | "mount";
 }
+
+export interface ArchiveEntry {
+  name: string;
+  size: number;
+  is_dir: boolean;
+  compressed_size: number;
+}

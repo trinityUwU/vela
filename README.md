@@ -8,21 +8,31 @@ Nemo n'a jamais intégré de preview pane. Vela le fait nativement, avec un vrai
 
 ## Fonctionnalités
 
-- **Mode Fichiers** : navigation, grille d'icônes par format (logos langages), breadcrumb éditable, fichiers cachés, dossier parent
-- **Mode Édition** : split liste/éditeur — clic simple pour ouvrir, `Ctrl+S` pour sauver, aperçu Markdown live
-- **Icônes par format** : Python, JS, TS, Rust, Go, HTML, CSS, Markdown, JSON, archives…
-- **Gros fichiers** : lecture par chunks 512 Ko, lecture seule au-delà de 1 Mo — zéro freeze
-- **CRUD** : renommer, supprimer (confirmation), nouveau dossier via menu contextuel
-- **Sidebar** : Home, dossiers XDG, points de montage détectés depuis `/proc/mounts`
-- **Fenêtre immersive** : sans décoration native, draggable depuis la topbar
-- **Raccourci** : `Super+E` (configurable Hyprland)
+**Mode Fichiers**
+- Navigation grille avec icônes par format (logos devicon + SVG génériques)
+- Sidebar : Favoris (pins + groupes collapsibles), Emplacements XDG, Montages
+- Breadcrumb éditable (clic → saisie chemin directe)
+- Recherche live dans le dossier (debounce 500ms, 150 résultats)
+- CRUD : renommer, supprimer, nouveau dossier (menu contextuel)
+- **Drag & drop** : fichiers/dossiers vers dossiers, crumbs du chemin, sidebar
+- **Clic droit → Propriétés** : métadonnées complètes, contenu dossier, app par défaut modifiable
+
+**Mode Édition**
+- Split liste / éditeur
+- CodeMirror 6 (Python, JS/TS, Rust, HTML, CSS, JSON, Markdown, Go, PHP…)
+- `Ctrl+S` sauvegarder · `Ctrl+F` rechercher dans le fichier
+- Aperçu Markdown rendu · Preview image inline (PNG, JPEG, GIF, WebP, SVG…)
+- **Viewer archives** (ZIP, TAR.GZ, TAR.BZ2, TAR.XZ, RAR, 7Z) + extraction (ici ou chemin custom)
+- **Tableaux** CSV/TSV/XLSX/XLS/ODS avec filtre live
+- Gros fichiers (>1 Mo) : chunks 512 Ko, lecture seule, zéro freeze
+- Fichiers sans extension reconnue : éditables (texte brut)
 
 ## Stack
 
 - **Tauri v2** (Rust) + **React 19** + **TypeScript** + **Tailwind v4**
-- **CodeMirror 6** (édition, 10+ langages) + **react-markdown** (aperçu)
-- **devicon** pour les logos de langages
-- Build release : ~13 Mo, binaire standalone
+- **CodeMirror 6** · **react-markdown** · **SheetJS** · **devicon**
+- Archives : `zip`, `tar`, `flate2`, `bzip2`, `xz2` + `7z` système
+- Build release : binaire standalone
 
 ## Installation
 

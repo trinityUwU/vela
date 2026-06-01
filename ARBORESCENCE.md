@@ -16,10 +16,12 @@ vela/
 │   ├── styles.css                  Tailwind + tokens CSS + CodeMirror dark + prose markdown
 │   ├── types.ts                    DirEntry, DirListing, FileChunk, Place, Mode,
 │   │                               Favorites, FavPin, FavGroup, ArchiveEntry,
-│   │                               EntryProps, AppInfo (+exec +source), FileApps
+│   │                               EntryProps, AppInfo (+exec +source), FileApps,
+│   │                               ExtractionStatus, ExtractionJob
 │   │
 │   ├── services/
-│   │   ├── fs.ts                   Wrappers invoke() → toutes commandes Rust
+│   │   ├── fs.ts                   Wrappers invoke() → toutes commandes Rust + startExtraction,
+│   │   │                           extractionPause/Resume/Cancel/ProvidePassword, searchPathBins
 │   │   └── file-kind.ts            Preview type (code/md/image/table/archive/binary)
 │   │                               + isEditable + langExtension (CodeMirror)
 │   │
@@ -28,8 +30,10 @@ vela/
 │   │   ├── useFileContent.ts       Chargement fichier : édition (≤1Mo) / chunks (>1Mo) / skip
 │   │   ├── useFavorites.ts         Pins + groupes, persistance auto via save_favorites
 │   │   ├── useSearch.ts            Recherche live (debounce 500ms, min 2 chars)
-│   │   └── useSort.ts              Tri (name/size/modified/extension, ASC/DESC) + filtre
-│   │                               (all/files/dirs) + dirsFirst — persisté localStorage
+│   │   ├── useSort.ts              Tri (name/size/modified/extension, ASC/DESC) + filtre
+│   │   │                           (all/files/dirs) + dirsFirst — persisté localStorage
+│   │   └── useExtractions.ts       Écoute events Tauri extraction-progress → Map<id, ExtractionJob>
+│   │                               auto-dismiss 6s états terminaux
 │   │
 │   └── components/
 │       ├── Topbar.tsx              Toggle modes, PathBar éditable, search, drop crumbs
@@ -41,9 +45,12 @@ vela/
 │       ├── FileIcon.tsx            Icônes devicon (20+ langages) + SVG génériques
 │       ├── Editor.tsx              CodeMirror + save + search + MD preview + image + archive + table
 │       ├── TableViewer.tsx         CSV/TSV (auto-sep) + XLSX/XLS/ODS (SheetJS), filtre live
-│       ├── ArchiveViewer.tsx       Liste archive + extraction (ici / chemin custom)
+│       ├── ArchiveViewer.tsx       Liste archive + extraction non-bloquante (ici / chemin custom)
+│       ├── ExtractionPanel.tsx     Panel fixe bas-droite : jobs empilés, progression, pause/reprise/
+│       │                           annulation, mot de passe inline, aller au dossier
 │       ├── PropertiesModal.tsx     Métadonnées + contenu dossier + app par défaut (PATH + custom)
-│       ├── ContextMenu.tsx         Ouvrir / Copier chemin / Copier chemin relatif / Renommer / Supprimer / Propriétés
+│       ├── ContextMenu.tsx         Ouvrir / Extraire ici + vers… (archives) / Copier chemin /
+│       │                           Copier chemin relatif / Renommer / Supprimer / Propriétés
 │       ├── BgContextMenu.tsx       Clic droit zone vide : nouveau fichier/dossier, actualiser,
 │       │                           toggle hidden, épingler, propriétés dossier
 │       ├── SearchBar.tsx           SearchInput (topbar) + SearchResults (overlay)
@@ -57,11 +64,14 @@ vela/
     ├── capabilities/default.json   core:default, start-dragging, opener:default + allow-open-path
     └── src/
         ├── main.rs
-        ├── lib.rs                  Builder + enregistrement 22 commandes
+        ├── lib.rs                  Builder + manage(ExtractionManager) + enregistrement 27 commandes
         ├── fs_ops.rs               CRUD + chunks + search + move + props + open_native + createFile
         ├── places.rs               home_dir, list_places (XDG + mounts)
         ├── favorites.rs            load/save favorites (JSON ~/.config/vela/)
-        ├── archive.rs              list_archive, extract_archive (ZIP/TAR/GZ/BZ2/XZ/7z)
+        ├── archive.rs              list_archive, ExtractionManager (Tauri state), start_extraction,
+        │                           extraction_pause/resume/cancel/provide_password — ZIP natif
+        │                           (AtomicBool pause, by_index_decrypt password), TAR natif,
+        │                           7z/RAR process (SIGSTOP/SIGCONT, stdout -bsp1, retry password)
         └── apps.rs                 get_apps_for_file, search_path_bins, set_default_app,
                                     set_custom_command (crée .desktop vela-custom/auto-*)
 ```

@@ -18,6 +18,7 @@ import { InputModal } from "./components/InputModal";
 import { ConfirmModal } from "./components/ConfirmModal";
 import { PropertiesModal } from "./components/PropertiesModal";
 import { ExtractionPanel } from "./components/ExtractionPanel";
+import { startExtraction } from "./services/fs";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
@@ -28,7 +29,22 @@ type Dialog =
   | { kind: "newfile" }
   | { kind: "delete"; entry: DirEntry }
   | { kind: "props"; entry: DirEntry }
+  | { kind: "extractto"; archivePath: string; defaultDest: string }
   | null;
+
+function archiveStem(name: string): string {
+  const compounds = [".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".tar"];
+  for (const c of compounds) {
+    if (name.toLowerCase().endsWith(c)) return name.slice(0, -c.length);
+  }
+  const dot = name.lastIndexOf(".");
+  return dot > 0 ? name.slice(0, dot) : name;
+}
+
+function parentDir(path: string): string {
+  const slash = path.lastIndexOf("/");
+  return slash > 0 ? path.slice(0, slash) : "/";
+}
 
 export default function App() {
   const fm = useFileManager();
@@ -155,12 +171,22 @@ export default function App() {
 
       {menu && (
         <ContextMenu
-          menu={{ x: menu.x, y: menu.y, path: menu.entry.path, name: menu.entry.name, isDir: menu.entry.is_dir, cwd: fm.cwd }}
+          menu={{ x: menu.x, y: menu.y, path: menu.entry.path, name: menu.entry.name, isDir: menu.entry.is_dir, extension: menu.entry.extension, cwd: fm.cwd }}
           onClose={() => setMenu(null)}
           onOpen={() => { fm.openEntry(menu.entry); setMenu(null); }}
           onRename={() => { setDialog({ kind: "rename", entry: menu.entry }); setMenu(null); }}
           onDelete={() => { setDialog({ kind: "delete", entry: menu.entry }); setMenu(null); }}
           onProperties={() => { setDialog({ kind: "props", entry: menu.entry }); setMenu(null); }}
+          onExtractHere={() => {
+            const dest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
+            startExtraction(menu.entry.path, dest).catch((e) => fm.setError(String(e)));
+            setMenu(null);
+          }}
+          onExtractTo={() => {
+            const defaultDest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
+            setDialog({ kind: "extractto", archivePath: menu.entry.path, defaultDest });
+            setMenu(null);
+          }}
         />
       )}
 
@@ -213,6 +239,19 @@ export default function App() {
       )}
       {dialog?.kind === "props" && (
         <PropertiesModal entry={dialog.entry} onClose={() => setDialog(null)} />
+      )}
+
+      {dialog?.kind === "extractto" && (
+        <InputModal
+          title="Extraire vers…"
+          confirmLabel="Extraire"
+          initial={dialog.defaultDest}
+          onSubmit={(dest) => {
+            if (dest.trim()) startExtraction(dialog.archivePath, dest.trim()).catch((e) => fm.setError(String(e)));
+            setDialog(null);
+          }}
+          onCancel={() => setDialog(null)}
+        />
       )}
 
       <ExtractionPanel jobs={extractionJobs} onNavigate={fm.navigate} />

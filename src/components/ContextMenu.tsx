@@ -1,5 +1,6 @@
 // Menu contextuel au clic droit sur une entrée (fichier ou dossier).
 import { useEffect } from "react";
+import { previewKind } from "../services/file-kind";
 
 export interface MenuState {
   x: number;
@@ -7,6 +8,7 @@ export interface MenuState {
   path: string;
   name: string;
   isDir: boolean;
+  extension: string;
   cwd: string;
 }
 
@@ -17,6 +19,8 @@ interface Props {
   onRename: () => void;
   onDelete: () => void;
   onProperties: () => void;
+  onExtractHere?: () => void;
+  onExtractTo?: () => void;
 }
 
 function relativePath(path: string, cwd: string): string {
@@ -28,13 +32,14 @@ function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text).catch(() => {});
 }
 
-export function ContextMenu({ menu, onClose, onOpen, onRename, onDelete, onProperties }: Props) {
+export function ContextMenu({ menu, onClose, onOpen, onRename, onDelete, onProperties, onExtractHere, onExtractTo }: Props) {
   useEffect(() => {
     window.addEventListener("click", onClose);
     return () => window.removeEventListener("click", onClose);
   }, [onClose]);
 
   const rel = relativePath(menu.path, menu.cwd);
+  const isArchive = !menu.isDir && previewKind(menu.extension) === "archive";
 
   return (
     <div
@@ -42,6 +47,13 @@ export function ContextMenu({ menu, onClose, onOpen, onRename, onDelete, onPrope
       className="fixed z-50 min-w-48 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
     >
       <Item label="Ouvrir" onClick={onOpen} />
+      {isArchive && (
+        <>
+          <Divider />
+          <Item label="Extraire ici" onClick={() => { onExtractHere?.(); onClose(); }} />
+          <Item label="Extraire vers…" onClick={() => { onExtractTo?.(); onClose(); }} />
+        </>
+      )}
       <Divider />
       <Item label="Copier le chemin" onClick={() => { copyToClipboard(menu.path); onClose(); }} />
       <Item label={`Copier le chemin relatif  — ${rel}`} onClick={() => { copyToClipboard(rel); onClose(); }} dim />

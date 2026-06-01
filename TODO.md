@@ -20,6 +20,11 @@
 - [x] Filtre Tout / Dossiers / Fichiers
 - [x] Fix MIME cohérence cross-fichiers (mime_guess par extension, plus xdg-mime filetype)
 - [x] README : limitation WebKit vs GTK natif documentée
+- [x] Extraction asynchrone non-bloquante (background threads, Tauri events)
+- [x] Panel extraction bas-droite : progression, pause/reprise/annulation, mot de passe, aller au dossier
+- [x] Support archives protégées par mot de passe (ZIP by_index_decrypt, 7z/RAR -p flag)
+- [x] Clic droit archive → Extraire ici / Extraire vers… (sans passer par le visualiseur)
+- [x] Fix build : `bun tauri build` obligatoire (cargo build seul ne produit pas de binaire autonome)
 
 ## Backlog
 
@@ -31,4 +36,3 @@
 - [ ] Thumbnails images en mode Fichiers
 - [ ] Aperçu PDF
 - [ ] Sélection multiple (Shift+clic, Ctrl+clic)
-- [ ] Progression extraction archives volumineuses

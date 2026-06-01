@@ -11,9 +11,10 @@ interface Props {
   onContextBg: (e: React.MouseEvent) => void;
   onClearBg: () => void;
   onMove: (src: string, destDir: string) => void;
+  colorOf: (path: string) => string | undefined;
 }
 
-export function FileGrid({ entries, selection, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove }: Props) {
+export function FileGrid({ entries, selection, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, colorOf }: Props) {
   const handleBg = (e: React.MouseEvent) => {
     e.preventDefault();
     onContextBg(e);
@@ -41,6 +42,7 @@ export function FileGrid({ entries, selection, onSelect, onOpen, onContext, onCo
             key={e.path}
             entry={e}
             selected={selection.has(e.path)}
+            color={colorOf(e.path)}
             onClick={(ev) => onSelect(e, ev)}
             onDouble={() => onOpen(e)}
             onContext={(ev) => onContext(ev, e)}

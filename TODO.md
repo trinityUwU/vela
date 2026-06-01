@@ -177,6 +177,9 @@ Mémoire : ne pas garder toutes les base64 en RAM, laisser le GC ; le cache disq
 - [x] Onglets multi-fichiers en mode Édition (`useEditorTabs` + `EditorArea`, éditions préservées)
 - [x] Catégorie Réglages dans la sidebar — référence des features + raccourcis (`SettingsPanel`)
 
-## Backlog (non détaillé — à spécifier au moment venu)
-- [ ] Diff entre deux fichiers (CodeMirror merge view) — 2 fichiers sélectionnés → clic droit « Comparer »
-- [ ] Tags / couleurs sur fichiers (métadonnées `~/.config/vela/tags.json`)
+## Livré — v1.8 (comparaison + étiquettes couleur) ✅
+- [x] Diff entre deux fichiers (CodeMirror MergeView) — sélection 2 fichiers → clic droit « Comparer »
+- [x] Tags / couleurs sur fichiers (palette 7 couleurs, `~/.config/vela/tags.json`, swatches menu contextuel)
+
+## Backlog
+Vidé — à réalimenter avec Chris.

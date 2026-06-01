@@ -1,6 +1,7 @@
 // Menu contextuel au clic droit sur une entrée (fichier ou dossier), mono ou multi-sélection.
 import { useEffect } from "react";
 import { previewKind } from "../services/file-kind";
+import { TAG_COLORS } from "../services/tags";
 
 export interface MenuState {
   x: number;
@@ -25,6 +26,9 @@ interface Props {
   onCut: () => void;
   onCompress: () => void;
   onBatchRename: () => void;
+  onCompare: () => void;
+  onSetColor: (color: string) => void;
+  currentColor?: string;
   onExtractHere?: () => void;
   onExtractTo?: () => void;
 }
@@ -40,7 +44,7 @@ function copyToClipboard(text: string) {
 
 export function ContextMenu(props: Props) {
   const { menu, onClose, onOpen, onRename, onTrash, onDeletePermanent, onProperties } = props;
-  const { onCopy, onCut, onCompress, onBatchRename, onExtractHere, onExtractTo } = props;
+  const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onExtractHere, onExtractTo } = props;
 
   useEffect(() => {
     window.addEventListener("click", onClose);
@@ -80,7 +84,30 @@ export function ContextMenu(props: Props) {
           <Item label="Renommer" onClick={onRename} />
         </>
       )}
+      {menu.count === 2 && <Item label="Comparer les 2 fichiers" onClick={() => { onCompare(); onClose(); }} />}
       {multi && <Item label="Renommer par lot…" onClick={onBatchRename} />}
+      <Divider />
+      <div className="flex items-center gap-1.5 px-3 py-1.5">
+        {TAG_COLORS.map((c) => (
+          <button
+            key={c.key}
+            title={c.label}
+            onClick={() => { onSetColor(c.key); onClose(); }}
+            style={{ backgroundColor: c.hex }}
+            className={`w-4 h-4 rounded-full transition-transform hover:scale-110 ${
+              props.currentColor === c.key ? "ring-2 ring-[var(--color-text)] ring-offset-1 ring-offset-[var(--color-surface)]" : ""
+            }`}
+          />
+        ))}
+        <button
+          title="Retirer la couleur"
+          onClick={() => { onSetColor(""); onClose(); }}
+          className="w-4 h-4 rounded-full border border-[var(--color-border)] text-[var(--color-text-dim)] text-[10px] leading-none flex items-center justify-center hover:text-[var(--color-text)]"
+        >
+          ✕
+        </button>
+      </div>
+      <Divider />
       <Item label="Mettre à la corbeille" onClick={onTrash} />
       <Item label="Supprimer définitivement" onClick={onDeletePermanent} danger />
       {!multi && (

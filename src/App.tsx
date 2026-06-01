@@ -9,6 +9,8 @@ import { useTransfers } from "./hooks/useTransfers";
 import { useTerminals } from "./hooks/useTerminals";
 import { useUndo } from "./hooks/useUndo";
 import { useEditorTabs } from "./hooks/useEditorTabs";
+import { useTags } from "./hooks/useTags";
+import { hexFor } from "./services/tags";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TerminalPanel } from "./components/TerminalPanel";
 import { termInput, availableShells } from "./services/term";
@@ -29,6 +31,7 @@ import { BatchRenameModal } from "./components/BatchRenameModal";
 import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { DiffViewer } from "./components/DiffViewer";
 import { startExtraction, trashDir } from "./services/fs";
 import type { DirEntry } from "./types";
 
@@ -76,11 +79,14 @@ export default function App() {
   const [bgMenu, setBgMenu] = useState<BgMenu>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [quickLook, setQuickLook] = useState<DirEntry | null>(null);
+  const [diff, setDiff] = useState<{ a: DirEntry; b: DirEntry } | null>(null);
   const [trashPath, setTrashPath] = useState("");
   const terminals = useTerminals();
   const undo = useUndo(fm.setError, fm.refresh);
   useEffect(() => { fm.setRecorder(undo.push); }, [fm.setRecorder, undo.push]);
   const editorTabs = useEditorTabs(fm.opened, fm.setOpened);
+  const tags = useTags();
+  const tagHex = useCallback((path: string) => hexFor(tags.colorOf(path)), [tags]);
   const [termVisible, setTermVisible] = useState(false);
   const [termHeight, setTermHeight] = useState(280);
   const [shells, setShells] = useState<string[]>([]);
@@ -178,6 +184,16 @@ export default function App() {
     fm.setOpened(entry);
     fm.setSelected(path);
     search.close();
+  };
+
+  const compareSelection = (fallback?: string) => {
+    const paths = selPaths(fallback);
+    if (paths.length !== 2) return;
+    const a = entries.find((e) => e.path === paths[0]);
+    const b = entries.find((e) => e.path === paths[1]);
+    if (!a || !b) return;
+    if (a.is_dir || b.is_dir) { fm.setError("Comparaison possible uniquement entre deux fichiers"); return; }
+    setDiff({ a, b });
   };
 
   useKeyboard({
@@ -278,6 +294,7 @@ export default function App() {
               onContext={onContext}
               onContextBg={onContextBg}
               onMove={fm.moveEntry}
+              colorOf={tagHex}
             />
             <EditorArea
               tabs={editorTabs.tabs}
@@ -297,6 +314,7 @@ export default function App() {
             onContextBg={onContextBg}
             onClearBg={fm.clearSelection}
             onMove={fm.moveEntry}
+            colorOf={tagHex}
           />
         )}
       </div>
@@ -352,6 +370,9 @@ export default function App() {
             setDialog({ kind: "batchrename", names: paths.map(baseName) });
             setMenu(null);
           }}
+          onCompare={() => { compareSelection(menu.entry.path); setMenu(null); }}
+          onSetColor={(color) => tags.setColor(selPaths(menu.entry.path), color)}
+          currentColor={tags.colorOf(menu.entry.path)}
           onExtractHere={() => {
             const dest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
             startExtraction(menu.entry.path, dest).catch((e) => fm.setError(String(e)));
@@ -469,6 +490,7 @@ export default function App() {
       <ExtractionPanel jobs={extractionJobs} transfers={transferJobs} onNavigate={fm.navigate} />
 
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      {diff && <DiffViewer a={diff.a} b={diff.b} onClose={() => setDiff(null)} onError={fm.setError} />}
     </div>
   );
 }

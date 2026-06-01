@@ -22,8 +22,9 @@ vela/
 │   ├── services/
 │   │   ├── fs.ts                   Wrappers invoke() → toutes commandes Rust + startExtraction,
 │   │   │                           trash/delete/copy/moveEntries, createArchive, searchContent, watchDir
-│   │   └── file-kind.ts            Preview type (code/md/image/table/archive/binary)
-│   │                               + isEditable + langExtension (CodeMirror)
+│   │   ├── file-kind.ts            Preview type (code/md/image/table/archive/binary)
+│   │   │                           + isEditable + langExtension (CodeMirror)
+│   │   └── tags.ts                 Palette couleur (7 clés→hex) + load_tags/set_tag wrappers
 │   │
 │   ├── hooks/
 │   │   ├── useFileManager.ts       État central : nav, mode, sélection multiple (Set + anchor),
@@ -37,6 +38,7 @@ vela/
 │   │   ├── useKeyboard.ts          Raccourcis globaux (C/X/V/A/F/Z, F2/F5, Suppr, Espace, Échap)
 │   │   ├── useUndo.ts              Pile Ctrl+Z (rename/move/copy/trash) — ops inverses, max 30
 │   │   ├── useEditorTabs.ts        Onglets multi-fichiers mode Édition (sync sur fm.opened)
+│   │   ├── useTags.ts              Étiquettes couleur : chargement + application optimiste
 │   │   ├── useExtractions.ts       Écoute events Tauri extraction-progress → Map<id, ExtractionJob>
 │   │   │                           auto-dismiss 6s états terminaux
 │   │   ├── useTransfers.ts         Écoute transfer-progress → Map<id, TransferJob> (copie/déplacement)
@@ -54,6 +56,7 @@ vela/
 │       ├── Editor.tsx              CodeMirror + save + search + MD preview + image + archive + table (prop active)
 │       ├── EditorArea.tsx          Mode Édition multi-onglets : barre + un Editor monté par fichier
 │       ├── SettingsPanel.tsx       Overlay Réglages : référence des features + raccourcis <kbd>
+│       ├── DiffViewer.tsx          Comparaison 2 fichiers (CodeMirror MergeView, lecture seule)
 │       ├── TableViewer.tsx         CSV/TSV (auto-sep) + XLSX/XLS/ODS (SheetJS), filtre live
 │       ├── ArchiveViewer.tsx       Liste archive + extraction non-bloquante (ici / chemin custom)
 │       ├── ExtractionPanel.tsx     Panel fixe bas-droite : extractions + transferts empilés, progression,
@@ -89,6 +92,7 @@ vela/
         ├── thumbs.rs               thumbnail (crate image, PNG base64, cache ~/.cache/vela/thumbs)
         ├── places.rs               home_dir, list_places (XDG + mounts)
         ├── favorites.rs            load/save favorites (JSON ~/.config/vela/)
+        ├── tags.rs                 load_tags/set_tag — étiquettes couleur (~/.config/vela/tags.json)
         ├── archive.rs              list_archive, ExtractionManager (Tauri state), start_extraction,
         │                           extraction_pause/resume/cancel/provide_password — ZIP natif
         │                           (AtomicBool pause, by_index_decrypt password), TAR natif,

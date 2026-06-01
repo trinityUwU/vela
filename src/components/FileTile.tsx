@@ -8,13 +8,14 @@ import { useThumbnail } from "../hooks/useThumbnail";
 interface Props {
   entry: DirEntry;
   selected: boolean;
+  color?: string;
   onClick: (e: React.MouseEvent) => void;
   onDouble: () => void;
   onContext: (e: React.MouseEvent) => void;
   onMove: (src: string, destDir: string) => void;
 }
 
-export function FileTile({ entry, selected, onClick, onDouble, onContext, onMove }: Props) {
+export function FileTile({ entry, selected, color, onClick, onDouble, onContext, onMove }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const isImage = !entry.is_dir && previewKind(entry.extension) === "image";
   const thumb = useThumbnail(entry.path, isImage);
@@ -60,16 +61,24 @@ export function FileTile({ entry, selected, onClick, onDouble, onContext, onMove
             : "hover:bg-[var(--color-surface-hover)]"
       }`}
     >
-      {isImage && thumb.src && !thumb.error ? (
-        <img
-          src={thumb.src}
-          alt={entry.name}
-          draggable={false}
-          className="w-[34px] h-[34px] object-cover rounded"
-        />
-      ) : (
-        <FileIcon entry={entry} size={34} />
-      )}
+      <span className="relative">
+        {isImage && thumb.src && !thumb.error ? (
+          <img
+            src={thumb.src}
+            alt={entry.name}
+            draggable={false}
+            className="w-[34px] h-[34px] object-cover rounded"
+          />
+        ) : (
+          <FileIcon entry={entry} size={34} />
+        )}
+        {color && (
+          <span
+            className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-[var(--color-bg)]"
+            style={{ backgroundColor: color }}
+          />
+        )}
+      </span>
       <span className="text-xs text-center text-[var(--color-text)] leading-tight break-words line-clamp-2 w-full">
         {entry.name}
       </span>

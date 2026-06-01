@@ -12,9 +12,10 @@ interface Props {
   onContext: (e: React.MouseEvent, entry: DirEntry) => void;
   onContextBg: (e: React.MouseEvent) => void;
   onMove: (src: string, destDir: string) => void;
+  colorOf: (path: string) => string | undefined;
 }
 
-export function FileList({ entries, selection, active, onSelect, onOpen, onContext, onContextBg, onMove }: Props) {
+export function FileList({ entries, selection, active, onSelect, onOpen, onContext, onContextBg, onMove, colorOf }: Props) {
   const handleBg = (e: React.MouseEvent) => {
     e.preventDefault();
     onContextBg(e);
@@ -31,13 +32,14 @@ export function FileList({ entries, selection, active, onSelect, onOpen, onConte
           onOpen={onOpen}
           onContext={onContext}
           onMove={onMove}
+          color={colorOf(e.path)}
         />
       ))}
     </div>
   );
 }
 
-function FileRow({ entry, selected, active, onSelect, onOpen, onContext, onMove }: {
+function FileRow({ entry, selected, active, onSelect, onOpen, onContext, onMove, color }: {
   entry: DirEntry;
   selected: boolean;
   active: boolean;
@@ -45,6 +47,7 @@ function FileRow({ entry, selected, active, onSelect, onOpen, onContext, onMove 
   onOpen: (e: DirEntry) => void;
   onContext: (ev: React.MouseEvent, e: DirEntry) => void;
   onMove: (src: string, destDir: string) => void;
+  color?: string;
 }) {
   const [dragOver, setDragOver] = useState(false);
 
@@ -89,7 +92,8 @@ function FileRow({ entry, selected, active, onSelect, onOpen, onContext, onMove 
       } ${active ? "ring-1 ring-[var(--color-accent)] ring-inset" : ""}`}
     >
       <span className="shrink-0"><FileIcon entry={entry} size={18} /></span>
-      <span className="truncate text-sm text-[var(--color-text)]">{entry.name}</span>
+      <span className="truncate text-sm text-[var(--color-text)] flex-1">{entry.name}</span>
+      {color && <span className="shrink-0 w-2 h-2 rounded-full" style={{ backgroundColor: color }} />}
     </button>
   );
 }

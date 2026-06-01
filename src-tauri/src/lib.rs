@@ -5,6 +5,7 @@ mod favorites;
 mod fs_ops;
 mod ops;
 mod places;
+mod tags;
 mod terminal;
 mod thumbs;
 mod watcher;
@@ -54,6 +55,8 @@ pub fn run() {
             places::list_places,
             favorites::load_favorites,
             favorites::save_favorites,
+            tags::load_tags,
+            tags::set_tag,
             archive::list_archive,
             archive::start_extraction,
             archive::extraction_pause,

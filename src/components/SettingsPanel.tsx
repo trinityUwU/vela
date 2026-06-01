@@ -59,6 +59,7 @@ const SECTIONS: Section[] = [
       { keys: ["Suppr"], label: "Mettre à la corbeille" },
       { keys: ["Maj", "Suppr"], label: "Supprimer définitivement" },
       { label: "Compresser en ZIP ou TAR.GZ ; extraire les archives (menu contextuel)" },
+      { label: "Étiquettes couleur — clic droit → pastille (applicable à une sélection)" },
       { label: "Copier le chemin · Propriétés · Ouvrir avec (app par défaut ou commande)" },
     ],
   },
@@ -77,6 +78,7 @@ const SECTIONS: Section[] = [
       { label: "Fermer un onglet : × ou clic-milieu ; les éditions non sauvegardées sont conservées" },
       { keys: ["Ctrl", "S"], label: "Sauvegarder" },
       { keys: ["Ctrl", "F"], label: "Rechercher dans le fichier" },
+      { label: "Sélectionner 2 fichiers → clic droit « Comparer » (diff côte à côte)" },
     ],
   },
   {

@@ -47,7 +47,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - **Aperçu PDF** : `PdfViewer` (pdf.js, worker local `?url`) — canvas page par page, zoom 50-300%, lazy IntersectionObserver au-delà de 20 pages. Branché dans `Editor` (`previewKind` "pdf", non éditable) → dispo en Quick Look
 - **Thumbnails images** : `useThumbnail` (IntersectionObserver lazy, file de concurrence globale 4) + `FileTile` affiche la miniature réelle (fallback `FileIcon` pendant chargement/erreur)
 
-**Commandes Rust** : 47 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager` + `TerminalManager`)
+**Commandes Rust** : 49 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager` + `TerminalManager`)
 
 **Transferts contrôlables** : `TransferManager` (state, AtomicBool paused/cancelled par job) + `transfer_pause`/`transfer_resume`/`transfer_cancel`. La boucle de copie par chunks vérifie le contrôle à chaque tranche (pause = spin-wait 50 ms, annulation = nettoyage du partiel + statut `cancelled`). Boutons Pause/Reprendre + Annuler sur copie ET déplacement. **Déplacement intelligent** : `rename` si même FS (instantané) ; sinon (cross-device EXDEV) copie par chunks pausable/annulable + suppression de la source **différée à la fin** (annuler ne perd jamais de données). Annulation = restauration : rename inverse des renommés, suppression des copies cross-device partielles. `MoveState` (renamed/copied), `undo_move`, `is_cross_device`, `validate_move_target`
 
@@ -87,5 +87,9 @@ Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, paus
 - **Onglets multi-fichiers en mode Édition** (`useEditorTabs` + `EditorArea`) : un `Editor` monté par onglet, inactifs masqués (CSS) → **éditions non sauvegardées préservées au changement d'onglet**. Fermeture × ou clic-milieu. `Editor` reçoit `active` → Ctrl+S/Ctrl+F ne s'appliquent qu'à l'onglet visible. `navigate` ne remet plus `opened=null` (onglets indépendants du listing → on browse sans perdre les fichiers ouverts).
 - **Réglages** (`SettingsPanel`) : bouton engrenage dans la section Système de la sidebar → overlay référençant toutes les features groupées + raccourcis en `<kbd>`. Fermeture Échap/clic dehors.
 
-## Backlog (non priorisé)
-- Diff 2 fichiers (CodeMirror merge) · Tags/couleurs sur fichiers
+## v1.8 — Comparaison & étiquettes couleur ✅ (livré, installé)
+- **Diff 2 fichiers** (`components/DiffViewer.tsx`) : overlay `MergeView` (`@codemirror/merge`) côte à côte, lecture seule, coloration syntaxique via `langExtension`. Déclenché par sélection de 2 fichiers → clic droit « Comparer les 2 fichiers » (`ContextMenu` affiche l'item si `count===2` ; `App.compareSelection` valide que les deux ne sont pas des dossiers).
+- **Étiquettes couleur** (`tags.rs` + `services/tags.ts` + `useTags`) : palette sémantique de 7 couleurs persistée dans `~/.config/vela/tags.json` (path → clé couleur). Commandes `load_tags`/`set_tag(paths, color)` (color vide = retrait, applicable à une sélection multiple). UI : rangée de swatches dans le `ContextMenu` (+ ✕ pour retirer) ; pastille d'angle sur `FileTile` (grille) et point sur `FileRow` (liste Édition). `App` convertit clé→hex via `hexFor` avant de passer `colorOf` aux vues.
+
+## Backlog
+Vidé — toutes les features planifiées sont livrées. Prochaines idées à définir avec Chris.

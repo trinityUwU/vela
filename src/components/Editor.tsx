@@ -13,6 +13,7 @@ import type { DirEntry } from "../types";
 import { Save, Eye, Code, Search } from "./icons";
 import { TableViewer } from "./TableViewer";
 import { ArchiveViewer } from "./ArchiveViewer";
+import { PdfViewer } from "./PdfViewer";
 
 const MIME: Record<string, string> = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
@@ -38,7 +39,8 @@ export function Editor({ entry, onClose, onError }: Props) {
   const isTable = kind === "table";
   const isImage = kind === "image";
   const isArchive = kind === "archive";
-  const file = useFileContent(entry.path, entry.size, onError, isImage || isArchive);
+  const isPdf = kind === "pdf";
+  const file = useFileContent(entry.path, entry.size, onError, isImage || isArchive || isPdf);
   const [dirty, setDirty] = useState(false);
   const [preview, setPreview] = useState(false);
   const [searchOn, setSearchOn] = useState(false);
@@ -98,7 +100,7 @@ export function Editor({ entry, onClose, onError }: Props) {
         {dirty && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" title="Non sauvegardé" />}
         <span className="text-[11px] text-[var(--color-text-dim)]">{fmtSize(entry.size)}</span>
         <div className="flex-1" />
-        {!preview && !isTable && !isImage && !isArchive && (
+        {!preview && !isTable && !isImage && !isArchive && !isPdf && (
           <HBtn onClick={toggleSearch} active={searchOn} title="Rechercher dans le fichier (Ctrl+F)">
             <Search />
           </HBtn>
@@ -119,7 +121,7 @@ export function Editor({ entry, onClose, onError }: Props) {
         </button>
       </div>
 
-      {!file.editable && (
+      {!file.editable && !isImage && !isArchive && !isPdf && (
         <div className="flex items-center justify-between gap-3 px-3 py-1.5 text-[11px] bg-[var(--color-accent-dim)]/20 border-b border-[var(--color-border)] text-[var(--color-text-dim)]">
           <span>Fichier volumineux — lecture seule · {fmtSize(file.offset)} / {fmtSize(file.totalSize)} chargés</span>
           {!file.eof && (
@@ -131,7 +133,9 @@ export function Editor({ entry, onClose, onError }: Props) {
         </div>
       )}
 
-      {isArchive ? (
+      {isPdf ? (
+        <PdfViewer entry={entry} onError={onError} />
+      ) : isArchive ? (
         <ArchiveViewer entry={entry} onError={onError} />
       ) : isImage ? (
         <div className="flex-1 flex items-center justify-center overflow-auto p-4 bg-[var(--color-bg)]">

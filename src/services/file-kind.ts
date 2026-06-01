@@ -8,7 +8,7 @@ import { rust } from "@codemirror/lang-rust";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 
-export type Preview = "code" | "markdown" | "image" | "table" | "archive" | "binary";
+export type Preview = "code" | "markdown" | "image" | "table" | "archive" | "pdf" | "binary";
 
 const IMAGE_EXT = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"]);
 
@@ -33,6 +33,7 @@ const TABLE_EXT = new Set(["csv", "tsv", "xlsx", "xls", "ods"]);
 
 export function previewKind(ext: string): Preview {
   if (ext === "md" || ext === "markdown") return "markdown";
+  if (ext === "pdf") return "pdf";
   if (IMAGE_EXT.has(ext)) return "image";
   if (ARCHIVE_EXT.has(ext)) return "archive";
   if (TABLE_EXT.has(ext)) return "table";

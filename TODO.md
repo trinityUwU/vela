@@ -88,7 +88,7 @@ intégralement le pattern existant `ExtractionManager` + events Tauri + `Extract
 
 ---
 
-## 2 · Aperçu PDF  ⏱️ effort moyen, isolé
+## 2 · Aperçu PDF  ✅ LIVRÉ
 
 **Objectif** : afficher les PDF dans l'éditeur (et donc gratuitement dans Quick Look).
 

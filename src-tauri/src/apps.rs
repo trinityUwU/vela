@@ -29,6 +29,15 @@ fn xdg_mime(args: &[&str]) -> Option<String> {
 }
 
 fn get_mime(path: &str) -> String {
+    // Extension-based lookup en priorité : cohérence garantie pour tous les fichiers
+    // du même type (text/markdown pour tous les .md, peu importe leur contenu).
+    // Fallback xdg-mime uniquement si l'extension est inconnue.
+    let ext_mime = mime_guess::from_path(path)
+        .first()
+        .map(|m| m.to_string());
+    if let Some(m) = ext_mime {
+        return m;
+    }
     xdg_mime(&["query", "filetype", path])
         .unwrap_or_else(|| "application/octet-stream".to_string())
 }

@@ -40,6 +40,7 @@ export function Editor({ entry, onClose, onError }: Props) {
   const isImage = kind === "image";
   const isArchive = kind === "archive";
   const isPdf = kind === "pdf";
+  const isHtml = entry.extension === "html" || entry.extension === "htm";
   const file = useFileContent(entry.path, entry.size, onError, isImage || isArchive || isPdf);
   const [dirty, setDirty] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -105,7 +106,7 @@ export function Editor({ entry, onClose, onError }: Props) {
             <Search />
           </HBtn>
         )}
-        {file.editable && isMd && (
+        {file.editable && (isMd || isHtml) && (
           <HBtn onClick={() => setPreview((v) => !v)} active={preview} title="Aperçu">
             {preview ? <Code /> : <Eye />}
           </HBtn>
@@ -156,6 +157,13 @@ export function Editor({ entry, onClose, onError }: Props) {
         <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)]">
           Chargement…
         </div>
+      ) : preview && isHtml ? (
+        <iframe
+          title={entry.name}
+          srcDoc={file.content}
+          sandbox=""
+          className="flex-1 w-full bg-white border-0"
+        />
       ) : preview ? (
         <div className="flex-1 overflow-y-auto p-6 prose-vela">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{file.content}</ReactMarkdown>

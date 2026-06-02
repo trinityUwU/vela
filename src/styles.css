@@ -107,6 +107,7 @@ body {
   color: var(--color-text);
   line-height: 1.7;
   max-width: 80ch;
+  margin-inline: auto;
 }
 .prose-vela h1,
 .prose-vela h2,

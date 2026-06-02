@@ -3,6 +3,7 @@
 // délègue le travail bloquant à spawn_blocking. Le format de sortie est inféré de l'extension.
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImageView, Rgba};
+use serde::Deserialize;
 
 /// Charge une image depuis `input`, loggue et mappe l'erreur en String.
 fn load(input: &str) -> Result<DynamicImage, String> {
@@ -172,6 +173,68 @@ pub async fn image_convert(input: String, output: String, quality: Option<u8>) -
         .map_err(|e| e.to_string())?
 }
 
+/// Une opération d'édition image (édition accumulée, appliquée en mémoire puis écrite une fois).
+#[derive(Deserialize, Clone)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum ImageOp {
+    Crop { x: u32, y: u32, w: u32, h: u32 },
+    Rotate { degrees: u32 },
+    Flip { horizontal: bool },
+    Resize { width: u32, height: u32, keep_aspect: bool },
+    Adjust { brightness: i32, contrast: f32, saturation: f32 },
+}
+
+/// Applique une opération en mémoire et retourne l'image transformée.
+fn apply_op(img: DynamicImage, op: &ImageOp) -> Result<DynamicImage, String> {
+    Ok(match *op {
+        ImageOp::Crop { x, y, w, h } => {
+            let (iw, ih) = img.dimensions();
+            img.crop_imm(x, y, w.min(iw.saturating_sub(x)), h.min(ih.saturating_sub(y)))
+        }
+        ImageOp::Rotate { degrees } => match degrees {
+            90 => img.rotate90(),
+            180 => img.rotate180(),
+            270 => img.rotate270(),
+            _ => return Err("rotation supportée: 90, 180, 270".into()),
+        },
+        ImageOp::Flip { horizontal } => if horizontal { img.fliph() } else { img.flipv() },
+        ImageOp::Resize { width, height, keep_aspect } => if keep_aspect {
+            img.resize(width, height, FilterType::Lanczos3)
+        } else {
+            img.resize_exact(width, height, FilterType::Lanczos3)
+        },
+        ImageOp::Adjust { brightness, contrast, saturation } => {
+            let out = img.brighten(brightness).adjust_contrast(contrast);
+            if (saturation - 1.0).abs() >= 0.001 { apply_saturation(out, saturation) } else { out }
+        }
+    })
+}
+
+/// Rejoue la liste ordonnée d'ops sur `input` puis écrit une seule fois vers `output`.
+fn do_apply_ops(input: &str, output: &str, ops: &[ImageOp], quality: Option<u8>) -> Result<(), String> {
+    let mut img = load(input)?;
+    for op in ops {
+        img = apply_op(img, op)?;
+    }
+    match quality {
+        Some(q) if is_jpeg_ext(output) => save_jpeg(&img, output, q),
+        _ => save(&img, output),
+    }
+}
+
+/// Applique une séquence d'éditions accumulées (rotate→crop→resize→adjust…) en un seul fichier.
+#[tauri::command]
+pub async fn image_apply_ops(
+    input: String,
+    output: String,
+    ops: Vec<ImageOp>,
+    quality: Option<u8>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || do_apply_ops(&input, &output, &ops, quality))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -253,6 +316,21 @@ mod tests {
         let meta = std::fs::metadata(&out).unwrap();
         assert!(meta.len() > 0);
         assert_eq!(dims(&out), (100, 80));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn test_apply_ops_sequence() {
+        let dir = tmp_dir();
+        let src = fixture(&dir);
+        let out = out_path(&dir, "edited.png");
+        let ops = vec![
+            ImageOp::Rotate { degrees: 90 },
+            ImageOp::Resize { width: 40, height: 40, keep_aspect: false },
+            ImageOp::Adjust { brightness: 10, contrast: 5.0, saturation: 1.2 },
+        ];
+        do_apply_ops(&src, &out, &ops, None).unwrap();
+        assert_eq!(dims(&out), (40, 40));
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

@@ -102,6 +102,7 @@ pub fn run() {
             imaging::image_resize,
             imaging::image_adjust,
             imaging::image_convert,
+            imaging::image_apply_ops,
             video::video_trim,
             video::video_extract_frame,
             video::video_extract_audio,

@@ -10,11 +10,12 @@ import * as fs from "../services/fs";
 import { useFileContent } from "../hooks/useFileContent";
 import { langExtension, previewKind } from "../services/file-kind";
 import type { DirEntry } from "../types";
-import { Save, Eye, Code, Search } from "./icons";
+import { Save, Eye, Code, Search, Sliders } from "./icons";
 import { TableViewer } from "./TableViewer";
 import { ArchiveViewer } from "./ArchiveViewer";
 import { PdfViewer } from "./PdfViewer";
 import { MediaViewer } from "./MediaViewer";
+import { MediaToolsModal } from "./MediaToolsModal";
 
 const MIME: Record<string, string> = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
@@ -27,6 +28,7 @@ interface Props {
   onClose: () => void;
   onError: (msg: string) => void;
   active?: boolean;
+  editPath?: string | null;
 }
 
 function fmtSize(b: number): string {
@@ -35,7 +37,7 @@ function fmtSize(b: number): string {
   return `${(b / 1024 / 1024).toFixed(1)} Mo`;
 }
 
-export function Editor({ entry, onClose, onError, active = true }: Props) {
+export function Editor({ entry, onClose, onError, active = true, editPath = null }: Props) {
   const kind = previewKind(entry.extension);
   const isMd = kind === "markdown";
   const isTable = kind === "table";
@@ -51,14 +53,22 @@ export function Editor({ entry, onClose, onError, active = true }: Props) {
   const [preview, setPreview] = useState(false);
   const [searchOn, setSearchOn] = useState(false);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const viewRef = useRef<EditorView | null>(null);
+  const canEdit = isImage || isMedia;
 
   useEffect(() => {
     setDirty(false);
     setPreview(false);
     setSearchOn(false);
     setImgSrc(null);
+    setEditing(false);
   }, [entry.path]);
+
+  // Ouverture via « Outils… » du menu contextuel : active directement le HUD d'édition.
+  useEffect(() => {
+    if (canEdit && editPath === entry.path) setEditing(true);
+  }, [canEdit, editPath, entry.path]);
 
   useEffect(() => {
     if (!isImage) return;
@@ -101,12 +111,17 @@ export function Editor({ entry, onClose, onError, active = true }: Props) {
   }, [active, save, toggleSearch]);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0">
+    <div className="flex-1 flex flex-col min-w-0 relative">
       <div className="flex items-center gap-2 px-3 h-10 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
         <span className="text-sm text-[var(--color-text)] truncate">{entry.name}</span>
         {dirty && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" title="Non sauvegardé" />}
         <span className="text-[11px] text-[var(--color-text-dim)]">{fmtSize(entry.size)}</span>
         <div className="flex-1" />
+        {canEdit && (
+          <HBtn onClick={() => setEditing((v) => !v)} active={editing} title="Outils d'édition">
+            <Sliders />
+          </HBtn>
+        )}
         {!preview && !isTable && !isImage && !isArchive && !isPdf && !isMedia && (
           <HBtn onClick={toggleSearch} active={searchOn} title="Rechercher dans le fichier (Ctrl+F)">
             <Search />
@@ -198,6 +213,18 @@ export function Editor({ entry, onClose, onError, active = true }: Props) {
           }}
           className="flex-1 overflow-hidden text-sm"
         />
+      )}
+
+      {editing && canEdit && (
+        <div className="absolute bottom-3 right-3 z-40 w-[min(38rem,calc(100%-1.5rem))] max-h-[72%] overflow-hidden">
+          <MediaToolsModal
+            path={entry.path}
+            ext={entry.extension}
+            embedded
+            onClose={() => setEditing(false)}
+            onError={onError}
+          />
+        </div>
       )}
     </div>
   );

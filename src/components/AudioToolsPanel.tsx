@@ -12,6 +12,7 @@ interface MediaPanelProps {
   input: string;
   onError: (msg: string) => void;
   onClose: () => void;
+  embedded?: boolean;
 }
 
 export const AUDIO_FORMATS = ["mp3", "flac", "wav", "ogg", "m4a"] as const;
@@ -45,7 +46,7 @@ function useEscClose(onClose: () => void): void {
   }, [onClose]);
 }
 
-export function AudioToolsPanel({ input, onError, onClose }: MediaPanelProps): React.ReactElement {
+export function AudioToolsPanel({ input, onError, onClose, embedded = false }: MediaPanelProps): React.ReactElement {
   const { dir, stem, ext } = splitPath(input);
   const [duration, setDuration] = useState(0);
   const [done, setDone] = useState("");
@@ -67,29 +68,36 @@ export function AudioToolsPanel({ input, onError, onClose }: MediaPanelProps): R
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-[min(560px,94vw)] max-h-[88vh] flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
-      >
-        <PanelHeader title={`${stem}.${ext}`} onClose={onClose} />
-        <div className="flex-1 overflow-y-auto px-5">
-          {done && <p className="mt-3 text-xs text-green-400 truncate" title={done}>✓ Exporté : {done}</p>}
-          <TrimSection dir={dir} stem={stem} ext={ext} duration={duration} input={input} run={run} />
-          <FadeSection dir={dir} stem={stem} ext={ext} input={input} run={run} />
-          <SimpleSection
-            title="Normaliser"
-            outFile={outName(stem, "normalized", ext)}
-            onApply={(f) => run(() => audioNormalize(input, `${dir}/${f}`), f)}
-          />
-          <ConvertSection dir={dir} stem={stem} ext={ext} input={input} run={run} />
-          <RemoveVocalsSection dir={dir} stem={stem} ext={ext} input={input} run={run} />
-          <div className="py-3">
-            <AudioStemsSection input={input} dir={dir} onError={onError} />
-          </div>
+  const inner = (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className={embedded
+        ? "w-full max-h-full flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
+        : "w-[min(560px,94vw)] max-h-[88vh] flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"}
+    >
+      <PanelHeader title={`${stem}.${ext}`} onClose={onClose} />
+      <div className="flex-1 overflow-y-auto px-5">
+        {done && <p className="mt-3 text-xs text-green-400 truncate" title={done}>✓ Exporté : {done}</p>}
+        <TrimSection dir={dir} stem={stem} ext={ext} duration={duration} input={input} run={run} />
+        <FadeSection dir={dir} stem={stem} ext={ext} input={input} run={run} />
+        <SimpleSection
+          title="Normaliser"
+          outFile={outName(stem, "normalized", ext)}
+          onApply={(f) => run(() => audioNormalize(input, `${dir}/${f}`), f)}
+        />
+        <ConvertSection dir={dir} stem={stem} ext={ext} input={input} run={run} />
+        <RemoveVocalsSection dir={dir} stem={stem} ext={ext} input={input} run={run} />
+        <div className="py-3">
+          <AudioStemsSection input={input} dir={dir} onError={onError} />
         </div>
       </div>
+    </div>
+  );
+
+  if (embedded) return inner;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      {inner}
     </div>
   );
 }

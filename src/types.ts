@@ -194,3 +194,11 @@ export interface VideoProgress {
   percent: number;
   status: string;
 }
+
+// Édition image accumulée — `kind` correspond au tag serde (lowercase) côté Rust.
+export type ImageOp =
+  | { kind: "crop"; x: number; y: number; w: number; h: number }
+  | { kind: "rotate"; degrees: number }
+  | { kind: "flip"; horizontal: boolean }
+  | { kind: "resize"; width: number; height: number; keep_aspect: boolean }
+  | { kind: "adjust"; brightness: number; contrast: number; saturation: number };

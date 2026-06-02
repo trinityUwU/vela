@@ -8,9 +8,10 @@ interface Props {
   onSelect: (path: string) => void;
   onClose: (path: string) => void;
   onError: (msg: string) => void;
+  editPath?: string | null;
 }
 
-export function EditorArea({ tabs, activePath, onSelect, onClose, onError }: Props) {
+export function EditorArea({ tabs, activePath, onSelect, onClose, onError, editPath = null }: Props) {
   if (tabs.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)]">
@@ -50,6 +51,7 @@ export function EditorArea({ tabs, activePath, onSelect, onClose, onError }: Pro
               active={t.path === activePath}
               onClose={() => onClose(t.path)}
               onError={onError}
+              editPath={editPath}
             />
           </div>
         ))}

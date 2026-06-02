@@ -11,6 +11,7 @@ interface MediaPanelProps {
   input: string;
   onError: (msg: string) => void;
   onClose: () => void;
+  embedded?: boolean;
 }
 
 interface PathParts {
@@ -74,25 +75,30 @@ const modalCls =
   "w-[28rem] max-h-[85vh] overflow-y-auto p-4 rounded-lg border border-[var(--color-border)] " +
   "bg-[var(--color-surface)] shadow-2xl";
 
-export function VideoToolsPanel({ input, onError, onClose }: MediaPanelProps): React.ReactElement {
+const embeddedCls =
+  "w-full max-h-full overflow-y-auto p-4 rounded-lg border border-[var(--color-border)] " +
+  "bg-[var(--color-surface)] shadow-2xl";
+
+export function VideoToolsPanel({ input, onError, onClose, embedded = false }: MediaPanelProps): React.ReactElement {
   const { dir, stem, ext } = parsePath(input);
   const sep = dir ? "/" : "";
   const duration = useDuration(input, onError);
   useEscapeClose(onClose);
 
-  return (
-    <div className={overlayCls} onClick={onClose}>
-      <div className={modalCls} onClick={(e) => e.stopPropagation()}>
-        <Header filename={basename(input)} onClose={onClose} />
-        <div className="flex flex-col gap-4">
-          <TrimSection input={input} dir={dir} sep={sep} stem={stem} ext={ext} duration={duration} onError={onError} />
-          <FrameSection input={input} dir={dir} sep={sep} stem={stem} duration={duration} onError={onError} />
-          <AudioSection input={input} dir={dir} sep={sep} stem={stem} onError={onError} />
-          <ConvertSection input={input} dir={dir} sep={sep} stem={stem} onError={onError} />
-        </div>
+  const inner = (
+    <div className={embedded ? embeddedCls : modalCls} onClick={(e) => e.stopPropagation()}>
+      <Header filename={basename(input)} onClose={onClose} />
+      <div className="flex flex-col gap-4">
+        <TrimSection input={input} dir={dir} sep={sep} stem={stem} ext={ext} duration={duration} onError={onError} />
+        <FrameSection input={input} dir={dir} sep={sep} stem={stem} duration={duration} onError={onError} />
+        <AudioSection input={input} dir={dir} sep={sep} stem={stem} onError={onError} />
+        <ConvertSection input={input} dir={dir} sep={sep} stem={stem} onError={onError} />
       </div>
     </div>
   );
+
+  if (embedded) return inner;
+  return <div className={overlayCls} onClick={onClose}>{inner}</div>;
 }
 
 function Header({ filename, onClose }: { filename: string; onClose: () => void }): React.ReactElement {

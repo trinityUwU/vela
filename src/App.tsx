@@ -14,7 +14,6 @@ import { useAppearance } from "./hooks/useAppearance";
 import { hexFor } from "./services/tags";
 import { getEntryProps } from "./services/fs";
 import { DiskAnalyzer } from "./components/DiskAnalyzer";
-import { MediaToolsModal } from "./components/MediaToolsModal";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TerminalPanel } from "./components/TerminalPanel";
 import { termInput, availableShells } from "./services/term";
@@ -98,7 +97,7 @@ export default function App() {
   const tagHex = useCallback((path: string) => hexFor(tags.colorOf(path)), [tags]);
   const [folderSizes, setFolderSizes] = useState<Record<string, number>>({});
   const [analyzePath, setAnalyzePath] = useState<string | null>(null);
-  const [mediaTools, setMediaTools] = useState<DirEntry | null>(null);
+  const [editPath, setEditPath] = useState<string | null>(null);
 
   const computeSize = useCallback((path: string) => {
     getEntryProps(path).then((p) => setFolderSizes((m) => ({ ...m, [path]: p.size }))).catch((e) => fm.setError(String(e)));
@@ -374,6 +373,7 @@ export default function App() {
               onSelect={editorTabs.select}
               onClose={editorTabs.close}
               onError={fm.setError}
+              editPath={editPath}
             />
           </div>
         ) : view === "list" ? (
@@ -468,7 +468,7 @@ export default function App() {
           onOpenTerminal={() => { openTerminalHere(menu.entry.path); setMenu(null); }}
           onComputeSize={() => { computeSize(menu.entry.path); setMenu(null); }}
           onAnalyze={() => { setAnalyzePath(menu.entry.path); setMenu(null); }}
-          onMediaTools={() => { setMediaTools(menu.entry); setMenu(null); }}
+          onMediaTools={() => { fm.openEntry(menu.entry); setEditPath(menu.entry.path); setMenu(null); }}
           onExtractHere={() => {
             const dest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
             startExtraction(menu.entry.path, dest).catch((e) => fm.setError(String(e)));
@@ -595,14 +595,6 @@ export default function App() {
       {dirDiff && <DirCompareViewer a={dirDiff.a} b={dirDiff.b} onClose={() => setDirDiff(null)} onError={fm.setError} />}
       {analyzePath && (
         <DiskAnalyzer path={analyzePath} onClose={() => setAnalyzePath(null)} onReveal={fm.navigate} onError={fm.setError} />
-      )}
-      {mediaTools && (
-        <MediaToolsModal
-          path={mediaTools.path}
-          ext={mediaTools.extension}
-          onClose={() => setMediaTools(null)}
-          onError={fm.setError}
-        />
       )}
     </div>
   );

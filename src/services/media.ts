@@ -4,6 +4,7 @@ import type {
   MediaCapabilities,
   MediaProbe,
   StemsStatus,
+  ImageOp,
 } from "../types";
 
 export function capabilities(): Promise<MediaCapabilities> {
@@ -99,6 +100,16 @@ export function imageAdjust(
 
 export function imageConvert(input: string, output: string, quality?: number): Promise<void> {
   return invoke("image_convert", { input, output, quality });
+}
+
+/** Applique une séquence d'éditions accumulées en un seul fichier de sortie. */
+export function imageApplyOps(
+  input: string,
+  output: string,
+  ops: ImageOp[],
+  quality?: number,
+): Promise<void> {
+  return invoke("image_apply_ops", { input, output, ops, quality });
 }
 
 // ── Video ────────────────────────────────────────────────────────────────────

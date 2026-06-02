@@ -84,6 +84,7 @@ const SECTIONS: Section[] = [
       { keys: ["Espace"], label: "Quick Look — aperçu rapide sans entrer en édition" },
       { label: "Markdown & HTML — bascule code ↔ rendu" },
       { label: "PDF (zoom, pages), images (miniatures), CSV (tableau), archives (contenu)" },
+      { label: "Vidéo & audio — lecteur inline (lecture seule, codecs GStreamer du système)" },
     ],
   },
   {
@@ -94,6 +95,7 @@ const SECTIONS: Section[] = [
       { keys: ["Ctrl", "S"], label: "Sauvegarder" },
       { keys: ["Ctrl", "F"], label: "Rechercher dans le fichier" },
       { label: "Sélectionner 2 fichiers → clic droit « Comparer » (diff côte à côte)" },
+      { label: "Sélectionner 2 dossiers → clic droit « Comparer » (arbres : ajoutés/supprimés/modifiés)" },
     ],
   },
   {

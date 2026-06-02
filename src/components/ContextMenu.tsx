@@ -96,7 +96,7 @@ export function ContextMenu(props: Props) {
           <Item label="Renommer" onClick={onRename} />
         </>
       )}
-      {menu.count === 2 && <Item label="Comparer les 2 fichiers" onClick={() => { onCompare(); onClose(); }} />}
+      {menu.count === 2 && <Item label="Comparer les 2 éléments" onClick={() => { onCompare(); onClose(); }} />}
       {multi && <Item label="Renommer par lot…" onClick={onBatchRename} />}
       <Divider />
       <div className="flex items-center gap-1.5 px-3 py-1.5">

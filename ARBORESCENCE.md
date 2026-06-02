@@ -22,7 +22,7 @@ vela/
 │   ├── services/
 │   │   ├── fs.ts                   Wrappers invoke() → toutes commandes Rust + startExtraction,
 │   │   │                           trash/delete/copy/moveEntries, createArchive, searchContent, watchDir
-│   │   ├── file-kind.ts            Preview type (code/md/image/table/archive/binary)
+│   │   ├── file-kind.ts            Preview type (code/md/image/table/archive/pdf/video/audio/binary)
 │   │   │                           + isEditable + langExtension (CodeMirror)
 │   │   ├── tags.ts                 Palette couleur (7 clés→hex) + load_tags/set_tag wrappers
 │   │   └── format.ts               Util partagé fmtSize / fmtDate
@@ -62,6 +62,8 @@ vela/
 │       ├── SettingsPanel.tsx       Overlay Réglages : apparence (accent + densité) + référence features + raccourcis
 │       ├── DiffViewer.tsx          Comparaison 2 fichiers (CodeMirror MergeView, lecture seule)
 │       ├── DiskAnalyzer.tsx        Overlay analyse disque : plus gros fichiers + doublons (analyze_disk)
+│       ├── DirCompareViewer.tsx    Overlay comparaison 2 dossiers (compare_dirs) — filtrable
+│       ├── MediaViewer.tsx         Lecteur vidéo/audio inline (protocole asset Tauri convertFileSrc)
 │       ├── TableViewer.tsx         CSV/TSV (auto-sep) + XLSX/XLS/ODS (SheetJS), filtre live
 │       ├── ArchiveViewer.tsx       Liste archive + extraction non-bloquante (ici / chemin custom)
 │       ├── ExtractionPanel.tsx     Panel fixe bas-droite : extractions + transferts empilés, progression,
@@ -87,8 +89,9 @@ vela/
     ├── capabilities/default.json   core:default, start-dragging, opener:default + allow-open-path
     └── src/
         ├── main.rs
-        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal Manager) + 48 commandes
+        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal Manager) + 49 commandes
         ├── analyze.rs              analyze_disk : plus gros fichiers + doublons (walkdir + hash DefaultHasher)
+        ├── dircmp.rs               compare_dirs : diff 2 arbres (only_a/only_b/modified/same)
         ├── fs_ops.rs               CRUD + chunks + search + move + props + open_native + createFile
         ├── ops.rs                  trash/delete/copy/move groupés (copy retourne chemins créés),
         │                           transfer_pause/resume/cancel, create_archive, search_content,

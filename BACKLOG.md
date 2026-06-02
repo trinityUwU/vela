@@ -21,9 +21,11 @@ Statut : `à faire` · `en cours` · `livré`. Quand livré → migrer la ligne 
 | 7 | Taille de dossier à la demande | Clic droit dossier → « Calculer la taille » (réutilise `get_entry_props`), affichée colonne Taille (vue liste). | livré |
 | 8 | Analyse disque | `analyze_disk` Rust (walkdir + dédup hash DefaultHasher) → overlay plus gros fichiers + doublons. | livré |
 
-## P3 — avancé / souveraineté
+## P3 — avancé / souveraineté — ✅ LIVRÉ v1.12
 
 | # | Feature | Détail | Statut |
 |---|---------|--------|--------|
-| 9 | Aperçu vidéo / audio | Thumbnails vidéo + lecteur inline (lecture seule). | à faire |
-| 10 | Comparaison de dossiers | Diff de deux arbres (présent/absent/modifié), pas seulement 2 fichiers. | à faire |
+| 9 | Aperçu vidéo / audio | Lecteur inline `<video>`/`<audio>` via protocole asset Tauri (`convertFileSrc`). Codecs = GStreamer système. Thumbnails vidéo écartés (ffmpeg = dép lourde, contre souveraineté légère). | livré |
+| 10 | Comparaison de dossiers | `compare_dirs` Rust (walkdir 2 arbres, statut only_a/only_b/modified/same par taille+mtime). Overlay `DirCompareViewer` filtrable. Clic droit 2 dossiers → Comparer. | livré |
+
+— Backlog vidé. Prochaines idées à définir avec Chris.

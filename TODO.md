@@ -196,5 +196,9 @@ Mémoire : ne pas garder toutes les base64 en RAM, laisser le GC ; le cache disq
 - [x] P2·7 — Taille de dossier à la demande : clic droit → calcul, affiché colonne Taille
 - [x] P2·8 — Analyse disque : `analyze_disk` (plus gros fichiers + doublons par hash), overlay `DiskAnalyzer`
 
+## Livré — v1.12 (P3 avancé) ✅
+- [x] P3·9 — Aperçu vidéo/audio inline (`MediaViewer`, protocole asset Tauri `convertFileSrc`)
+- [x] P3·10 — Comparaison de dossiers (`compare_dirs` + `DirCompareViewer`, clic droit 2 dossiers)
+
 ## Backlog
-Voir `BACKLOG.md` — P3 (avancé : aperçu vidéo/audio, comparaison de dossiers) en attente.
+Vidé — toutes les features P1/P2/P3 livrées. Prochaines idées à définir avec Chris.

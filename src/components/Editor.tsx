@@ -14,6 +14,7 @@ import { Save, Eye, Code, Search } from "./icons";
 import { TableViewer } from "./TableViewer";
 import { ArchiveViewer } from "./ArchiveViewer";
 import { PdfViewer } from "./PdfViewer";
+import { MediaViewer } from "./MediaViewer";
 
 const MIME: Record<string, string> = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
@@ -41,8 +42,11 @@ export function Editor({ entry, onClose, onError, active = true }: Props) {
   const isImage = kind === "image";
   const isArchive = kind === "archive";
   const isPdf = kind === "pdf";
+  const isVideo = kind === "video";
+  const isAudio = kind === "audio";
+  const isMedia = isVideo || isAudio;
   const isHtml = entry.extension === "html" || entry.extension === "htm";
-  const file = useFileContent(entry.path, entry.size, onError, isImage || isArchive || isPdf);
+  const file = useFileContent(entry.path, entry.size, onError, isImage || isArchive || isPdf || isMedia);
   const [dirty, setDirty] = useState(false);
   const [preview, setPreview] = useState(false);
   const [searchOn, setSearchOn] = useState(false);
@@ -103,7 +107,7 @@ export function Editor({ entry, onClose, onError, active = true }: Props) {
         {dirty && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" title="Non sauvegardé" />}
         <span className="text-[11px] text-[var(--color-text-dim)]">{fmtSize(entry.size)}</span>
         <div className="flex-1" />
-        {!preview && !isTable && !isImage && !isArchive && !isPdf && (
+        {!preview && !isTable && !isImage && !isArchive && !isPdf && !isMedia && (
           <HBtn onClick={toggleSearch} active={searchOn} title="Rechercher dans le fichier (Ctrl+F)">
             <Search />
           </HBtn>
@@ -124,7 +128,7 @@ export function Editor({ entry, onClose, onError, active = true }: Props) {
         </button>
       </div>
 
-      {!file.editable && !isImage && !isArchive && !isPdf && (
+      {!file.editable && !isImage && !isArchive && !isPdf && !isMedia && (
         <div className="flex items-center justify-between gap-3 px-3 py-1.5 text-[11px] bg-[var(--color-accent-dim)]/20 border-b border-[var(--color-border)] text-[var(--color-text-dim)]">
           <span>Fichier volumineux — lecture seule · {fmtSize(file.offset)} / {fmtSize(file.totalSize)} chargés</span>
           {!file.eof && (
@@ -136,7 +140,9 @@ export function Editor({ entry, onClose, onError, active = true }: Props) {
         </div>
       )}
 
-      {isPdf ? (
+      {isMedia ? (
+        <MediaViewer entry={entry} kind={isVideo ? "video" : "audio"} />
+      ) : isPdf ? (
         <PdfViewer entry={entry} onError={onError} />
       ) : isArchive ? (
         <ArchiveViewer entry={entry} onError={onError} />

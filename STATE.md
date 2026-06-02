@@ -47,7 +47,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - **Aperçu PDF** : `PdfViewer` (pdf.js, worker local `?url`) — canvas page par page, zoom 50-300%, lazy IntersectionObserver au-delà de 20 pages. Branché dans `Editor` (`previewKind` "pdf", non éditable) → dispo en Quick Look
 - **Thumbnails images** : `useThumbnail` (IntersectionObserver lazy, file de concurrence globale 4) + `FileTile` affiche la miniature réelle (fallback `FileIcon` pendant chargement/erreur)
 
-**Commandes Rust** : 48 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager` + `TerminalManager`)
+**Commandes Rust** : 49 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager` + `TerminalManager`)
 
 **Transferts contrôlables** : `TransferManager` (state, AtomicBool paused/cancelled par job) + `transfer_pause`/`transfer_resume`/`transfer_cancel`. La boucle de copie par chunks vérifie le contrôle à chaque tranche (pause = spin-wait 50 ms, annulation = nettoyage du partiel + statut `cancelled`). Boutons Pause/Reprendre + Annuler sur copie ET déplacement. **Déplacement intelligent** : `rename` si même FS (instantané) ; sinon (cross-device EXDEV) copie par chunks pausable/annulable + suppression de la source **différée à la fin** (annuler ne perd jamais de données). Annulation = restauration : rename inverse des renommés, suppression des copies cross-device partielles. `MoveState` (renamed/copied), `undo_move`, `is_cross_device`, `validate_move_target`
 
@@ -114,5 +114,11 @@ Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, paus
 
 **Commandes Rust** : 48 (ajout `analyze_disk`).
 
+## v1.12 — P3 avancé ✅ (livré, installé)
+- **Aperçu vidéo/audio** (`MediaViewer.tsx`, `file-kind` types `video`/`audio`) : lecteur HTML5 `<video controls>`/`<audio controls>` servi en local via le **protocole asset Tauri** (`convertFileSrc`). Activation : `tauri.conf.json` → `app.security.assetProtocol { enable, scope: ["**"] }` + feature Cargo `protocol-asset`. Codecs dépendants de **GStreamer système** (WebKitGTK) — message de fallback si non supporté. Branché dans `Editor` (et donc Quick Look) avant les autres types ; `isEditable` inclut video/audio pour ouvrir l'aperçu. Thumbnails vidéo **écartés** (ffmpeg = dép lourde, contre la souveraineté légère du projet).
+- **Comparaison de dossiers** (`dircmp.rs` → `compare_dirs` + `DirCompareViewer.tsx`) : `walkdir` sur 2 arbres → `BTreeMap<rel, meta>`, statut par entrée `only_a`/`only_b`/`modified` (taille OU mtime diff)/`same`. Overlay filtrable (Différences/Gauche/Droite/Modifiés/Identiques) avec signes −/+/~/= colorés. `App.compareSelection` route : 2 dossiers → `DirCompareViewer`, 2 fichiers → `DiffViewer`, mélange → erreur. Item menu renommé « Comparer les 2 éléments ».
+
+**Commandes Rust** : 49 (ajout `compare_dirs`).
+
 ## Backlog
-`BACKLOG.md` — P1 (v1.9) + P2 (v1.11) livrés. Reste P3 : aperçu vidéo/audio, comparaison de dossiers. Restent P2 (confort : thèmes, recherches récentes, taille dossier, analyse disque) et P3 (aperçu vidéo/audio, comparaison de dossiers).
+`BACKLOG.md` vidé — P1 (v1.9) + P2 (v1.11) + P3 (v1.12) livrés. Prochaines idées à définir avec Chris. Restent P2 (confort : thèmes, recherches récentes, taille dossier, analyse disque) et P3 (aperçu vidéo/audio, comparaison de dossiers).

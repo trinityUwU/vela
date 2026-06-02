@@ -2,6 +2,7 @@
 mod analyze;
 mod apps;
 mod archive;
+mod dircmp;
 mod favorites;
 mod fs_ops;
 mod ops;
@@ -59,6 +60,7 @@ pub fn run() {
             tags::load_tags,
             tags::set_tag,
             analyze::analyze_disk,
+            dircmp::compare_dirs,
             archive::list_archive,
             archive::start_extraction,
             archive::extraction_pause,

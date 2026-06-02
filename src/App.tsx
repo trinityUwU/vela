@@ -37,6 +37,7 @@ import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { DiffViewer } from "./components/DiffViewer";
+import { DirCompareViewer } from "./components/DirCompareViewer";
 import { startExtraction, trashDir } from "./services/fs";
 import type { DirEntry } from "./types";
 
@@ -85,6 +86,7 @@ export default function App() {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [quickLook, setQuickLook] = useState<DirEntry | null>(null);
   const [diff, setDiff] = useState<{ a: DirEntry; b: DirEntry } | null>(null);
+  const [dirDiff, setDirDiff] = useState<{ a: string; b: string } | null>(null);
   const [trashPath, setTrashPath] = useState("");
   const terminals = useTerminals();
   const undo = useUndo(fm.setError, fm.refresh);
@@ -248,7 +250,8 @@ export default function App() {
     const a = entries.find((e) => e.path === paths[0]);
     const b = entries.find((e) => e.path === paths[1]);
     if (!a || !b) return;
-    if (a.is_dir || b.is_dir) { fm.setError("Comparaison possible uniquement entre deux fichiers"); return; }
+    if (a.is_dir && b.is_dir) { setDirDiff({ a: a.path, b: b.path }); return; }
+    if (a.is_dir !== b.is_dir) { fm.setError("Compare deux fichiers ou deux dossiers, pas un mélange"); return; }
     setDiff({ a, b });
   };
 
@@ -586,6 +589,7 @@ export default function App() {
         />
       )}
       {diff && <DiffViewer a={diff.a} b={diff.b} onClose={() => setDiff(null)} onError={fm.setError} />}
+      {dirDiff && <DirCompareViewer a={dirDiff.a} b={dirDiff.b} onClose={() => setDirDiff(null)} onError={fm.setError} />}
       {analyzePath && (
         <DiskAnalyzer path={analyzePath} onClose={() => setAnalyzePath(null)} onReveal={fm.navigate} onError={fm.setError} />
       )}

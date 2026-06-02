@@ -8,9 +8,11 @@ import { rust } from "@codemirror/lang-rust";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 
-export type Preview = "code" | "markdown" | "image" | "table" | "archive" | "pdf" | "binary";
+export type Preview = "code" | "markdown" | "image" | "table" | "archive" | "pdf" | "video" | "audio" | "binary";
 
 const IMAGE_EXT = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"]);
+const VIDEO_EXT = new Set(["mp4", "webm", "mkv", "mov", "avi", "m4v", "ogv"]);
+const AUDIO_EXT = new Set(["mp3", "flac", "wav", "ogg", "oga", "m4a", "aac", "opus"]);
 
 const ARCHIVE_EXT = new Set([
   "zip", "jar", "war", "ear",
@@ -35,6 +37,8 @@ export function previewKind(ext: string): Preview {
   if (ext === "md" || ext === "markdown") return "markdown";
   if (ext === "pdf") return "pdf";
   if (IMAGE_EXT.has(ext)) return "image";
+  if (VIDEO_EXT.has(ext)) return "video";
+  if (AUDIO_EXT.has(ext)) return "audio";
   if (ARCHIVE_EXT.has(ext)) return "archive";
   if (TABLE_EXT.has(ext)) return "table";
   if (TEXT_EXT.has(ext)) return "code";
@@ -43,7 +47,8 @@ export function previewKind(ext: string): Preview {
 
 export function isEditable(ext: string): boolean {
   const k = previewKind(ext);
-  return k === "code" || k === "markdown" || k === "table" || k === "archive" || k === "image" || k === "binary";
+  return k === "code" || k === "markdown" || k === "table" || k === "archive"
+    || k === "image" || k === "video" || k === "audio" || k === "binary";
 }
 
 export function langExtension(ext: string): Extension[] {

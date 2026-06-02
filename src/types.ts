@@ -135,3 +135,21 @@ export interface DiskReport {
   largest: LargeFile[];
   duplicates: DupGroup[];
 }
+
+export type DiffStatus = "only_a" | "only_b" | "modified" | "same";
+
+export interface DiffEntry {
+  rel: string;
+  status: DiffStatus;
+  is_dir: boolean;
+  size_a: number | null;
+  size_b: number | null;
+}
+
+export interface DirCompare {
+  only_a: number;
+  only_b: number;
+  modified: number;
+  same: number;
+  entries: DiffEntry[];
+}

@@ -18,6 +18,10 @@ export function analyzeDisk(path: string): Promise<import("../types").DiskReport
   return invoke("analyze_disk", { path });
 }
 
+export function compareDirs(a: string, b: string): Promise<import("../types").DirCompare> {
+  return invoke("compare_dirs", { a, b });
+}
+
 export function getAppsForFile(path: string): Promise<import("../types").FileApps> {
   return invoke("get_apps_for_file", { path });
 }

@@ -225,27 +225,29 @@ Frontend :
 ## Backlog
 - [ ] Édition image en plein écran (remonter le HUD dans le conteneur fullscreen du lecteur pour préserver l'immersion)
 
-### À discuter puis implémenter en session autonome (idées Chris — 2026-06-02)
+### Feature B · Profils + layout dynamique — À FAIRE (session future, autonome)
 
-**A · Téléchargement de fichiers volants (YouTube / Spotify)**
-Réduire la friction « chercher un convertisseur en ligne ». Coller une URL → choisir format / qualité / langue audio / sous-titres parmi ceux disponibles → télécharger dans le cwd.
-- Moteur : `yt-dlp` (open source, local, souverain). `yt-dlp -F <url>` liste les formats dispo → UI de sélection. Gère mp4/webm/mp3/wav, qualités, pistes audio par langue, sous-titres, extraction audio.
-- Spotify : pas de download direct (DRM). `spotdl` lit les métadonnées Spotify (titre/artiste) et délègue à yt-dlp depuis YouTube → un seul moteur + couche de résolution.
-- Archi pressentie : module `downloader.rs` (même pattern que `stems.rs` : binaire dans venv détecté, install managée optionnelle, job background + progress parse stdout yt-dlp + cancel).
-- UI/UX (précisé Chris) :
-  - Détection dynamique du type d'URL : titre unique vs playlist.
-  - Playlist → afficher tous les titres ; si > 10, **chargement dynamique** (pas tout d'un coup), **scroll géré dans la modal**.
-  - **Tout sélectionner / tout désélectionner** + sélection individuelle, puis un seul bouton Download → batch (file de jobs).
-  - Choix format/qualité/langue audio/sous-titres parmi les dispo.
-  - Destination : **cwd actuel par défaut**, modifiable dans la modal + case **« créer un nouveau dossier pour ce download »**.
-- Légal : téléchargement de contenu sous copyright = zone grise. Usage perso machine Chris, hors prod Echo Agency. Mentionné, assumé.
+> Feature A (téléchargeur) = LIVRÉE (voir section v1.15 plus bas). Reste B.
 
-**B · Profils + layout dynamique**
-Remplacer/englober les 2 modes actuels (fichiers/édition) par des **profils** nommés et configurables (ex. profil « dev » = arborescence à gauche + éditeur au centre, reste masqué).
-- **Un seul profil actif à la fois** (confirmé Chris) : un profil = un layout complet lié à ce profil, on switch de l'un à l'autre. → sélecteur de profil dans la barre du haut (déjà l'invariant), le reste se reconfigure.
-- **Invariants non configurables** : barre du haut (switch profil + emplacement courant) = toujours visible, jamais déplaçable. Barre de filtres en bas = masquable par profil mais jamais déplaçable.
-- **Archi (confirmée Chris)** : placement libre des sections proposées par l'app **mais PAS pixel-par-pixel** (drag free-form = KO, sur-ingénierie + casse l'épuré). → nombre **fini de zones** (gauche/centre/droite/bas) + catalogue de panneaux assignables (sidebar favoris, arborescence, filtres custom, terminal, éditeur) : par profil = quelle zone montre quoi + visible on/off + largeur.
-- **Décision d'archi à trancher avant impl** : les profils deviennent-ils le concept de premier niveau (fichiers/édition = comportements de zones) plutôt que des modes globaux concurrents ?
-- Exigence transverse : navigation ultra fluide, épurée, pro, sans se perdre dans des settings. L'édition de profils elle-même doit rester simple.
+**Objectif** : remplacer les 2 modes actuels (fichiers/édition) par des **profils** nommés, chacun = un layout complet custom. Ex. profil « dev » = arborescence à gauche + éditeur au centre, reste masqué. Profil « explorateur » = sidebar + grille classiques.
 
-**Mode session suivante** : autonome, prendre ces features une à une (download d'abord = plus net et isolé, profils ensuite après décision d'archi).
+**Contraintes confirmées Chris** :
+- **Un seul profil actif à la fois** : on switch de l'un à l'autre via un sélecteur dans la barre du haut.
+- **Invariants non configurables** : barre du haut (sélecteur profil + emplacement/breadcrumb) toujours visible, jamais déplaçable. Barre de filtres en bas = masquable par profil mais jamais déplaçable.
+- **Placement par zones, PAS pixel-par-pixel** (drag free-form = KO, sur-ingénierie, casse l'épuré).
+- Navigation fluide, épurée, pro, simple. L'édition de profils elle-même doit rester simple (pas une usine à settings).
+
+**Décision d'archi à TRANCHER avec Chris avant de coder** (escaladée 2026-06-02, non tranchée) :
+- **Option A (reco Claude)** : les profils deviennent le **concept de premier niveau**. Le `mode` actuel (fichiers|édition, câblé dans `useFileManager` + `App.tsx`) disparaît au profit de zones + panneaux assignables. Refacto structurel franc mais fondation propre.
+- **Option B** : profils = surcouche au-dessus des 2 modes existants. Moins de refacto, mais friction durable (fichiers/édition restent des modes → profils bridés).
+- Risque : mal posé au départ = cher à corriger. Ne PAS coder avant accord A/B.
+
+**Archi pressentie (si Option A)** :
+- **Modèle zones** : ensemble fini — `left` / `center` / `right` / `bottom`. Chaque zone affiche 0..n panneaux du catalogue, avec visible on/off + largeur/hauteur.
+- **Catalogue de panneaux assignables** (ce que l'app sait afficher) : sidebar favoris/emplacements, arborescence de fichiers (nouveau composant arbo, n'existe pas encore), listing (grille/liste), éditeur/viewer, terminal, panneau filtres. Chaque panneau = composant déjà existant ou à extraire, rendu indépendant de sa position.
+- **État profil** : `Profile { id, name, zones: Record<Zone, PanelConfig[]>, showFilterBar: bool }`. Persistance `~/.config/vela/profiles.json` (+ profil actif). Commande Rust `load_profiles`/`save_profiles` (modèle `favorites.rs`).
+- **UI d'édition de profil** : un mode « édition du layout » où chaque zone montre un menu d'ajout/retrait de panneau + toggle visible + poignée de redimensionnement (pas de drag pixel — assignation à zone). Rester minimaliste.
+- **Impact code** : refacto de `App.tsx` (le gros du rendu central + sidebar + barre filtres devient piloté par le profil actif), `useFileManager` (le champ `mode` est remplacé/abstrait). Migrer fichiers/édition en comportements de zones. Gros blast radius → découper en stories prudentes, profil par défaut « explorateur » = exactement le layout actuel (non-régression).
+- **Nouveau composant probable** : `FileTree` (arborescence latérale récursive) — n'existe pas, à créer.
+
+**Première étape session future** : valider A vs B avec Chris + figer le catalogue exact de panneaux et de zones, AVANT toute ligne de code.

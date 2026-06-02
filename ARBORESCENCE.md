@@ -25,14 +25,16 @@ vela/
 │   │   ├── file-kind.ts            Preview type (code/md/image/table/archive/pdf/video/audio/binary)
 │   │   │                           + isEditable + langExtension (CodeMirror)
 │   │   ├── tags.ts                 Palette couleur (7 clés→hex) + load_tags/set_tag wrappers
+│   │   ├── profiles.ts             Wrappers load/save_profiles
 │   │   └── format.ts               Util partagé fmtSize / fmtDate
 │   │
 │   ├── hooks/
-│   │   ├── useFileManager.ts       État central : nav, mode, sélection multiple (Set + anchor),
+│   │   ├── useFileManager.ts       État central : nav, editorActive, sélection multiple (Set + anchor),
 │   │   │                           presse-papier, CRUD, ops groupées (trash/delete/copy/compress),
 │   │   │                           renameMany, watch live (fs-changed), persistance session
 │   │   ├── useFileContent.ts       Chargement fichier : édition (≤1Mo) / chunks (>1Mo) / skip
 │   │   ├── useFavorites.ts         Pins + groupes, persistance auto via save_favorites
+│   │   ├── useProfiles.ts          Profils de layout : actif résolu, CRUD, persistance debounce (load/save_profiles)
 │   │   ├── useSearch.ts            Recherche live (debounce 500ms) : Nom / Contenu + recherches récentes
 │   │   ├── useSort.ts              Tri (name/size/modified/extension, ASC/DESC) + filtre
 │   │   │                           (all/files/dirs) + dirsFirst — persisté localStorage
@@ -49,7 +51,12 @@ vela/
 │   │   └── useTerminals.ts         Onglets terminal : open/close PTY, onglet actif, rename + color (mémoire)
 │   │
 │   └── components/
-│       ├── Topbar.tsx              Toggle modes, PathBar éditable, search (Nom/Contenu), drop crumbs
+│       ├── Topbar.tsx              Sélecteur de profil + bouton éditeur, PathBar éditable, search, drop crumbs
+│       ├── ZoneLayout.tsx          Rend le centre par zones (left/center/right/bottom) selon le profil actif
+│       ├── FileTree.tsx            Arborescence dossiers pliable, lazy par expand (listDir filtré), cwd surligné
+│       ├── ProfileEditor.tsx       Modale gestion profils : CRUD + assignation panneau→zone + toggle barre filtres
+│       ├── DialogHost.tsx          Hub des modales (rename/newfolder/trash/props/compress…) extrait de App
+│       ├── ResizeHandle.tsx        Poignée de redimensionnement vertical (dock terminal)
 │       ├── Sidebar.tsx             Favoris/groupes + Emplacements + Montages + Corbeille (badge, vider)
 │       ├── SortBar.tsx             Barre tri/filtre compacte (32px) sous topbar
 │       ├── FileGrid.tsx            Grille mode Fichiers, sélection multiple, clic fond = clear
@@ -110,6 +117,7 @@ vela/
         ├── thumbs.rs               thumbnail (crate image, PNG base64, cache ~/.cache/vela/thumbs)
         ├── places.rs               home_dir, list_places (XDG + mounts)
         ├── favorites.rs            load/save favorites (JSON ~/.config/vela/)
+        ├── profiles.rs             load/save profiles (JSON ~/.config/vela/) + seed Explorateur/Édition
         ├── tags.rs                 load_tags/set_tag — étiquettes couleur (~/.config/vela/tags.json)
         ├── archive.rs              list_archive, ExtractionManager (Tauri state), start_extraction,
         │                           extraction_pause/resume/cancel/provide_password — ZIP natif

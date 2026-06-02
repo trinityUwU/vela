@@ -1,6 +1,6 @@
 # Vela
 
-File manager Linux en deux modes : navigation classique et édition intégrée. En mode Édition, un clic sur un fichier l'ouvre dans la fenêtre — CodeMirror avec coloration syntaxique, sauvegarde `Ctrl+S`, aperçu Markdown live. Zéro dépendance réseau.
+File manager Linux organisé en **profils** : chaque profil est une disposition complète que tu composes toi-même. Tu choisis ce qui occupe la gauche, le centre, la droite et le bas parmi un jeu de panneaux — favoris, listing, éditeur, arborescence, terminal — et tu bascules de l'un à l'autre depuis la barre du haut. Deux profils sont fournis d'office : « Explorateur » (la navigation classique) et « Édition » (listing + éditeur côte à côte). Zéro dépendance réseau.
 
 ## Pourquoi
 
@@ -8,7 +8,15 @@ Nemo n'a jamais intégré de preview pane. Vela le fait nativement, avec un vrai
 
 ## Fonctionnalités
 
-**Mode Fichiers**
+**Profils de layout**
+- Sélecteur de profil dans la barre du haut, un profil actif à la fois
+- Éditeur de profil (bouton sliders) : créer, dupliquer, renommer, supprimer
+- Quatre zones — gauche / centre / droite / bas — chacune reçoit un panneau au choix (centre obligatoire)
+- Panneaux disponibles : favoris, listing fichiers, éditeur, arborescence, terminal
+- Barre de filtres masquable par profil ; barre du haut toujours présente
+- Persisté dans `~/.config/vela/profiles.json`
+
+**Panneau Fichiers**
 - Navigation grille avec icônes par format (logos devicon + SVG génériques)
 - Sidebar : Favoris (pins + groupes collapsibles), Emplacements XDG, Montages
 - Breadcrumb éditable (clic → saisie chemin directe)
@@ -20,7 +28,7 @@ Nemo n'a jamais intégré de preview pane. Vela le fait nativement, avec un vrai
 - Clic droit fichier : ouvrir, copier le chemin absolu, copier le chemin relatif, renommer, supprimer, propriétés
 - Clic droit zone vide : nouveau fichier/dossier, actualiser, toggle fichiers cachés, épingler le dossier, propriétés
 
-**Mode Édition**
+**Panneau Édition**
 - Split liste / éditeur
 - CodeMirror 6 (Python, JS/TS, Rust, HTML, CSS, JSON, Markdown, Go, PHP...)
 - `Ctrl+S` sauvegarder · `Ctrl+F` rechercher dans le fichier

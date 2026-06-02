@@ -1,5 +1,3 @@
-export type Mode = "files" | "edit";
-
 export interface DirEntry {
   name: string;
   path: string;
@@ -36,6 +34,27 @@ export interface FavGroup {
 export interface Favorites {
   pins: FavPin[];
   groups: FavGroup[];
+}
+
+export type PanelId = "sidebar" | "listing" | "editor" | "filetree" | "terminal";
+
+export interface Zones {
+  left: PanelId | null;
+  center: PanelId;
+  right: PanelId | null;
+  bottom: PanelId | null;
+}
+
+export interface Profile {
+  id: string;
+  name: string;
+  zones: Zones;
+  filter_bar_hidden: boolean;
+}
+
+export interface ProfilesState {
+  active: string;
+  profiles: Profile[];
 }
 
 export interface Place {

@@ -13,6 +13,7 @@ mod media_probe;
 mod ops;
 mod places;
 mod player;
+mod profiles;
 mod stems;
 mod tags;
 mod terminal;
@@ -70,6 +71,8 @@ pub fn run() {
             places::list_places,
             favorites::load_favorites,
             favorites::save_favorites,
+            profiles::load_profiles,
+            profiles::save_profiles,
             tags::load_tags,
             tags::set_tag,
             analyze::analyze_disk,

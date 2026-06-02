@@ -1,15 +1,18 @@
-// Barre supérieure : toggle des deux modes, navigation, path éditable. Zone de drag (fenêtre sans décoration).
+// Barre supérieure : sélecteur de profil, navigation, path éditable. Zone de drag (fenêtre sans décoration).
 import { useEffect, useRef, useState } from "react";
-import type { Mode } from "../types";
+import type { Profile } from "../types";
 import type { SearchMode } from "../hooks/useSearch";
-import { ArrowUp, Refresh, Eye, FolderPlus, Search, Trash, TerminalIcon, ChevronLeft, ChevronRight, GridIcon, ListIcon } from "./icons";
+import { ArrowUp, Refresh, Eye, FolderPlus, Search, Trash, TerminalIcon, ChevronLeft, ChevronRight, GridIcon, ListIcon, Sliders } from "./icons";
 import { SearchInput } from "./SearchBar";
 
 export type View = "grid" | "list";
 
 interface Props {
-  mode: Mode;
-  onMode: (m: Mode) => void;
+  profiles: Profile[];
+  activeId: string;
+  onSwitchProfile: (id: string) => void;
+  onEditProfiles: () => void;
+  showViewToggle: boolean;
   path: string;
   showHidden: boolean;
   view: View;
@@ -50,27 +53,28 @@ function crumbs(path: string): { label: string; path: string }[] {
 }
 
 export function Topbar(props: Props) {
-  const { mode, onMode, path, searchOpen, onMove } = props;
+  const { profiles, activeId, onSwitchProfile, path, searchOpen, onMove } = props;
   return (
     <div
       data-tauri-drag-region
       className="flex items-center gap-2 px-3 h-12 border-b border-[var(--color-border)] bg-[var(--color-surface)]"
     >
       <div className="flex rounded-md bg-[var(--color-bg)] p-0.5 border border-[var(--color-border)]">
-        {(["files", "edit"] as Mode[]).map((m) => (
+        {profiles.map((p) => (
           <button
-            key={m}
-            onClick={() => onMode(m)}
+            key={p.id}
+            onClick={() => onSwitchProfile(p.id)}
             className={`px-3 py-1 text-xs rounded transition-colors ${
-              mode === m
+              activeId === p.id
                 ? "bg-[var(--color-accent)] text-[var(--color-bg)] font-medium"
                 : "text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
             }`}
           >
-            {m === "files" ? "Fichiers" : "Édition"}
+            {p.name}
           </button>
         ))}
       </div>
+      <IconBtn onClick={props.onEditProfiles} title="Gérer les profils"><Sliders /></IconBtn>
 
       <IconBtn onClick={props.onBack} title="Précédent (Alt+←)" disabled={!props.canBack}><ChevronLeft /></IconBtn>
       <IconBtn onClick={props.onForward} title="Suivant (Alt+→)" disabled={!props.canForward}><ChevronRight /></IconBtn>
@@ -98,7 +102,7 @@ export function Topbar(props: Props) {
       <IconBtn onClick={searchOpen ? props.onSearchClose : props.onSearchOpen} active={searchOpen} title="Rechercher">
         <Search />
       </IconBtn>
-      {mode === "files" && (
+      {props.showViewToggle && (
         <IconBtn
           onClick={() => props.onView(props.view === "grid" ? "list" : "grid")}
           title={props.view === "grid" ? "Vue liste" : "Vue grille"}

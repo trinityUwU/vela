@@ -153,3 +153,44 @@ export interface DirCompare {
   same: number;
   entries: DiffEntry[];
 }
+
+export interface MediaCapabilities {
+  ffmpeg: boolean;
+  ffprobe: boolean;
+  demucs: boolean;
+  demucs_path: string | null;
+}
+
+export interface MediaProbe {
+  duration: number;
+  width: number;
+  height: number;
+  has_video: boolean;
+  has_audio: boolean;
+  format_name: string;
+  video_codec: string | null;
+  audio_codec: string | null;
+}
+
+export interface StemsStatus {
+  installed: boolean;
+  path: string | null;
+}
+
+export interface StemsProgress {
+  job_id: string;
+  percent: number;
+  status: string;
+}
+
+export interface StemsInstallProgress {
+  job_id: string;
+  line: string;
+  status: string;
+}
+
+export interface VideoProgress {
+  job_id: string;
+  percent: number;
+  status: string;
+}

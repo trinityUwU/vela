@@ -2,15 +2,20 @@
 mod analyze;
 mod apps;
 mod archive;
+mod audio;
 mod dircmp;
 mod favorites;
 mod fs_ops;
+mod imaging;
+mod media_probe;
 mod ops;
 mod places;
 mod player;
+mod stems;
 mod tags;
 mod terminal;
 mod thumbs;
+mod video;
 mod watcher;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -22,6 +27,8 @@ pub fn run() {
         .manage(ops::TransferManager::new())
         .manage(terminal::TerminalManager::new())
         .manage(player::PlayerManager::new())
+        .manage(video::VideoJobManager::new())
+        .manage(stems::StemsManager::new())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             fs_ops::list_dir,
@@ -82,6 +89,28 @@ pub fn run() {
             apps::search_path_bins,
             apps::set_default_app,
             apps::set_custom_command,
+            media_probe::media_capabilities,
+            media_probe::media_probe,
+            audio::audio_trim,
+            audio::audio_fade,
+            audio::audio_normalize,
+            audio::audio_convert,
+            audio::audio_remove_vocals,
+            imaging::image_crop,
+            imaging::image_rotate,
+            imaging::image_flip,
+            imaging::image_resize,
+            imaging::image_adjust,
+            imaging::image_convert,
+            video::video_trim,
+            video::video_extract_frame,
+            video::video_extract_audio,
+            video::video_convert,
+            video::video_convert_cancel,
+            stems::stems_status,
+            stems::stems_separate,
+            stems::stems_install,
+            stems::stems_cancel,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

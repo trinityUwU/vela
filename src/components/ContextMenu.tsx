@@ -32,6 +32,7 @@ interface Props {
   onOpenTerminal?: () => void;
   onComputeSize?: () => void;
   onAnalyze?: () => void;
+  onMediaTools?: () => void;
   onExtractHere?: () => void;
   onExtractTo?: () => void;
 }
@@ -47,7 +48,7 @@ function copyToClipboard(text: string) {
 
 export function ContextMenu(props: Props) {
   const { menu, onClose, onOpen, onRename, onTrash, onDeletePermanent, onProperties } = props;
-  const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onOpenTerminal, onComputeSize, onAnalyze, onExtractHere, onExtractTo } = props;
+  const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onOpenTerminal, onComputeSize, onAnalyze, onMediaTools, onExtractHere, onExtractTo } = props;
 
   useEffect(() => {
     window.addEventListener("click", onClose);
@@ -57,6 +58,10 @@ export function ContextMenu(props: Props) {
   const multi = menu.count > 1;
   const rel = relativePath(menu.path, menu.cwd);
   const isArchive = !multi && !menu.isDir && previewKind(menu.extension) === "archive";
+  const mediaKind = !multi && !menu.isDir ? previewKind(menu.extension) : "binary";
+  const isMedia = mediaKind === "image" || mediaKind === "audio" || mediaKind === "video";
+  const mediaLabel =
+    mediaKind === "image" ? "Éditer l'image…" : mediaKind === "audio" ? "Outils audio…" : "Outils vidéo…";
 
   return (
     <div
@@ -67,6 +72,9 @@ export function ContextMenu(props: Props) {
         <div className="px-3 py-1 text-xs text-[var(--color-text-dim)]">{menu.count} éléments</div>
       )}
       {!multi && <Item label="Ouvrir" onClick={onOpen} />}
+      {isMedia && onMediaTools && (
+        <Item label={mediaLabel} onClick={() => { onMediaTools(); onClose(); }} />
+      )}
       {!multi && menu.isDir && onOpenTerminal && (
         <Item label="Ouvrir un terminal ici" onClick={() => { onOpenTerminal(); onClose(); }} />
       )}

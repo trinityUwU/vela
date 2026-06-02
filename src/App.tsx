@@ -36,6 +36,7 @@ import { BatchRenameModal } from "./components/BatchRenameModal";
 import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { DownloadModal } from "./components/DownloadModal";
 import { DiffViewer } from "./components/DiffViewer";
 import { DirCompareViewer } from "./components/DirCompareViewer";
 import { startExtraction, trashDir } from "./services/fs";
@@ -106,6 +107,7 @@ export default function App() {
   const [termHeight, setTermHeight] = useState(280);
   const [shells, setShells] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
   const [view, setView] = useState<View>(() => ((localStorage.getItem("vela-view") as View) || "grid"));
   const setViewPersist = useCallback((v: View) => { setView(v); try { localStorage.setItem("vela-view", v); } catch {} }, []);
 
@@ -352,6 +354,7 @@ export default function App() {
           onOpenTrash={fm.openTrash}
           onEmptyTrash={() => setDialog({ kind: "emptytrash" })}
           onOpenSettings={() => setSettingsOpen(true)}
+          onOpenDownload={() => setDownloadOpen(true)}
         />
 
         {fm.mode === "edit" ? (
@@ -596,6 +599,7 @@ export default function App() {
           appearance={{ accent: appearance.accent, density: appearance.density, onAccent: setAccent, onDensity: setDensity }}
         />
       )}
+      {downloadOpen && <DownloadModal cwd={fm.cwd} onClose={() => setDownloadOpen(false)} onError={fm.setError} />}
       {diff && <DiffViewer a={diff.a} b={diff.b} onClose={() => setDiff(null)} onError={fm.setError} />}
       {dirDiff && <DirCompareViewer a={dirDiff.a} b={dirDiff.b} onClose={() => setDirDiff(null)} onError={fm.setError} />}
       {analyzePath && (

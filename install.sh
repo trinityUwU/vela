@@ -55,3 +55,22 @@ else
     echo "⚠ install demucs échouée — Vela fonctionne ; réessaie via Outils audio → Installer demucs"
   fi
 fi
+
+# ── Outils de téléchargement (yt-dlp + spotdl) — automatique, idempotent ─────
+# yt-dlp = moteur de téléchargement core (non optionnel). spotdl = couche Spotify.
+# Venv Vela dédié. Non bloquant : un échec n'interrompt pas l'install.
+DL_VENV="$HOME/.local/share/vela/dl-venv"
+if [ -x "$DL_VENV/bin/yt-dlp" ]; then
+  echo "✓ yt-dlp déjà présent : $DL_VENV"
+elif ! command -v python3 >/dev/null; then
+  echo "⚠ python3 absent — yt-dlp/spotdl non installés (à faire plus tard)"
+else
+  echo "→ installation de yt-dlp + spotdl (outils de téléchargement)…"
+  if python3 -m venv "$DL_VENV" \
+     && "$DL_VENV/bin/pip" install -q --upgrade pip \
+     && "$DL_VENV/bin/pip" install -q yt-dlp spotdl; then
+    echo "✓ yt-dlp + spotdl installés : $DL_VENV"
+  else
+    echo "⚠ install yt-dlp/spotdl échouée — Vela fonctionne ; réessaie plus tard"
+  fi
+fi

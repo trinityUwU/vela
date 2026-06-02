@@ -224,4 +224,28 @@ Frontend :
 
 ## Backlog
 - [ ] Édition image en plein écran (remonter le HUD dans le conteneur fullscreen du lecteur pour préserver l'immersion)
-- Reste : prochaines idées à définir avec Chris.
+
+### À discuter puis implémenter en session autonome (idées Chris — 2026-06-02)
+
+**A · Téléchargement de fichiers volants (YouTube / Spotify)**
+Réduire la friction « chercher un convertisseur en ligne ». Coller une URL → choisir format / qualité / langue audio / sous-titres parmi ceux disponibles → télécharger dans le cwd.
+- Moteur : `yt-dlp` (open source, local, souverain). `yt-dlp -F <url>` liste les formats dispo → UI de sélection. Gère mp4/webm/mp3/wav, qualités, pistes audio par langue, sous-titres, extraction audio.
+- Spotify : pas de download direct (DRM). `spotdl` lit les métadonnées Spotify (titre/artiste) et délègue à yt-dlp depuis YouTube → un seul moteur + couche de résolution.
+- Archi pressentie : module `downloader.rs` (même pattern que `stems.rs` : binaire dans venv détecté, install managée optionnelle, job background + progress parse stdout yt-dlp + cancel).
+- UI/UX (précisé Chris) :
+  - Détection dynamique du type d'URL : titre unique vs playlist.
+  - Playlist → afficher tous les titres ; si > 10, **chargement dynamique** (pas tout d'un coup), **scroll géré dans la modal**.
+  - **Tout sélectionner / tout désélectionner** + sélection individuelle, puis un seul bouton Download → batch (file de jobs).
+  - Choix format/qualité/langue audio/sous-titres parmi les dispo.
+  - Destination : **cwd actuel par défaut**, modifiable dans la modal + case **« créer un nouveau dossier pour ce download »**.
+- Légal : téléchargement de contenu sous copyright = zone grise. Usage perso machine Chris, hors prod Echo Agency. Mentionné, assumé.
+
+**B · Profils + layout dynamique**
+Remplacer/englober les 2 modes actuels (fichiers/édition) par des **profils** nommés et configurables (ex. profil « dev » = arborescence à gauche + éditeur au centre, reste masqué).
+- **Un seul profil actif à la fois** (confirmé Chris) : un profil = un layout complet lié à ce profil, on switch de l'un à l'autre. → sélecteur de profil dans la barre du haut (déjà l'invariant), le reste se reconfigure.
+- **Invariants non configurables** : barre du haut (switch profil + emplacement courant) = toujours visible, jamais déplaçable. Barre de filtres en bas = masquable par profil mais jamais déplaçable.
+- **Archi (confirmée Chris)** : placement libre des sections proposées par l'app **mais PAS pixel-par-pixel** (drag free-form = KO, sur-ingénierie + casse l'épuré). → nombre **fini de zones** (gauche/centre/droite/bas) + catalogue de panneaux assignables (sidebar favoris, arborescence, filtres custom, terminal, éditeur) : par profil = quelle zone montre quoi + visible on/off + largeur.
+- **Décision d'archi à trancher avant impl** : les profils deviennent-ils le concept de premier niveau (fichiers/édition = comportements de zones) plutôt que des modes globaux concurrents ?
+- Exigence transverse : navigation ultra fluide, épurée, pro, sans se perdre dans des settings. L'édition de profils elle-même doit rester simple.
+
+**Mode session suivante** : autonome, prendre ces features une à une (download d'abord = plus net et isolé, profils ensuite après décision d'archi).

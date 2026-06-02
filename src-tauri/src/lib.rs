@@ -4,6 +4,8 @@ mod apps;
 mod archive;
 mod audio;
 mod dircmp;
+mod download_job;
+mod downloader;
 mod favorites;
 mod fs_ops;
 mod imaging;
@@ -29,6 +31,7 @@ pub fn run() {
         .manage(player::PlayerManager::new())
         .manage(video::VideoJobManager::new())
         .manage(stems::StemsManager::new())
+        .manage(download_job::DownloadManager::new())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             fs_ops::list_dir,
@@ -91,6 +94,10 @@ pub fn run() {
             apps::set_custom_command,
             media_probe::media_capabilities,
             media_probe::media_probe,
+            downloader::download_capabilities,
+            downloader::download_probe,
+            download_job::download_start,
+            download_job::download_cancel,
             audio::audio_trim,
             audio::audio_fade,
             audio::audio_normalize,

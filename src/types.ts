@@ -202,3 +202,44 @@ export type ImageOp =
   | { kind: "flip"; horizontal: boolean }
   | { kind: "resize"; width: number; height: number; keep_aspect: boolean }
   | { kind: "adjust"; brightness: number; contrast: number; saturation: number };
+
+export interface DownloadCapabilities {
+  ytdlp: boolean;
+  spotdl: boolean;
+}
+
+export interface DownloadFormat {
+  format_id: string;
+  ext: string;
+  resolution: string;
+  note: string;
+  vcodec: string;
+  acodec: string;
+  filesize: number;
+  language: string | null;
+}
+
+export interface DownloadEntry {
+  id: string;
+  title: string;
+  duration: number;
+  url: string;
+}
+
+export interface DownloadInfo {
+  kind: string;
+  title: string;
+  is_playlist: boolean;
+  entries: DownloadEntry[];
+  formats: DownloadFormat[];
+  subtitle_langs: string[];
+}
+
+export interface DownloadProgress {
+  job_id: string;
+  percent: number;
+  status: string;
+  speed: string;
+  eta: string;
+  title: string;
+}

@@ -141,7 +141,7 @@ export function Editor({ entry, onClose, onError, active = true }: Props) {
       )}
 
       {isMedia ? (
-        <MediaViewer entry={entry} kind={isVideo ? "video" : "audio"} />
+        <MediaViewer entry={entry} kind={isVideo ? "video" : "audio"} active={active} />
       ) : isPdf ? (
         <PdfViewer entry={entry} onError={onError} />
       ) : isArchive ? (

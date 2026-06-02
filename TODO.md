@@ -197,7 +197,9 @@ Mémoire : ne pas garder toutes les base64 en RAM, laisser le GC ; le cache disq
 - [x] P2·8 — Analyse disque : `analyze_disk` (plus gros fichiers + doublons par hash), overlay `DiskAnalyzer`
 
 ## Livré — v1.12 (P3 avancé) ✅
-- [x] P3·9 — Aperçu vidéo/audio inline (`MediaViewer`, protocole asset Tauri `convertFileSrc`)
+- [x] P3·9 — Aperçu vidéo/audio. Audio = blob `<audio>`. **Vidéo = lecteur natif GStreamer→canvas**
+  (`player.rs` + `gstreamer-rs`, décodage GPU NVDEC, synchro A/V par horloge pipeline) car `<video>`
+  WebKitGTK cassé sur Nvidia/Wayland. Contrôles play/pause/seek/volume/fullscreen auto-hide.
 - [x] P3·10 — Comparaison de dossiers (`compare_dirs` + `DirCompareViewer`, clic droit 2 dossiers)
 
 ## Backlog

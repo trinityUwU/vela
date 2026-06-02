@@ -59,6 +59,24 @@ export const GridIcon = (p: P) => (
 export const ListIcon = (p: P) => (
   <svg {...base} {...p}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
 );
+export const Play = (p: P) => (
+  <svg {...base} {...p}><path d="M6 4v16l14-8z" fill="currentColor" stroke="none" /></svg>
+);
+export const Pause = (p: P) => (
+  <svg {...base} {...p}><rect x="6" y="4" width="4" height="16" fill="currentColor" stroke="none" /><rect x="14" y="4" width="4" height="16" fill="currentColor" stroke="none" /></svg>
+);
+export const Maximize = (p: P) => (
+  <svg {...base} {...p}><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
+);
+export const Minimize = (p: P) => (
+  <svg {...base} {...p}><path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3" /></svg>
+);
+export const Volume = (p: P) => (
+  <svg {...base} {...p}><path d="M11 5 6 9H2v6h4l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14" /></svg>
+);
+export const VolumeMute = (p: P) => (
+  <svg {...base} {...p}><path d="M11 5 6 9H2v6h4l5 4z" /><path d="m23 9-6 6M17 9l6 6" /></svg>
+);
 export const Home = (p: P) => (
   <svg {...base} {...p}><path d="M3 11l9-8 9 8" /><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" /></svg>
 );

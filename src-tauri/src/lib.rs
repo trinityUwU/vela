@@ -7,6 +7,7 @@ mod favorites;
 mod fs_ops;
 mod ops;
 mod places;
+mod player;
 mod tags;
 mod terminal;
 mod thumbs;
@@ -14,11 +15,13 @@ mod watcher;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    player::init();
     tauri::Builder::default()
         .manage(archive::ExtractionManager::new())
         .manage(watcher::DirWatcher::new())
         .manage(ops::TransferManager::new())
         .manage(terminal::TerminalManager::new())
+        .manage(player::PlayerManager::new())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             fs_ops::list_dir,
@@ -61,6 +64,12 @@ pub fn run() {
             tags::set_tag,
             analyze::analyze_disk,
             dircmp::compare_dirs,
+            player::player_open,
+            player::player_pause,
+            player::player_resume,
+            player::player_seek,
+            player::player_set_volume,
+            player::player_close,
             archive::list_archive,
             archive::start_extraction,
             archive::extraction_pause,

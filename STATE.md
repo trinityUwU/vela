@@ -47,7 +47,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - **Aperçu PDF** : `PdfViewer` (pdf.js, worker local `?url`) — canvas page par page, zoom 50-300%, lazy IntersectionObserver au-delà de 20 pages. Branché dans `Editor` (`previewKind` "pdf", non éditable) → dispo en Quick Look
 - **Thumbnails images** : `useThumbnail` (IntersectionObserver lazy, file de concurrence globale 4) + `FileTile` affiche la miniature réelle (fallback `FileIcon` pendant chargement/erreur)
 
-**Commandes Rust** : 49 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager` + `TerminalManager`)
+**Commandes Rust** : 55 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager` + `TerminalManager`)
 
 **Transferts contrôlables** : `TransferManager` (state, AtomicBool paused/cancelled par job) + `transfer_pause`/`transfer_resume`/`transfer_cancel`. La boucle de copie par chunks vérifie le contrôle à chaque tranche (pause = spin-wait 50 ms, annulation = nettoyage du partiel + statut `cancelled`). Boutons Pause/Reprendre + Annuler sur copie ET déplacement. **Déplacement intelligent** : `rename` si même FS (instantané) ; sinon (cross-device EXDEV) copie par chunks pausable/annulable + suppression de la source **différée à la fin** (annuler ne perd jamais de données). Annulation = restauration : rename inverse des renommés, suppression des copies cross-device partielles. `MoveState` (renamed/copied), `undo_move`, `is_cross_device`, `validate_move_target`
 
@@ -58,6 +58,9 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - Raccourci `Super+E` → `/home/trinity/.local/bin/vela`
 - Port dev : 1430 (vite.config.ts + tauri.conf.json)
 - GitHub : https://github.com/trinityUwU/vela (public)
+
+## Piège infra connu — lecture vidéo WebKitGTK
+L'élément HTML5 `<video>` est **inutilisable sur Nvidia/Wayland** (RTX 3060) : frame figée hors seek, écran noir, ou 2fps. Diagnostiqué à fond — décodage OK, codecs OK, c'est le compositing GL du calque vidéo qui ne se repeint pas. **Aucune** variable d'env ne corrige (testé : `WEBKIT_DISABLE_DMABUF_RENDERER`, `WEBKIT_DISABLE_COMPOSITING_MODE` → 2fps software, `GST_GL_DISABLED`, `GDK_BACKEND=x11`). Les mainteneurs Tauri classent ça bug non résolu. **Ne pas perdre de temps à réessayer `<video>` ou MSE** (MSE alimente aussi un `<video>` → même bug). La solution retenue = décodage Rust GStreamer → `<canvas>` (voir section v1.12 `player.rs`). Le seul truc qui marche pour un média via WebKitGTK est le blob `<audio>` (audio seul).
 
 ## Piège infra connu — install release
 - **NE JAMAIS** faire `pkill -f vela-bin` : le motif `-f` matche la ligne de commande du script/commande courante (qui contient « vela-bin ») et **tue le shell avant le `cp`** → le nouveau binaire n'est jamais installé, on relance l'ancien. Ce bug a coûté 1h le 2026-06-02 (la nav clavier semblait cassée alors que les correctifs n'étaient simplement jamais déployés). Toujours `pkill -x vela-bin` (nom de process exact). Rituel figé dans `install.sh`.
@@ -115,10 +118,14 @@ Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, paus
 **Commandes Rust** : 48 (ajout `analyze_disk`).
 
 ## v1.12 — P3 avancé ✅ (livré, installé)
-- **Aperçu vidéo/audio** (`MediaViewer.tsx`, `file-kind` types `video`/`audio`) : lecteur HTML5 `<video controls>`/`<audio controls>` servi en local via le **protocole asset Tauri** (`convertFileSrc`). Activation : `tauri.conf.json` → `app.security.assetProtocol { enable, scope: ["**"] }` + feature Cargo `protocol-asset`. Codecs dépendants de **GStreamer système** (WebKitGTK) — message de fallback si non supporté. Branché dans `Editor` (et donc Quick Look) avant les autres types ; `isEditable` inclut video/audio pour ouvrir l'aperçu. Thumbnails vidéo **écartés** (ffmpeg = dép lourde, contre la souveraineté légère du projet).
+- **Aperçu vidéo/audio** (`MediaViewer.tsx`, `file-kind` types `video`/`audio`). Branché dans `Editor` (et Quick Look) ; `isEditable` inclut video/audio.
+  - **Audio** : blob `<audio>` (lu via `read_file_base64` → Blob URL). Fonctionne.
+  - **Vidéo : lecteur 100 % natif maison** (`player.rs` + `gstreamer-rs`). L'élément `<video>` de WebKitGTK est **cassé sur Nvidia/Wayland** (frame figée hors seek, écran noir — bug compositing GL confirmé, aucune variable d'env ne le corrige, voir [[piège infra]] ci-dessous). Solution : décodage **GStreamer côté Rust** (`playbin`, NVDEC GPU auto via nvcodec), video-sink custom `videoconvert ! videoscale (cap 1600px) ! jpegenc ! appsink sync=true`, frames JPEG poussées au front via **Channel Tauri** (`InvokeResponseBody::Raw`, payload = 8 octets f64 PTS LE + JPEG) → peintes sur `<canvas>` (`createImageBitmap` + `drawImage`). **Synchro A/V garantie par construction** : playbin joue l'audio (horloge maître), `appsink sync=true` libère chaque frame à son PTS exact — zéro drift. Contrôles : play/pause, seek (`player_seek`), volume (`player_set_volume` → property playbin), fullscreen applicatif (`fixed inset-0` + toolbar auto-hide 2,5s, curseur masqué — l'API Fullscreen navigateur est peu fiable sous WebKitGTK). Onglet caché → pipeline mise en pause (sinon l'audio continuerait). Fullscreen : canvas `w-full h-full object-contain` (remplit), windowed : `max-w/h-full` (n'agrandit pas).
+  - Commandes : `player_open/pause/resume/seek/set_volume/close`. **PROTOCOLE ASSET TAURI ABANDONNÉ** (essayé puis retiré : ne sert pas les médias sous WebKitGTK + scope `**` = surface inutile).
+  - Thumbnails vidéo **écartés** (ffmpeg/extraction = dép lourde, hors scope preview).
 - **Comparaison de dossiers** (`dircmp.rs` → `compare_dirs` + `DirCompareViewer.tsx`) : `walkdir` sur 2 arbres → `BTreeMap<rel, meta>`, statut par entrée `only_a`/`only_b`/`modified` (taille OU mtime diff)/`same`. Overlay filtrable (Différences/Gauche/Droite/Modifiés/Identiques) avec signes −/+/~/= colorés. `App.compareSelection` route : 2 dossiers → `DirCompareViewer`, 2 fichiers → `DiffViewer`, mélange → erreur. Item menu renommé « Comparer les 2 éléments ».
 
-**Commandes Rust** : 49 (ajout `compare_dirs`).
+**Commandes Rust** : 55 (ajout `compare_dirs` + 6 `player_*`).
 
 ## Backlog
 `BACKLOG.md` vidé — P1 (v1.9) + P2 (v1.11) + P3 (v1.12) livrés. Prochaines idées à définir avec Chris. Restent P2 (confort : thèmes, recherches récentes, taille dossier, analyse disque) et P3 (aperçu vidéo/audio, comparaison de dossiers).

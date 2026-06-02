@@ -22,6 +22,18 @@ export function compareDirs(a: string, b: string): Promise<import("../types").Di
   return invoke("compare_dirs", { a, b });
 }
 
+// ── Lecteur vidéo natif (GStreamer → frames JPEG via Channel) ────────────────
+export interface MediaInfo { duration: number; width: number; height: number; }
+
+export function playerOpen(id: string, path: string, onFrame: import("@tauri-apps/api/core").Channel<ArrayBuffer>): Promise<MediaInfo> {
+  return invoke("player_open", { id, path, onFrame });
+}
+export function playerPause(id: string): Promise<void> { return invoke("player_pause", { id }); }
+export function playerResume(id: string): Promise<void> { return invoke("player_resume", { id }); }
+export function playerSeek(id: string, secs: number): Promise<void> { return invoke("player_seek", { id, secs }); }
+export function playerSetVolume(id: string, volume: number): Promise<void> { return invoke("player_set_volume", { id, volume }); }
+export function playerClose(id: string): Promise<void> { return invoke("player_close", { id }); }
+
 export function getAppsForFile(path: string): Promise<import("../types").FileApps> {
   return invoke("get_apps_for_file", { path });
 }

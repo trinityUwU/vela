@@ -84,7 +84,8 @@ const SECTIONS: Section[] = [
       { keys: ["Espace"], label: "Quick Look — aperçu rapide sans entrer en édition" },
       { label: "Markdown & HTML — bascule code ↔ rendu" },
       { label: "PDF (zoom, pages), images (miniatures), CSV (tableau), archives (contenu)" },
-      { label: "Vidéo & audio — lecteur inline (lecture seule, codecs GStreamer du système)" },
+      { label: "Vidéo — lecteur natif (décodage GPU) : play/pause, seek, volume, plein écran" },
+      { label: "Audio — lecteur inline ; plein écran vidéo : toolbar auto-masquée, Échap pour sortir" },
     ],
   },
   {

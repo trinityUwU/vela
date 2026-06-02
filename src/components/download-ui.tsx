@@ -7,6 +7,16 @@ import { TERMINAL } from "../hooks/use-download";
 export const fieldCls =
   "px-2 py-1 rounded bg-[var(--color-bg)] border border-[var(--color-border)] text-sm " +
   "text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]";
+// Select : `appearance-none` retire le chrome natif WebKitGTK (fond clair/dégradé cassé)
+// et on dessine notre propre chevron. pr-8 laisse la place à la flèche.
+export const selectCls =
+  fieldCls + " appearance-none cursor-pointer pr-8";
+const chevronStyle: React.CSSProperties = {
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 0.5rem center",
+};
 export const accentBtn =
   "px-3 py-1.5 rounded text-sm bg-[var(--color-accent)] text-[var(--color-bg)] disabled:opacity-40";
 export const ghostBtn =
@@ -98,10 +108,13 @@ function VideoFormatSelect({ info, options, setOptions }: FormatOptionsProps): R
     <select
       value={options.formatId}
       onChange={(e) => setOptions({ formatId: e.target.value })}
-      className={`w-full ${fieldCls}`}
+      className={`w-full ${selectCls}`}
+      style={chevronStyle}
     >
       {info.formats.map((f) => (
-        <option key={f.format_id} value={f.format_id}>{formatLabel(f)}</option>
+        <option key={f.format_id} value={f.format_id} className="bg-[var(--color-surface)] text-[var(--color-text)]">
+          {formatLabel(f)}
+        </option>
       ))}
     </select>
   );
@@ -154,9 +167,12 @@ export function FormatOptions(props: FormatOptionsProps): React.ReactElement {
         <select
           value={options.audioFormat}
           onChange={(e) => setOptions({ audioFormat: e.target.value as AudioFormat })}
-          className={fieldCls}
+          className={`w-full ${selectCls}`}
+          style={chevronStyle}
         >
-          {AUDIO_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
+          {AUDIO_FORMATS.map((f) => (
+            <option key={f} value={f} className="bg-[var(--color-surface)] text-[var(--color-text)]">{f}</option>
+          ))}
         </select>
       )}
       <SubtitleChips {...props} />
@@ -226,11 +242,14 @@ function JobRow(
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-[var(--color-bg)] overflow-hidden">
-        <div
-          className="h-full rounded-full bg-[var(--color-accent)] transition-all duration-300"
-          style={{ width: `${indeterminate ? 100 : Math.max(0, Math.min(100, job.percent))}%`,
-            opacity: indeterminate ? 0.4 : 1 }}
-        />
+        {indeterminate ? (
+          <div className="h-full rounded-full bg-[var(--color-accent)] vela-indeterminate-bar" />
+        ) : (
+          <div
+            className="h-full rounded-full bg-[var(--color-accent)] transition-all duration-300"
+            style={{ width: `${Math.max(0, Math.min(100, job.percent))}%` }}
+          />
+        )}
       </div>
       <div className="flex items-center justify-between">
         <span className="text-[10px] text-[var(--color-text-dim)]">

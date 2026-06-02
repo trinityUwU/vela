@@ -1,9 +1,9 @@
 # STATE — Vela
 
 ## Objectif
-File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation classique et édition intégrée. Alternative souveraine à Nemo.
+File manager Linux (Tauri v2 + React/TypeScript) avec **profils de layout** : chaque profil compose une disposition par zones (favoris, listing, éditeur, arborescence, terminal). Alternative souveraine à Nemo.
 
-## État — v1.15 (fonctionnel, installé) · 71 commandes Rust
+## État — v1.16 (fonctionnel, installé) · 73 commandes Rust
 
 Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.15 sont documentés dans leurs sections dédiées.
 
@@ -169,5 +169,21 @@ Téléchargement de fichiers volants intégré, 100 % local. Déclencheur Sideba
 
 **Commandes Rust** : 71 (+4 : download_capabilities, download_probe, download_start, download_cancel).
 
+## v1.16 — Profils + layout dynamique ✅ (livré, installé)
+Remplace les 2 modes (files|edit) par des **profils** nommés, chacun = un layout complet par zones. Architecture **Option A** (profils first-class : le `mode` disparaît au profit des zones).
+- **Backend** : `profiles.rs` (modèle `favorites.rs`) — `load_profiles`/`save_profiles` → `~/.config/vela/profiles.json`. Types `PanelId` (enum serde lowercase : sidebar/listing/editor/filetree/terminal), `Zones {left, center, right, bottom}`, `Profile {id, name, zones, filter_bar_hidden}`, `ProfilesState {active, profiles}`. Seed par défaut : « Explorateur » {left:sidebar, center:listing} = ancien mode files ; « Édition » {left:sidebar, center:listing, right:editor} = ancien mode edit. **Non-régression garantie par les seeds.**
+- **Frontend** :
+  - `useProfiles.ts` (profil actif résolu, setActive/updateActive/upsert/remove, persistance debounce 400ms) + `services/profiles.ts`.
+  - `useFileManager` : champ `mode`/`setMode` **retiré**, remplacé par `editorActive: boolean` + `setEditorActive`. `openEntry` décide inline/native sur `editorActive`. Session ne stocke plus `mode`.
+  - `ZoneLayout.tsx` (NOUVEAU) : rend le centre selon `activeProfile.zones`. Règle listing : `editorActive` → FileList compact ; sinon FileGrid (grid) / FileTable (list). Reproduit exactement les 2 anciens modes.
+  - `Topbar` : toggle mode remplacé par **sélecteur de profil** (segmented) + bouton Sliders → éditeur.
+  - `FileTree.tsx` (NOUVEAU) : arborescence de dossiers pliable, lazy par expand (réutilise `listDir` filtré `is_dir`, cache enfants par path), cwd surligné. Aucune commande Rust ajoutée.
+  - **Terminal en zone** : si un profil place `terminal` dans une zone (typiquement `bottom`), le `TerminalPanel` existant est rendu dans la zone (pas de dock legacy en double) ; sinon dock bas Ctrl+` inchangé.
+  - `ProfileEditor.tsx` (NOUVEAU) : modale (modèle `SettingsPanel`) — créer/dupliquer/renommer/supprimer (min 1 profil), assigner un panneau à chaque zone via `<select>` (center obligatoire, autres « aucun »), toggle barre de filtres. `slugify` + id unique.
+  - Extractions `DialogHost.tsx` + `ResizeHandle.tsx` (sortis de App.tsx pour rester < 500 lignes).
+- **Validation** : tsc + cargo check verts, `bun tauri build` (deb+rpm), smoke-test binaire réel (boot 7s sans panic). Contrainte connue : `invoke` non drivable par Playwright (WebKitGTK ≠ Chromium).
+
+**Commandes Rust** : 73 (+2 : load_profiles, save_profiles). Aucune dépendance crate ajoutée (xterm.js + portable-pty déjà présents pour le terminal).
+
 ## Backlog
-`BACKLOG.md` : P1 (v1.9) + P2 (v1.11) + P3 (v1.12) + P4 média (v1.14) + téléchargeur (v1.15) livrés. Reste : édition image en plein écran (HUD dans conteneur fullscreen). **Prochaine grosse update : système de profils + layout dynamique (feature B, voir TODO.md — décision d'archi A/B à trancher avec Chris avant de coder).**
+`BACKLOG.md` : P1 (v1.9) + P2 (v1.11) + P3 (v1.12) + P4 média (v1.14) + téléchargeur (v1.15) + profils (v1.16) livrés. Reste : édition image en plein écran (HUD dans conteneur fullscreen). Dette : `App.tsx` reste à ~499 lignes (sous la limite mais dense — candidat à découpage si une feature s'y ajoute).

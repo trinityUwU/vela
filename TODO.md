@@ -234,32 +234,19 @@ Frontend :
 - [x] install.sh : yt-dlp + spotdl auto dans `dl-venv` (yt-dlp non optionnel = core)
 - [x] Fix : `download_probe`/`capabilities` async (anti-freeze UI au sondage) · select dark (`appearance-none` + chevron, fix chrome natif WebKitGTK) · barre indéterminée animée pour spotdl
 
+## Livré — v1.16 (profils + layout dynamique) ✅
+Architecture **Option A** (profils first-class, `mode` files|edit supprimé). Non-régression : seeds « Explorateur » = ancien files, « Édition » = ancien edit.
+- [x] Backend `profiles.rs` (load/save → `~/.config/vela/profiles.json`, modèle favorites.rs) + types PanelId/Zones/Profile/ProfilesState + seed défaut
+- [x] `useProfiles` (actif résolu, CRUD, persistance debounce) + `services/profiles.ts`
+- [x] `useFileManager` : `mode` retiré → `editorActive` ; `App.tsx` piloté par zones via `ZoneLayout.tsx`
+- [x] `Topbar` : sélecteur de profil + bouton éditeur (remplace le toggle mode)
+- [x] `FileTree.tsx` : arborescence pliable lazy (réutilise listDir filtré dossiers, cache par path)
+- [x] Terminal existant branché comme panneau de zone (sinon dock legacy Ctrl+`)
+- [x] `ProfileEditor.tsx` : créer/dupliquer/renommer/supprimer + assigner panneau→zone + toggle barre filtres
+- [x] Extractions DialogHost + ResizeHandle (App.tsx < 500 lignes)
+- [x] Validé : tsc + cargo + `bun tauri build` + smoke-test binaire
+
 ## Backlog
 - [ ] Édition image en plein écran (remonter le HUD dans le conteneur fullscreen du lecteur pour préserver l'immersion)
+- [ ] `App.tsx` ~499 lignes : découper si une nouvelle feature doit s'y greffer
 
-### Feature B · Profils + layout dynamique — À FAIRE (session future, autonome)
-
-> Feature A (téléchargeur) = LIVRÉE (voir section v1.15 plus bas). Reste B.
-
-**Objectif** : remplacer les 2 modes actuels (fichiers/édition) par des **profils** nommés, chacun = un layout complet custom. Ex. profil « dev » = arborescence à gauche + éditeur au centre, reste masqué. Profil « explorateur » = sidebar + grille classiques.
-
-**Contraintes confirmées Chris** :
-- **Un seul profil actif à la fois** : on switch de l'un à l'autre via un sélecteur dans la barre du haut.
-- **Invariants non configurables** : barre du haut (sélecteur profil + emplacement/breadcrumb) toujours visible, jamais déplaçable. Barre de filtres en bas = masquable par profil mais jamais déplaçable.
-- **Placement par zones, PAS pixel-par-pixel** (drag free-form = KO, sur-ingénierie, casse l'épuré).
-- Navigation fluide, épurée, pro, simple. L'édition de profils elle-même doit rester simple (pas une usine à settings).
-
-**Décision d'archi à TRANCHER avec Chris avant de coder** (escaladée 2026-06-02, non tranchée) :
-- **Option A (reco Claude)** : les profils deviennent le **concept de premier niveau**. Le `mode` actuel (fichiers|édition, câblé dans `useFileManager` + `App.tsx`) disparaît au profit de zones + panneaux assignables. Refacto structurel franc mais fondation propre.
-- **Option B** : profils = surcouche au-dessus des 2 modes existants. Moins de refacto, mais friction durable (fichiers/édition restent des modes → profils bridés).
-- Risque : mal posé au départ = cher à corriger. Ne PAS coder avant accord A/B.
-
-**Archi pressentie (si Option A)** :
-- **Modèle zones** : ensemble fini — `left` / `center` / `right` / `bottom`. Chaque zone affiche 0..n panneaux du catalogue, avec visible on/off + largeur/hauteur.
-- **Catalogue de panneaux assignables** (ce que l'app sait afficher) : sidebar favoris/emplacements, arborescence de fichiers (nouveau composant arbo, n'existe pas encore), listing (grille/liste), éditeur/viewer, terminal, panneau filtres. Chaque panneau = composant déjà existant ou à extraire, rendu indépendant de sa position.
-- **État profil** : `Profile { id, name, zones: Record<Zone, PanelConfig[]>, showFilterBar: bool }`. Persistance `~/.config/vela/profiles.json` (+ profil actif). Commande Rust `load_profiles`/`save_profiles` (modèle `favorites.rs`).
-- **UI d'édition de profil** : un mode « édition du layout » où chaque zone montre un menu d'ajout/retrait de panneau + toggle visible + poignée de redimensionnement (pas de drag pixel — assignation à zone). Rester minimaliste.
-- **Impact code** : refacto de `App.tsx` (le gros du rendu central + sidebar + barre filtres devient piloté par le profil actif), `useFileManager` (le champ `mode` est remplacé/abstrait). Migrer fichiers/édition en comportements de zones. Gros blast radius → découper en stories prudentes, profil par défaut « explorateur » = exactement le layout actuel (non-régression).
-- **Nouveau composant probable** : `FileTree` (arborescence latérale récursive) — n'existe pas, à créer.
-
-**Première étape session future** : valider A vs B avec Chris + figer le catalogue exact de panneaux et de zones, AVANT toute ligne de code.

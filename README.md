@@ -35,12 +35,22 @@ Nemo n'a jamais intégré de preview pane. Vela le fait nativement, avec un vrai
 - Contenu dossier : éléments directs, fichiers et dossiers en récursif, taille totale
 - App par défaut : MIME détecté par extension (cohérent cross-fichiers), liste complète des apps installées, scan PATH complet, commande personnalisée (`/usr/bin/monapp %f`)
 
+**Outils média (clic droit → « Éditer l'image… / Outils audio… / Outils vidéo… »)**
+
+Le fichier s'ouvre dans le viewer avec un HUD d'édition docké (toggle via le bouton sliders de la barre). Modèle « ouvre → paramètre → exporte », sans timeline. Tout est local (ffmpeg, crate `image`, demucs).
+
+- **Image** — édition accumulée avec aperçu live : recadrer, pivoter (90/180/270), retourner, redimensionner, ajuster (luminosité/contraste/saturation). On empile les opérations puis **un seul bouton Sauvegarder** rejoue la séquence en un fichier `_edited` (non destructif, format origine/png/jpg/webp + qualité).
+- **Audio** — découper (sans réencodage), fondu entrée/sortie, normaliser (loudnorm), convertir (mp3/flac/wav/ogg/m4a + bitrate), supprimer la voix (rapide, filtre center-removal sans IA), et **séparation de stems via demucs** (voix/batterie/basse/autres ou voix+accompagnement, GPU si CUDA dispo). demucs est optionnel : installé automatiquement par `install.sh`, ou à la demande depuis le panneau.
+- **Vidéo** — découper (sans réencodage), convertir/compresser (CRF, job background avec progression + annulation), extraire une image (timestamp → png), extraire l'audio (m4a/mp3/wav).
+
 ## Stack
 
 - **Tauri v2** (Rust) + **React 19** + **TypeScript** + **Tailwind v4**
 - **CodeMirror 6** · **react-markdown** · **SheetJS** · **devicon**
 - Archives : `zip`, `tar`, `flate2`, `bzip2`, `xz2` + `7z` système
 - MIME : `mime_guess` (extension) + `xdg-mime` (fallback)
+- Lecteur vidéo/audio : **GStreamer** (décodage GPU, contourne `<video>` WebKitGTK)
+- Outils média : **ffmpeg/ffprobe** (audio/vidéo), crate **`image`** (image), **demucs** + torch/torchcodec (séparation de stems, venv dédié)
 
 ## Limitation connue — WebKit vs GTK natif
 
@@ -55,9 +65,13 @@ En pratique ça se sent au lancement et sur les dossiers à plusieurs milliers d
 ```bash
 # webkit2gtk-4.1, gtk3, rust, bun — déjà présents sur une workstation Hyprland standard
 pacman -S webkit2gtk-4.1 gtk3 base-devel
+# Média : GStreamer (lecteur), ffmpeg (outils audio/vidéo), python (demucs optionnel)
+pacman -S gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav ffmpeg python
 curl -fsSL https://bun.sh/install | bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
+
+`install.sh` installe aussi demucs (séparation de stems) dans un venv dédié `~/.local/share/vela/demucs-venv` — torch ~3 Go au premier run. Opt-out : `VELA_SKIP_STEMS=1 ./install.sh`. Vela fonctionne sans (la séparation s'affiche « non installée », installable depuis le panneau).
 
 ### Build
 

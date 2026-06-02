@@ -209,5 +209,19 @@ Mémoire : ne pas garder toutes les base64 en RAM, laisser le GC ; le cache disq
 - [x] 4 visualizers commutables en direct : Barres / Ondes / Radial / Chaleur (heatmap) — persistés `vela-audioviz`
 - [x] Layout immersif full-bleed (canvas ResizeObserver, vinyle centré, transport overlay bas)
 
+## Livré — v1.14 (suite d'outils média + HUD d'édition) ✅
+Backend Rust (5 modules, ~20 commandes, 20 tests cargo) :
+- [x] `media_probe.rs` — détection capacités (ffmpeg/ffprobe/demucs) + sonde ffprobe (durée/streams)
+- [x] `audio.rs` — trim (stream copy), fade in/out, normalize (loudnorm), convert (+bitrate), remove_vocals (filtre pan center-removal, sans IA)
+- [x] `stems.rs` — séparation demucs (4 stems ou voix+accompagnement), venv `~/.local/share/vela/demucs-venv` détecté, install managée (demucs+torchcodec), job background + progress + cancel
+- [x] `imaging.rs` — crop/rotate/flip/resize/adjust/convert + `image_apply_ops` (séquence d'ops accumulées → écriture unique)
+- [x] `video.rs` — trim (sans réencodage), convert (CRF, job background + progress + cancel), extract_frame, extract_audio
+Frontend :
+- [x] `media.ts` + types (`ImageOp`), panneaux Audio/Image/Vidéo + `MediaToolsModal` (dispatch par previewKind)
+- [x] **HUD d'édition docké** dans le viewer (Editor) : clic droit « Outils… » → ouvre en mode édition + HUD, toggle bouton sliders. Plus de modale.
+- [x] **Image en édition accumulée** : ops empilées + preview CSS live cumulative + un seul Sauvegarder (`_edited`, non destructif)
+- [x] install.sh : setup demucs auto (idempotent, opt-out `VELA_SKIP_STEMS=1`)
+
 ## Backlog
-Vidé — features P1/P2/P3 livrées + aperçu audio retravaillé. Prochaines idées à définir avec Chris.
+- [ ] Édition image en plein écran (remonter le HUD dans le conteneur fullscreen du lecteur pour préserver l'immersion)
+- Reste : prochaines idées à définir avec Chris.

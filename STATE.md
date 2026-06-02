@@ -3,7 +3,11 @@
 ## Objectif
 File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation classique et édition intégrée. Alternative souveraine à Nemo.
 
-## État — v1.5 (fonctionnel, installé)
+## État — v1.14 (fonctionnel, installé) · 67 commandes Rust
+
+Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.14 sont documentés dans leurs sections dédiées.
+
+## Socle — v1.5
 
 **Backend Rust — modules**
 - `fs_ops.rs` : `list_dir`, `read_file`, `write_file` (crée si absent), `rename_entry`, `delete_entry`, `create_dir`, `move_entry`, `open_native` (xdg-open), `read_file_chunk`, `read_file_base64`, `search_dir` (async spawn_blocking), `get_entry_props` (taille récursive, permissions Unix, item/file/dir count)
@@ -136,5 +140,22 @@ Refonte complète de l'aperçu audio (`AudioPlayer.tsx` extrait de `MediaViewer.
 
 **Commandes Rust** : 57 (ajout `player_open_audio` + `player_position`). Dépendance ajoutée : `spectrum-analyzer = "1.5"`.
 
+## v1.14 — Suite d'outils média + HUD d'édition ✅ (livré, installé)
+Édition image/audio/vidéo intégrée au file manager, 100 % local. Modèle « ouvre → paramètre → exporte », pas de timeline.
+- **Backend (5 modules, 20 tests cargo)** :
+  - `media_probe.rs` — `media_capabilities()` (détection ffmpeg/ffprobe/demucs + `demucs_executable()` réutilisable) ; `media_probe(path)` (ffprobe JSON → durée/streams/codecs).
+  - `audio.rs` — `audio_trim` (stream copy), `audio_fade` (afade in/out), `audio_normalize` (loudnorm), `audio_convert` (+bitrate), `audio_remove_vocals` (filtre `pan` center-removal, instantané, sans IA). Pattern thin async → `spawn_blocking` → sync `do_*` (testable).
+  - `stems.rs` — `stems_status`, `stems_separate` (demucs `-n htdemucs --out`, 4 stems ou `--two-stems`, thread + parse `%` stderr + emit `stems-progress` + cancel), `stems_install` (venv `~/.local/share/vela/demucs-venv` + `pip install demucs torchcodec`, emit `stems-install-progress`), `stems_cancel`. demucs optionnel ; **torchcodec requis** (torchaudio récent délègue l'écriture audio à TorchCodec, sinon ImportError au save).
+  - `imaging.rs` — crop/rotate/flip/resize/adjust/convert (crate `image`) + **`image_apply_ops(input, output, ops[], quality?)`** : enum `ImageOp` serde, application en mémoire de la séquence puis **écriture unique** (cœur de l'édition accumulée).
+  - `video.rs` — `video_trim` (stream copy, snappe au keyframe), `video_extract_frame`, `video_extract_audio` (quick, spawn_blocking) ; `video_convert` (re-encode CRF, `VideoJobManager` + thread + `ffmpeg -progress pipe:1` → emit `video-progress` + cancel).
+- **Frontend** :
+  - `services/media.ts` + types (`ImageOp`, `MediaCapabilities`, etc.). Convention wire : retours snake_case, args invoke camelCase.
+  - **HUD d'édition docké** : plus de modale. Clic droit « Éditer l'image… / Outils audio… / Outils vidéo… » → `App.onMediaTools` force `setMode("edit")` + `setOpened` + `editPath` → l'`Editor` ouvre le fichier et active le HUD (overlay bas-droite scrollable). Toggle via bouton **Sliders** dans la barre du viewer. `MediaToolsModal` route par `previewKind` ; panneaux Audio/Image/Vidéo ont une prop `embedded` (rendu docké sans backdrop).
+  - **Image en édition accumulée** : `ImageToolsPanel` réécrit — on empile des `ImageOp` (preview CSS live cumulative : `transform` rotate/scale, `filter` brightness/contrast/saturate), annuler dernier / tout effacer, puis **un seul bouton Sauvegarder** → `image_apply_ops` → fichier `_edited` (non destructif, format origine/png/jpg/webp + qualité).
+- **install.sh** : setup demucs automatique (idempotent, non bloquant, opt-out `VELA_SKIP_STEMS=1`).
+- **Validation E2E** : `invoke` Tauri n'est pas drivable par Playwright (webview WebKitGTK ≠ Chromium). On valide par tests Rust `cargo test` (ops réelles sur fixtures) + `bun tauri build` + smoke-test du binaire réel. Séparation demucs validée end-to-end sur RTX 3060 (CUDA).
+
+**Commandes Rust** : 67 (+10 : media_capabilities, media_probe, audio×5, stems×4 — image_apply_ops, video×5 répartis). Aucune dépendance crate ajoutée (ffmpeg/demucs = binaires externes ; `image` déjà présent).
+
 ## Backlog
-`BACKLOG.md` vidé — P1 (v1.9) + P2 (v1.11) + P3 (v1.12) livrés ; aperçu audio retravaillé en v1.13. Prochaines idées à définir avec Chris.
+`BACKLOG.md` : P1 (v1.9) + P2 (v1.11) + P3 (v1.12) + P4 média (v1.14) livrés. Reste : édition image en plein écran (remonter le HUD dans le conteneur fullscreen du lecteur). Autres idées à définir avec Chris.

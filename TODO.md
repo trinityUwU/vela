@@ -184,7 +184,7 @@ Mémoire : ne pas garder toutes les base64 en RAM, laisser le GC ; le cache disq
 ## Livré — v1.9 (ergonomie navigation) ✅
 - [x] P1·1 — Vue liste détaillée triable (`FileTable`, colonnes Nom/Taille/Date/Type, tri en-tête, toggle topbar persisté `vela-view`)
 - [x] P1·2 — Historique navigation (back/forward Alt+←/→, pile dans `useFileManager`, boutons topbar)
-- [x] P1·3 — Navigation clavier (flèches déplacent la sélection, Entrée ouvre)
+- [x] P1·3 — Navigation clavier (flèches + Entrée) — listener global capture phase + `e.code` (contournement WebKitGTK : focus boutons + scroll natif + naming `Up`/`ArrowUp`)
 - [x] P1·4 — Ouvrir terminal ici (clic droit dossier → onglet PTY dans ce dossier)
 
 ## Backlog

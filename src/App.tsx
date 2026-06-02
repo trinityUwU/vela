@@ -153,16 +153,18 @@ export default function App() {
   }, [entries, fm.selected, fm.openEntry]);
 
   // Navigation clavier : capture phase → preventDefault annule le scroll natif, indépendant du focus.
+  // e.code (position physique) : robuste aux variantes WebKitGTK (e.key peut valoir "Up" vs "ArrowUp").
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (search.open || e.altKey || e.ctrlKey || e.metaKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable || t.closest(".cm-editor"))) return;
-      if (e.key === "Enter") { e.preventDefault(); activateSel(); return; }
-      if (e.key === "ArrowUp") { e.preventDefault(); navSel(-1, "y"); return; }
-      if (e.key === "ArrowDown") { e.preventDefault(); navSel(1, "y"); return; }
-      if (e.key === "ArrowLeft") { e.preventDefault(); navSel(-1, "x"); return; }
-      if (e.key === "ArrowRight") { e.preventDefault(); navSel(1, "x"); return; }
+      const k = e.code || e.key;
+      if (k === "Enter" || k === "NumpadEnter") { e.preventDefault(); activateSel(); return; }
+      if (k === "ArrowUp" || k === "Up") { e.preventDefault(); navSel(-1, "y"); return; }
+      if (k === "ArrowDown" || k === "Down") { e.preventDefault(); navSel(1, "y"); return; }
+      if (k === "ArrowLeft" || k === "Left") { e.preventDefault(); navSel(-1, "x"); return; }
+      if (k === "ArrowRight" || k === "Right") { e.preventDefault(); navSel(1, "x"); return; }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);

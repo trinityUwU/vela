@@ -52,11 +52,15 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 **Transferts contrôlables** : `TransferManager` (state, AtomicBool paused/cancelled par job) + `transfer_pause`/`transfer_resume`/`transfer_cancel`. La boucle de copie par chunks vérifie le contrôle à chaque tranche (pause = spin-wait 50 ms, annulation = nettoyage du partiel + statut `cancelled`). Boutons Pause/Reprendre + Annuler sur copie ET déplacement. **Déplacement intelligent** : `rename` si même FS (instantané) ; sinon (cross-device EXDEV) copie par chunks pausable/annulable + suppression de la source **différée à la fin** (annuler ne perd jamais de données). Annulation = restauration : rename inverse des renommés, suppression des copies cross-device partielles. `MoveState` (renamed/copied), `undo_move`, `is_cross_device`, `validate_move_target`
 
 **Infra**
+- Build + install : **`./install.sh`** (build release, `pkill -x vela-bin`, cp, smoke test) — ne plus faire le rituel à la main
 - Build : `bun tauri build` (targets: deb, rpm — AppImage exclu, linuxdeploy absent)
 - Binaire : `~/.local/bin/vela-bin`, wrapper : `~/.local/bin/vela` (WEBKIT_DISABLE_DMABUF_RENDERER=1)
 - Raccourci `Super+E` → `/home/trinity/.local/bin/vela`
 - Port dev : 1430 (vite.config.ts + tauri.conf.json)
 - GitHub : https://github.com/trinityUwU/vela (public)
+
+## Piège infra connu — install release
+- **NE JAMAIS** faire `pkill -f vela-bin` : le motif `-f` matche la ligne de commande du script/commande courante (qui contient « vela-bin ») et **tue le shell avant le `cp`** → le nouveau binaire n'est jamais installé, on relance l'ancien. Ce bug a coûté 1h le 2026-06-02 (la nav clavier semblait cassée alors que les correctifs n'étaient simplement jamais déployés). Toujours `pkill -x vela-bin` (nom de process exact). Rituel figé dans `install.sh`.
 
 ## Décisions techniques
 - `open_native` via xdg-open (commande Rust maison) — contourne bug ACL `opener:allow-open-path` Tauri v2
@@ -94,7 +98,8 @@ Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, paus
 ## v1.9 — Ergonomie navigation ✅ (livré, installé)
 - **Vue liste détaillée** (`components/FileTable.tsx`) : colonnes Nom/Taille/Date/Type, tri au clic d'en-tête (`onToggleBy` → `useSort`), indicateur ▲/▼ sur la colonne active. Drag-drop + sélection identiques à la grille. Bascule grille ↔ liste via bouton topbar (icône `GridIcon`/`ListIcon`), persistée localStorage `vela-view` (state dans `App`).
 - **Historique de navigation** (`useFileManager`) : pile `history` + index `histIdx` (refs). `navigateInternal(path, fromHistory)` empile uniquement les navigations utilisateur (refresh/showHidden re-navigation = même path, pas d'empilement). `goBack`/`goForward` + flags `canBack`/`canForward`. Boutons topbar (chevrons, désactivés en bout de pile) + **Alt+←/→**.
-- **Navigation clavier** (`useKeyboard` + `App`) : flèches déplacent la sélection (`moveSel` linéaire sur `entries` ordonnées ; en vue liste/Édition les flèches horizontales sont ignorées), **Entrée** ouvre l'élément actif (`activateSel`).
+- **Navigation clavier** (`App`, listener global **capture phase**) : flèches déplacent la sélection, **Entrée** ouvre l'élément actif (`activateSel`). En grille = 2D (↑/↓ sautent une ligne via `gridCols` mesuré dans `FileGrid`), en liste/Édition = vertical seul. La tuile active fait `scrollIntoView`.
+  - **Pourquoi capture phase + `e.code`** : (1) WebKitGTK ne donne pas le focus aux `<button>` au clic → un `onKeyDown` sur la tuile/conteneur ne se déclenche jamais de façon fiable. (2) Un `preventDefault` en phase *bubble* n'annule pas le scroll natif du conteneur. (3) `e.key` peut valoir `"Up"` au lieu de `"ArrowUp"` selon la variante WebKitGTK → on teste `e.code` (position physique) en priorité. Un listener `window` en capture, indépendant du focus, résout les trois.
 - **Ouvrir un terminal ici** : item `ContextMenu` (dossier mono-sélection) → `openTerminalHere(path)` ouvre un onglet PTY dans ce dossier + déploie le panneau.
 
 ## Backlog

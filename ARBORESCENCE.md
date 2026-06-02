@@ -6,7 +6,7 @@ vela/
 ├── package.json
 ├── vite.config.ts                  Vite (React + Tailwind, port 1430, HMR 1431)
 ├── tsconfig.json / tsconfig.node.json
-├── start.sh / stop.sh / restart.sh
+├── start.sh / stop.sh / restart.sh   (dev) · install.sh (build release + install vela-bin, pkill -x)
 ├── README.md / STATE.md / TODO.md / ARBORESCENCE.md
 ├── .env.example
 │

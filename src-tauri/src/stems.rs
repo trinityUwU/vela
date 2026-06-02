@@ -167,8 +167,10 @@ fn create_venv(venv: &PathBuf) -> Result<(), String> {
 
 fn spawn_pip_install(venv: &PathBuf) -> Result<Child, String> {
     let pip = venv.join("bin/pip");
+    // torchcodec requis : torchaudio récent délègue l'écriture audio à TorchCodec
+    // (sinon ImportError au moment de sauver les stems).
     Command::new(&pip)
-        .args(["install", "-U", "demucs"])
+        .args(["install", "-U", "demucs", "torchcodec"])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -255,10 +257,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_status_not_installed() {
+    fn test_status_invariant() {
         let status = stems_status();
-        assert!(!status.installed, "demucs ne devrait pas être installé");
-        assert!(status.path.is_none(), "path devrait être None");
+        // Invariant indépendant de l'environnement : installed reflète la présence du chemin.
+        assert_eq!(status.installed, status.path.is_some());
     }
 
     #[test]

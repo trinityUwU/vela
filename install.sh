@@ -32,3 +32,26 @@ else
   cat /tmp/vela-smoke.log
   exit 1
 fi
+
+# ── Séparation de stems (demucs) — automatique, idempotent, non bloquant ────
+# Installe demucs + torchcodec dans un venv Vela dédié (séparation voix/instru,
+# 100% local, tourne sur GPU si CUDA dispo). torch ~3 Go au premier run.
+# torchcodec requis : torchaudio récent délègue l'écriture audio à TorchCodec.
+# Opt-out : VELA_SKIP_STEMS=1 ./install.sh  ·  Vela fonctionne sans (feature "non installée").
+DEMUCS_VENV="$HOME/.local/share/vela/demucs-venv"
+if [ "${VELA_SKIP_STEMS:-0}" = "1" ]; then
+  echo "→ demucs ignoré (VELA_SKIP_STEMS=1)"
+elif [ -x "$DEMUCS_VENV/bin/demucs" ]; then
+  echo "✓ demucs déjà présent : $DEMUCS_VENV"
+elif ! command -v python3 >/dev/null; then
+  echo "⚠ python3 absent — séparation de stems non installée (à faire depuis l'app plus tard)"
+else
+  echo "→ installation de demucs (séparation de stems, torch ~3 Go au 1er run)…"
+  if python3 -m venv "$DEMUCS_VENV" \
+     && "$DEMUCS_VENV/bin/pip" install -q --upgrade pip \
+     && "$DEMUCS_VENV/bin/pip" install -q demucs torchcodec; then
+    echo "✓ demucs installé : $DEMUCS_VENV/bin/demucs"
+  else
+    echo "⚠ install demucs échouée — Vela fonctionne ; réessaie via Outils audio → Installer demucs"
+  fi
+fi

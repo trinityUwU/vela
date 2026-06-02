@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Profile } from "../types";
 import type { SearchMode } from "../hooks/useSearch";
-import { ArrowUp, Refresh, Eye, FolderPlus, Search, Trash, TerminalIcon, ChevronLeft, ChevronRight, GridIcon, ListIcon } from "./icons";
+import { ArrowUp, Refresh, Eye, FolderPlus, Search, Trash, TerminalIcon, ChevronLeft, ChevronRight, GridIcon, ListIcon, Sliders } from "./icons";
 import { SearchInput } from "./SearchBar";
 
 export type View = "grid" | "list";
@@ -11,6 +11,7 @@ interface Props {
   profiles: Profile[];
   activeId: string;
   onSwitchProfile: (id: string) => void;
+  onEditProfiles: () => void;
   showViewToggle: boolean;
   path: string;
   showHidden: boolean;
@@ -73,6 +74,7 @@ export function Topbar(props: Props) {
           </button>
         ))}
       </div>
+      <IconBtn onClick={props.onEditProfiles} title="Gérer les profils"><Sliders /></IconBtn>
 
       <IconBtn onClick={props.onBack} title="Précédent (Alt+←)" disabled={!props.canBack}><ChevronLeft /></IconBtn>
       <IconBtn onClick={props.onForward} title="Suivant (Alt+→)" disabled={!props.canForward}><ChevronRight /></IconBtn>

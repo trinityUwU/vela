@@ -31,10 +31,11 @@ import type { Dialog } from "./components/DialogHost";
 import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { ProfileEditor } from "./components/ProfileEditor";
 import { DownloadModal } from "./components/DownloadModal";
 import { DiffViewer } from "./components/DiffViewer";
 import { DirCompareViewer } from "./components/DirCompareViewer";
-import { startExtraction, trashDir } from "./services/fs";
+import { startExtraction, trashDir, homeDir } from "./services/fs";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
@@ -63,6 +64,7 @@ export default function App() {
   const profiles = useProfiles();
   const activeProfile = profiles.active;
   const editorActive = Object.values(activeProfile.zones).includes("editor");
+  const terminalInZone = Object.values(activeProfile.zones).includes("terminal");
   const { setEditorActive } = fm;
   useEffect(() => { setEditorActive(editorActive); }, [editorActive, setEditorActive]);
   const favs = useFavorites();
@@ -77,6 +79,7 @@ export default function App() {
   const [diff, setDiff] = useState<{ a: DirEntry; b: DirEntry } | null>(null);
   const [dirDiff, setDirDiff] = useState<{ a: string; b: string } | null>(null);
   const [trashPath, setTrashPath] = useState("");
+  const [homePath, setHomePath] = useState("/");
   const terminals = useTerminals();
   const undo = useUndo(fm.setError, fm.refresh);
   useEffect(() => { fm.setRecorder(undo.push); }, [fm.setRecorder, undo.push]);
@@ -95,33 +98,41 @@ export default function App() {
   const [termHeight, setTermHeight] = useState(280);
   const [shells, setShells] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
+  const profileEditorProps = {
+    profiles: profiles.profiles, activeId: profiles.activeId, onSwitch: profiles.setActive,
+    upsert: profiles.upsertProfile, remove: profiles.removeProfile };
   const [view, setView] = useState<View>(() => ((localStorage.getItem("vela-view") as View) || "grid"));
   const setViewPersist = useCallback((v: View) => { setView(v); try { localStorage.setItem("vela-view", v); } catch {} }, []);
 
-  useEffect(() => { trashDir().then(setTrashPath).catch(() => {}); }, []);
+  useEffect(() => { trashDir().then(setTrashPath).catch(() => {}); homeDir().then(setHomePath).catch(() => {}); }, []);
   useEffect(() => { availableShells().then(setShells).catch(() => {}); }, []);
 
   const toggleTerm = useCallback(() => {
+    if (terminalInZone) { if (terminals.tabs.length === 0) terminals.open(fm.cwd); return; }
     setTermVisible((v) => {
       const next = !v;
       if (next && terminals.tabs.length === 0) terminals.open(fm.cwd);
       return next;
     });
-  }, [terminals, fm.cwd]);
+  }, [terminalInZone, terminals, fm.cwd]);
 
   const newTerm = useCallback(() => { terminals.open(fm.cwd); }, [terminals, fm.cwd]);
-
   const openTerminalHere = useCallback((path: string) => {
     terminals.open(path);
     setTermVisible(true);
   }, [terminals]);
-
   const followTerm = useCallback(() => {
     if (!terminals.activeId) { terminals.open(fm.cwd); return; }
     const escaped = fm.cwd.replace(/'/g, "'\\''");
     termInput(terminals.activeId, `cd '${escaped}'\n`).catch(() => {});
   }, [terminals, fm.cwd]);
+  const terminalProps = {
+    tabs: terminals.tabs, activeId: terminals.activeId, onSelect: terminals.setActiveId, onNew: newTerm,
+    onNewShell: (s: string) => terminals.open(fm.cwd, s), shells, onClose: terminals.close, onExit: terminals.exit,
+    onFollow: followTerm, onHide: () => setTermVisible(false), onRename: terminals.rename, onSetColor: terminals.setColor,
+  };
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -178,36 +189,30 @@ export default function App() {
     else if (e.ctrlKey || e.metaKey) fm.toggleSelect(entry.path);
     else fm.selectOne(entry.path);
   };
-
   const onSelectEdit = (entry: DirEntry, e: React.MouseEvent) => {
     if (e.shiftKey) { fm.rangeSelect(entry.path, entries); return; }
     if (e.ctrlKey || e.metaKey) { fm.toggleSelect(entry.path); return; }
     fm.previewEntry(entry);
   };
-
   const onContext = (e: React.MouseEvent, entry: DirEntry) => {
     e.preventDefault();
     setBgMenu(null);
     if (!fm.selection.has(entry.path)) fm.selectOne(entry.path);
     setMenu({ x: e.clientX, y: e.clientY, entry });
   };
-
   const onContextBg = (e: React.MouseEvent) => {
     setMenu(null);
     setBgMenu({ x: e.clientX, y: e.clientY });
   };
 
   const pinCurrent = () => favs.pinPath(fm.cwd, baseName(fm.cwd));
-
-  const cwdEntry: DirEntry = {
-    name: baseName(fm.cwd) || "/", path: fm.cwd, is_dir: true, size: 0, modified: 0, extension: "",
-  };
+  const cwdEntry: DirEntry =
+    { name: baseName(fm.cwd) || "/", path: fm.cwd, is_dir: true, size: 0, modified: 0, extension: "" };
 
   // ── actions menu (mono ou multi) ──────────────────────────────────────────
   const selPaths = (fallback?: string) => fm.selectionPaths(fallback);
 
-  const askLabel = (paths: string[]): string =>
-    paths.length > 1 ? `${paths.length} éléments` : `« ${baseName(paths[0])} »`;
+  const askLabel = (p: string[]): string => p.length > 1 ? `${p.length} éléments` : `« ${baseName(p[0])} »`;
   const askTrash = (paths: string[]) => setDialog({ kind: "trash", paths, label: askLabel(paths) });
   const askDelete = (paths: string[]) => setDialog({ kind: "delete", paths, label: askLabel(paths) });
 
@@ -271,6 +276,7 @@ export default function App() {
         profiles={profiles.profiles}
         activeId={profiles.activeId}
         onSwitchProfile={profiles.setActive}
+        onEditProfiles={() => setProfileEditorOpen(true)}
         showViewToggle={!editorActive}
         path={fm.cwd}
         showHidden={fm.showHidden}
@@ -367,29 +373,24 @@ export default function App() {
           onOpenSettings: () => setSettingsOpen(true),
           onOpenDownload: () => setDownloadOpen(true),
         }}
+        filetree={{
+          rootPath: homePath,
+          cwd: fm.cwd,
+          onNavigate: fm.navigate,
+          showHidden: fm.showHidden,
+          onError: fm.setError,
+        }}
+        terminal={terminalProps}
       />
 
-      {(termVisible || terminals.tabs.length > 0) && (
+      {!terminalInZone && (termVisible || terminals.tabs.length > 0) && (
         <div
           className={`shrink-0 flex flex-col ${termVisible ? "" : "hidden"}`}
           style={{ height: termVisible ? termHeight : 0 }}
         >
           <ResizeHandle onResize={(dy) => setTermHeight((h) => Math.max(120, Math.min(window.innerHeight - 160, h - dy)))} />
           <div className="flex-1 min-h-0">
-            <TerminalPanel
-              tabs={terminals.tabs}
-              activeId={terminals.activeId}
-              onSelect={terminals.setActiveId}
-              onNew={newTerm}
-              onNewShell={(s) => terminals.open(fm.cwd, s)}
-              shells={shells}
-              onClose={terminals.close}
-              onExit={terminals.exit}
-              onFollow={followTerm}
-              onHide={() => setTermVisible(false)}
-              onRename={terminals.rename}
-              onSetColor={terminals.setColor}
-            />
+            <TerminalPanel {...terminalProps} />
           </div>
         </div>
       )}
@@ -483,6 +484,9 @@ export default function App() {
           onClose={() => setSettingsOpen(false)}
           appearance={{ accent: appearance.accent, density: appearance.density, onAccent: setAccent, onDensity: setDensity }}
         />
+      )}
+      {profileEditorOpen && (
+        <ProfileEditor {...profileEditorProps} onClose={() => setProfileEditorOpen(false)} />
       )}
       {downloadOpen && <DownloadModal cwd={fm.cwd} onClose={() => setDownloadOpen(false)} onError={fm.setError} />}
       {diff && <DiffViewer a={diff.a} b={diff.b} onClose={() => setDiff(null)} onError={fm.setError} />}

@@ -8,8 +8,34 @@ import { FileGrid } from "./FileGrid";
 import { FileTable } from "./FileTable";
 import { FileList } from "./FileList";
 import { EditorArea } from "./EditorArea";
+import { FileTree } from "./FileTree";
+import { TerminalPanel } from "./TerminalPanel";
+import type { TermTab } from "../hooks/useTerminals";
 
 type Favs = ReturnType<typeof useFavorites>;
+
+interface FileTreeProps {
+  rootPath: string;
+  cwd: string;
+  onNavigate: (path: string) => void;
+  showHidden: boolean;
+  onError: (e: string) => void;
+}
+
+interface TerminalProps {
+  tabs: TermTab[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+  onNew: () => void;
+  onNewShell: (shell: string) => void;
+  shells: string[];
+  onClose: (id: string) => void;
+  onExit: (id: string) => void;
+  onFollow: () => void;
+  onHide: () => void;
+  onRename: (id: string, title: string) => void;
+  onSetColor: (id: string, color: string) => void;
+}
 
 interface ListingProps {
   entries: DirEntry[];
@@ -60,6 +86,8 @@ interface ZoneLayoutProps {
   listing: ListingProps;
   editor: EditorProps;
   sidebar: SidebarProps;
+  filetree: FileTreeProps;
+  terminal: TerminalProps;
 }
 
 function ListingPanel({ view, editorActive, p }: {
@@ -94,14 +122,6 @@ function ListingPanel({ view, editorActive, p }: {
   );
 }
 
-function Placeholder({ label }: { label: string }): React.ReactElement {
-  return (
-    <div className="flex-1 flex items-center justify-center text-xs text-[var(--color-text-dim)]">
-      {label}
-    </div>
-  );
-}
-
 function renderPanel(panel: PanelId, props: ZoneLayoutProps): React.ReactElement | null {
   switch (panel) {
     case "sidebar":
@@ -111,9 +131,9 @@ function renderPanel(panel: PanelId, props: ZoneLayoutProps): React.ReactElement
     case "editor":
       return <EditorArea {...props.editor} />;
     case "filetree":
-      return <Placeholder label="Arborescence (à venir)" />;
+      return <FileTree {...props.filetree} />;
     case "terminal":
-      return null;
+      return <TerminalPanel {...props.terminal} />;
     default:
       return null;
   }
@@ -122,10 +142,17 @@ function renderPanel(panel: PanelId, props: ZoneLayoutProps): React.ReactElement
 export function ZoneLayout(props: ZoneLayoutProps): React.ReactElement {
   const { zones } = props;
   return (
-    <div className="flex-1 flex min-h-0">
-      {zones.left && renderPanel(zones.left, props)}
-      {renderPanel(zones.center, props)}
-      {zones.right && renderPanel(zones.right, props)}
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex min-h-0">
+        {zones.left && renderPanel(zones.left, props)}
+        {renderPanel(zones.center, props)}
+        {zones.right && renderPanel(zones.right, props)}
+      </div>
+      {zones.bottom && (
+        <div className="shrink-0 h-64 min-h-0 flex flex-col">
+          {renderPanel(zones.bottom, props)}
+        </div>
+      )}
     </div>
   );
 }

@@ -187,5 +187,8 @@ Mémoire : ne pas garder toutes les base64 en RAM, laisser le GC ; le cache disq
 - [x] P1·3 — Navigation clavier (flèches + Entrée) — listener global capture phase + `e.code` (contournement WebKitGTK : focus boutons + scroll natif + naming `Up`/`ArrowUp`)
 - [x] P1·4 — Ouvrir terminal ici (clic droit dossier → onglet PTY dans ce dossier)
 
+## Livré — v1.10 ✅
+- [x] Onglets terminaux : clic droit → renommer + pastille couleur (double-clic = renommer), état en mémoire
+
 ## Backlog
 Voir `BACKLOG.md` — P2 (confort) et P3 (avancé) en attente.

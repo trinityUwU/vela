@@ -102,5 +102,9 @@ Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, paus
   - **Pourquoi capture phase + `e.code`** : (1) WebKitGTK ne donne pas le focus aux `<button>` au clic → un `onKeyDown` sur la tuile/conteneur ne se déclenche jamais de façon fiable. (2) Un `preventDefault` en phase *bubble* n'annule pas le scroll natif du conteneur. (3) `e.key` peut valoir `"Up"` au lieu de `"ArrowUp"` selon la variante WebKitGTK → on teste `e.code` (position physique) en priorité. Un listener `window` en capture, indépendant du focus, résout les trois.
 - **Ouvrir un terminal ici** : item `ContextMenu` (dossier mono-sélection) → `openTerminalHere(path)` ouvre un onglet PTY dans ce dossier + déploie le panneau.
 
+## v1.10 — Onglets terminaux personnalisables ✅ (livré, installé)
+- Clic droit sur un onglet terminal → menu : **Renommer** + rangée de pastilles (palette `TAG_COLORS` partagée) + ✕ pour retirer. Double-clic sur l'onglet = renommage inline. Pastille couleur affichée à gauche du titre.
+- État en mémoire seulement (`useTerminals.rename`/`setColor`, champ `color?` sur `TermTab`) — les sessions PTY sont éphémères, aucune persistance disque pertinente. Réutilise `hexFor`/`TAG_COLORS` de `services/tags.ts`.
+
 ## Backlog
 `BACKLOG.md` — P1 livré (v1.9). Restent P2 (confort : thèmes, recherches récentes, taille dossier, analyse disque) et P3 (aperçu vidéo/audio, comparaison de dossiers).

@@ -44,7 +44,7 @@ vela/
 │   │   │                           auto-dismiss 6s états terminaux
 │   │   ├── useTransfers.ts         Écoute transfer-progress → Map<id, TransferJob> (copie/déplacement)
 │   │   ├── useThumbnail.ts         Miniature lazy (IntersectionObserver) + file concurrence globale 4
-│   │   └── useTerminals.ts         Onglets terminal : open/close sessions PTY, onglet actif
+│   │   └── useTerminals.ts         Onglets terminal : open/close PTY, onglet actif, rename + color (mémoire)
 │   │
 │   └── components/
 │       ├── Topbar.tsx              Toggle modes, PathBar éditable, search (Nom/Contenu), drop crumbs
@@ -64,7 +64,7 @@ vela/
 │       ├── ExtractionPanel.tsx     Panel fixe bas-droite : extractions + transferts empilés, progression,
 │       │                           pause/reprise/annulation, mot de passe inline, aller au dossier
 │       ├── PdfViewer.tsx           Aperçu PDF (pdf.js worker local) : canvas/page, zoom, lazy >20 pages
-│       ├── TerminalPanel.tsx       Panneau terminal bas : onglets + xterm.js par session PTY
+│       ├── TerminalPanel.tsx       Panneau terminal bas : onglets (clic droit → renommer + pastille) + xterm.js par PTY
 │       ├── PropertiesModal.tsx     Métadonnées + contenu dossier + app par défaut (PATH + custom)
 │       ├── ContextMenu.tsx         Mono/multi : ouvrir, extraire, copier/couper, compresser,
 │       │                           renommer (mono) / par lot (multi), corbeille, suppr définitive

@@ -99,6 +99,7 @@ const SECTIONS: Section[] = [
       { keys: ["Ctrl", "`"], label: "Afficher / masquer le terminal" },
       { label: "Clic droit sur un dossier → « Ouvrir un terminal ici »" },
       { label: "Onglets multi-sessions ; ＋ nouveau, ▾ choisir le shell (bash, zsh…)" },
+      { label: "Clic droit sur un onglet → renommer + pastille couleur (double-clic = renommer)" },
       { label: "« Suivre » synchronise le terminal sur le dossier courant" },
       { label: "Bord supérieur déplaçable pour redimensionner le panneau" },
     ],

@@ -408,6 +408,8 @@ export default function App() {
               onExit={terminals.exit}
               onFollow={followTerm}
               onHide={() => setTermVisible(false)}
+              onRename={terminals.rename}
+              onSetColor={terminals.setColor}
             />
           </div>
         </div>

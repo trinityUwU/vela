@@ -6,6 +6,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { termInput, termResize } from "../services/term";
 import type { TermTab } from "../hooks/useTerminals";
+import { TAG_COLORS, hexFor } from "../services/tags";
 
 interface Props {
   tabs: TermTab[];
@@ -18,7 +19,11 @@ interface Props {
   onExit: (id: string) => void;
   onFollow: () => void;
   onHide: () => void;
+  onRename: (id: string, title: string) => void;
+  onSetColor: (id: string, color: string) => void;
 }
+
+type TabMenu = { id: string; x: number; y: number } | null;
 
 function shellName(path: string): string {
   return path.split("/").filter(Boolean).pop() || path;
@@ -34,6 +39,8 @@ function b64ToBytes(b64: string): Uint8Array {
 export function TerminalPanel(props: Props) {
   const { tabs, activeId } = props;
   const [shellMenu, setShellMenu] = useState(false);
+  const [tabMenu, setTabMenu] = useState<TabMenu>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
   return (
     <div className="flex flex-col h-full bg-[#0b0c10] border-t border-[var(--color-border)]">
       <div className="flex items-center gap-1 h-8 px-2 bg-[var(--color-surface)] border-b border-[var(--color-border)] shrink-0">
@@ -42,13 +49,30 @@ export function TerminalPanel(props: Props) {
             <div
               key={t.id}
               onClick={() => props.onSelect(t.id)}
+              onContextMenu={(e) => { e.preventDefault(); setTabMenu({ id: t.id, x: e.clientX, y: e.clientY }); }}
+              onDoubleClick={() => setRenaming(t.id)}
               className={`group flex items-center gap-1.5 h-6 px-2 rounded text-xs cursor-pointer whitespace-nowrap ${
                 t.id === activeId
                   ? "bg-[var(--color-bg)] text-[var(--color-text)]"
                   : "text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
               }`}
             >
-              <span className="font-mono">{t.title}</span>
+              {t.color && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: hexFor(t.color) }} />}
+              {renaming === t.id ? (
+                <input
+                  autoFocus
+                  defaultValue={t.title}
+                  onClick={(e) => e.stopPropagation()}
+                  onBlur={(e) => { props.onRename(t.id, e.target.value.trim()); setRenaming(null); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { props.onRename(t.id, (e.target as HTMLInputElement).value.trim()); setRenaming(null); }
+                    if (e.key === "Escape") setRenaming(null);
+                  }}
+                  className="w-24 bg-[var(--color-bg)] border border-[var(--color-accent)] rounded px-1 text-xs font-mono text-[var(--color-text)] outline-none"
+                />
+              ) : (
+                <span className="font-mono">{t.title}</span>
+              )}
               <button
                 onClick={(e) => { e.stopPropagation(); props.onClose(t.id); }}
                 className="opacity-0 group-hover:opacity-100 hover:text-[var(--color-danger)]"
@@ -103,6 +127,42 @@ export function TerminalPanel(props: Props) {
           </div>
         )}
       </div>
+
+      {tabMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setTabMenu(null)} onContextMenu={(e) => { e.preventDefault(); setTabMenu(null); }} />
+          <div
+            style={{ top: tabMenu.y, left: tabMenu.x }}
+            className="fixed z-50 min-w-44 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
+          >
+            <button
+              onClick={() => { setRenaming(tabMenu.id); setTabMenu(null); }}
+              className="w-full text-left px-3 py-1.5 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+            >
+              Renommer
+            </button>
+            <div className="my-1 border-t border-[var(--color-border)]" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5">
+              {TAG_COLORS.map((c) => (
+                <button
+                  key={c.key}
+                  title={c.label}
+                  onClick={() => { props.onSetColor(tabMenu.id, c.key); setTabMenu(null); }}
+                  style={{ backgroundColor: c.hex }}
+                  className="w-4 h-4 rounded-full transition-transform hover:scale-110"
+                />
+              ))}
+              <button
+                title="Retirer la couleur"
+                onClick={() => { props.onSetColor(tabMenu.id, ""); setTabMenu(null); }}
+                className="w-4 h-4 rounded-full border border-[var(--color-border)] text-[var(--color-text-dim)] text-[10px] leading-none flex items-center justify-center hover:text-[var(--color-text)]"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

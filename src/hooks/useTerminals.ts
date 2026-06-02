@@ -6,6 +6,7 @@ export interface TermTab {
   id: string;
   title: string;
   cwd: string;
+  color?: string;
 }
 
 function basename(path: string): string {
@@ -41,5 +42,13 @@ export function useTerminals() {
     drop(id);
   }, [drop]);
 
-  return { tabs, activeId, setActiveId, open, close, exit: drop };
+  const rename = useCallback((id: string, title: string) => {
+    setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, title: title || t.title } : t)));
+  }, []);
+
+  const setColor = useCallback((id: string, color: string) => {
+    setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, color: color || undefined } : t)));
+  }, []);
+
+  return { tabs, activeId, setActiveId, open, close, exit: drop, rename, setColor };
 }

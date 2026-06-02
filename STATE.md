@@ -60,7 +60,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - GitHub : https://github.com/trinityUwU/vela (public)
 
 ## Piège infra connu — lecture vidéo WebKitGTK
-L'élément HTML5 `<video>` est **inutilisable sur Nvidia/Wayland** (RTX 3060) : frame figée hors seek, écran noir, ou 2fps. Diagnostiqué à fond — décodage OK, codecs OK, c'est le compositing GL du calque vidéo qui ne se repeint pas. **Aucune** variable d'env ne corrige (testé : `WEBKIT_DISABLE_DMABUF_RENDERER`, `WEBKIT_DISABLE_COMPOSITING_MODE` → 2fps software, `GST_GL_DISABLED`, `GDK_BACKEND=x11`). Les mainteneurs Tauri classent ça bug non résolu. **Ne pas perdre de temps à réessayer `<video>` ou MSE** (MSE alimente aussi un `<video>` → même bug). La solution retenue = décodage Rust GStreamer → `<canvas>` (voir section v1.12 `player.rs`). Le seul truc qui marche pour un média via WebKitGTK est le blob `<audio>` (audio seul).
+L'élément HTML5 `<video>` est **inutilisable sur Nvidia/Wayland** (RTX 3060) : frame figée hors seek, écran noir, ou 2fps. Diagnostiqué à fond — décodage OK, codecs OK, c'est le compositing GL du calque vidéo qui ne se repeint pas. **Aucune** variable d'env ne corrige (testé : `WEBKIT_DISABLE_DMABUF_RENDERER`, `WEBKIT_DISABLE_COMPOSITING_MODE` → 2fps software, `GST_GL_DISABLED`, `GDK_BACKEND=x11`). Les mainteneurs Tauri classent ça bug non résolu. **Ne pas perdre de temps à réessayer `<video>` ou MSE** (MSE alimente aussi un `<video>` → même bug). La solution retenue = décodage Rust GStreamer → `<canvas>` (voir section v1.12 `player.rs`). **Idem audio** : le blob `<audio>` lit le son mais n'est **pas seekable** (blob URL sans byte-range) et bufferise mal (coupures ~4s). Abandonné en v1.13 → audio aussi décodé par GStreamer natif.
 
 ## Piège infra connu — install release
 - **NE JAMAIS** faire `pkill -f vela-bin` : le motif `-f` matche la ligne de commande du script/commande courante (qui contient « vela-bin ») et **tue le shell avant le `cp`** → le nouveau binaire n'est jamais installé, on relance l'ancien. Ce bug a coûté 1h le 2026-06-02 (la nav clavier semblait cassée alors que les correctifs n'étaient simplement jamais déployés). Toujours `pkill -x vela-bin` (nom de process exact). Rituel figé dans `install.sh`.
@@ -127,5 +127,14 @@ Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, paus
 
 **Commandes Rust** : 55 (ajout `compare_dirs` + 6 `player_*`).
 
+## v1.13 — Lecteur audio natif immersif ✅ (livré, installé)
+Refonte complète de l'aperçu audio (`AudioPlayer.tsx` extrait de `MediaViewer.tsx` ; `audio-viz.ts` pour les renderers).
+- **Lecture native GStreamer** (abandon du blob `<audio>` : seek mort + coupures ~4s sous WebKitGTK). Nouvelle commande `player_open_audio(id, path, on_spectrum: Channel)` : `playbin` + **audio-sink custom** = `audioconvert ! audioresample ! audio/x-raw,format=F32LE,channels=1,rate=44100 ! tee → [appsink sync=true] + [autoaudiosink]`. Seek par horloge pipeline (parfait), zéro coupure. Réutilise `player_pause/resume/seek/set_volume/close`. Nouvelle commande `player_position(id)→f64` (la position vient de `query_position`, pas de frames côté audio → polling front 250ms).
+- **Spectre = vrai FFT côté Rust** (pas le bus GLib). Piège : l'élément GStreamer `spectrum` poste sur le **bus**, or sous Tauri la main loop GLib ne pompe pas les messages bus à 30/s → le spectre se figeait après quelques frames. Solution = tap PCM via **appsink** (thread de streaming, fiable comme la vidéo) → FFT avec crate `spectrum-analyzer` (fenêtre Hann, 1024 samples) → 64 bandes log 30 Hz–16 kHz + **auto-gain** (peak décroissant ×0.992) → octets poussés au front via Channel.
+- **4 visualizers commutables en direct** (`audio-viz.ts`, segmented control persisté `vela-audioviz`) : **Barres** (ancrées bas), **Ondes** (courbe remplie dégradé accent), **Radial** (barres en cercle autour du vinyle), **Chaleur** (spectrogramme heatmap défilant — X=temps via `shiftLeft` drawImage(-1,0), Y=fréquence, palette inferno). Tous consomment les mêmes 64 bandes ; modes continus lissés à 60fps (×0.35), spectro peint 1 colonne par frame reçue (via `seqRef`).
+- **Layout immersif full-bleed** : `<canvas absolute inset-0>` dimensionné dynamiquement (ResizeObserver → buffer = taille réelle, net), vinyle centré pièce maîtresse (spin CSS 8s pendant lecture), sélecteur de mode haut (backdrop-blur), transport en overlay bas sur dégradé noir.
+
+**Commandes Rust** : 57 (ajout `player_open_audio` + `player_position`). Dépendance ajoutée : `spectrum-analyzer = "1.5"`.
+
 ## Backlog
-`BACKLOG.md` vidé — P1 (v1.9) + P2 (v1.11) + P3 (v1.12) livrés. Prochaines idées à définir avec Chris. Restent P2 (confort : thèmes, recherches récentes, taille dossier, analyse disque) et P3 (aperçu vidéo/audio, comparaison de dossiers).
+`BACKLOG.md` vidé — P1 (v1.9) + P2 (v1.11) + P3 (v1.12) livrés ; aperçu audio retravaillé en v1.13. Prochaines idées à définir avec Chris.

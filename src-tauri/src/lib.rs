@@ -65,6 +65,8 @@ pub fn run() {
             analyze::analyze_disk,
             dircmp::compare_dirs,
             player::player_open,
+            player::player_open_audio,
+            player::player_position,
             player::player_pause,
             player::player_resume,
             player::player_seek,

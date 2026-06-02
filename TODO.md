@@ -202,5 +202,12 @@ Mémoire : ne pas garder toutes les base64 en RAM, laisser le GC ; le cache disq
   WebKitGTK cassé sur Nvidia/Wayland. Contrôles play/pause/seek/volume/fullscreen auto-hide.
 - [x] P3·10 — Comparaison de dossiers (`compare_dirs` + `DirCompareViewer`, clic droit 2 dossiers)
 
+## Livré — v1.13 (lecteur audio natif immersif) ✅
+- [x] Audio en lecture native GStreamer (abandon blob `<audio>` : seek mort + coupures ~4s)
+  → `player_open_audio` (appsink PCM + autoaudiosink) + `player_position`
+- [x] Spectre temps réel = FFT côté Rust via appsink + `spectrum-analyzer` (le bus GLib se figeait sous Tauri)
+- [x] 4 visualizers commutables en direct : Barres / Ondes / Radial / Chaleur (heatmap) — persistés `vela-audioviz`
+- [x] Layout immersif full-bleed (canvas ResizeObserver, vinyle centré, transport overlay bas)
+
 ## Backlog
-Vidé — toutes les features P1/P2/P3 livrées. Prochaines idées à définir avec Chris.
+Vidé — features P1/P2/P3 livrées + aperçu audio retravaillé. Prochaines idées à définir avec Chris.

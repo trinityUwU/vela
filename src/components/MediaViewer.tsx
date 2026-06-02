@@ -4,8 +4,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Channel } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { readFileBase64, playerOpen, playerPause, playerResume, playerSeek, playerSetVolume, playerClose } from "../services/fs";
+import { playerOpen, playerPause, playerResume, playerSeek, playerSetVolume, playerClose } from "../services/fs";
 import { Play, Pause, Maximize, Minimize, Volume, VolumeMute } from "./icons";
+import { AudioPlayer } from "./AudioPlayer";
 import type { DirEntry } from "../types";
 
 interface Props {
@@ -15,7 +16,7 @@ interface Props {
 }
 
 export function MediaViewer({ entry, kind, active = true }: Props) {
-  return kind === "video" ? <VideoPlayer entry={entry} active={active} /> : <AudioPlayer entry={entry} />;
+  return kind === "video" ? <VideoPlayer entry={entry} active={active} /> : <AudioPlayer key={entry.path} entry={entry} />;
 }
 
 function fmtTime(secs: number): string {
@@ -192,37 +193,6 @@ function VideoPlayer({ entry, active }: { entry: DirEntry; active: boolean }) {
         <canvas ref={canvasRef} className={`object-contain bg-black ${fullscreen ? "w-full h-full" : "max-w-full max-h-full rounded shadow-lg"}`} />
       </div>
       {controls}
-    </div>
-  );
-}
-
-function AudioPlayer({ entry }: { entry: DirEntry }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    let revoked: string | null = null;
-    let cancelled = false;
-    readFileBase64(entry.path)
-      .then((b64) => {
-        if (cancelled) return;
-        const bin = atob(b64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        const u = URL.createObjectURL(new Blob([bytes], { type: "audio/mpeg" }));
-        revoked = u; setUrl(u);
-      })
-      .catch((e) => { if (!cancelled) setError(String(e)); });
-    return () => { cancelled = true; if (revoked) URL.revokeObjectURL(revoked); };
-  }, [entry.path]);
-
-  if (error) return <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)] bg-[var(--color-bg)]">{error}</div>;
-  if (!url) return <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)] bg-[var(--color-bg)]">Chargement…</div>;
-  return (
-    <div className="flex-1 flex items-center justify-center p-4 bg-[var(--color-bg)]">
-      <div className="w-full max-w-lg flex flex-col items-center gap-4">
-        <div className="text-sm text-[var(--color-text)] truncate w-full text-center">{entry.name}</div>
-        <audio src={url} controls className="w-full" />
-      </div>
     </div>
   );
 }

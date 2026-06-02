@@ -28,6 +28,10 @@ export interface MediaInfo { duration: number; width: number; height: number; }
 export function playerOpen(id: string, path: string, onFrame: import("@tauri-apps/api/core").Channel<ArrayBuffer>): Promise<MediaInfo> {
   return invoke("player_open", { id, path, onFrame });
 }
+export function playerOpenAudio(id: string, path: string, onSpectrum: import("@tauri-apps/api/core").Channel<ArrayBuffer>): Promise<MediaInfo> {
+  return invoke("player_open_audio", { id, path, onSpectrum });
+}
+export function playerPosition(id: string): Promise<number> { return invoke("player_position", { id }); }
 export function playerPause(id: string): Promise<void> { return invoke("player_pause", { id }); }
 export function playerResume(id: string): Promise<void> { return invoke("player_resume", { id }); }
 export function playerSeek(id: string, secs: number): Promise<void> { return invoke("player_seek", { id, secs }); }

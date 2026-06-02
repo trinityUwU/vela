@@ -64,7 +64,10 @@ vela/
 │       ├── DiskAnalyzer.tsx        Overlay analyse disque : plus gros fichiers + doublons (analyze_disk)
 │       ├── DirCompareViewer.tsx    Overlay comparaison 2 dossiers (compare_dirs) — filtrable
 │       ├── MediaViewer.tsx         Vidéo : canvas piloté par player.rs (GStreamer) + contrôles/volume/fullscreen.
-│       │                           Audio : blob <audio>
+│       │                           Audio : délègue à AudioPlayer (key=path)
+│       ├── AudioPlayer.tsx         Lecteur audio immersif : lecture native GStreamer (player_open_audio),
+│       │                           spectre FFT temps réel, 4 modes viz, layout full-bleed + vinyle
+│       ├── audio-viz.ts            Renderers canvas du visualizer audio : bars/wave/radial/spectro (heatmap)
 │       ├── TableViewer.tsx         CSV/TSV (auto-sep) + XLSX/XLS/ODS (SheetJS), filtre live
 │       ├── ArchiveViewer.tsx       Liste archive + extraction non-bloquante (ici / chemin custom)
 │       ├── ExtractionPanel.tsx     Panel fixe bas-droite : extractions + transferts empilés, progression,
@@ -86,16 +89,18 @@ vela/
 │
 └── src-tauri/
     ├── Cargo.toml                  zip, tar, flate2, bzip2, xz2, base64, mime_guess, trash, walkdir, notify, image,
-    │                               portable-pty, gstreamer + gstreamer-app + gstreamer-video (lecteur vidéo)
+    │                               portable-pty, gstreamer + gstreamer-app + gstreamer-video (lecteur vidéo),
+    │                               spectrum-analyzer (FFT spectre audio)
     ├── tauri.conf.json             1200×780, decorations:false, devUrl:1430, targets:deb+rpm
     ├── capabilities/default.json   core:default, start-dragging, opener:default + allow-open-path
     └── src/
         ├── main.rs
-        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal Manager) + 49 commandes
+        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal/Player Manager) + 57 commandes
         ├── analyze.rs              analyze_disk : plus gros fichiers + doublons (walkdir + hash DefaultHasher)
         ├── dircmp.rs               compare_dirs : diff 2 arbres (only_a/only_b/modified/same)
-        ├── player.rs               Lecteur vidéo natif : GStreamer playbin (NVDEC GPU) → JPEG → Channel.
-        │                           player_open/pause/resume/seek/set_volume/close. Synchro A/V par horloge pipeline
+        ├── player.rs               Lecteur média natif GStreamer. Vidéo : playbin (NVDEC GPU) → JPEG → Channel.
+        │                           Audio : playbin + appsink PCM → FFT (spectrum-analyzer) → 64 bandes → Channel.
+        │                           player_open/open_audio/position/pause/resume/seek/set_volume/close
         ├── fs_ops.rs               CRUD + chunks + search + move + props + open_native + createFile
         ├── ops.rs                  trash/delete/copy/move groupés (copy retourne chemins créés),
         │                           transfer_pause/resume/cancel, create_archive, search_content,

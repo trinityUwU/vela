@@ -117,3 +117,21 @@ export interface ContentMatch {
   line: number;
   text: string;
 }
+
+export interface LargeFile {
+  path: string;
+  name: string;
+  size: number;
+}
+
+export interface DupGroup {
+  size: number;
+  paths: string[];
+}
+
+export interface DiskReport {
+  total_size: number;
+  file_count: number;
+  largest: LargeFile[];
+  duplicates: DupGroup[];
+}

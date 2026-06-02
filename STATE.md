@@ -47,7 +47,7 @@ File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation cl
 - **Aperçu PDF** : `PdfViewer` (pdf.js, worker local `?url`) — canvas page par page, zoom 50-300%, lazy IntersectionObserver au-delà de 20 pages. Branché dans `Editor` (`previewKind` "pdf", non éditable) → dispo en Quick Look
 - **Thumbnails images** : `useThumbnail` (IntersectionObserver lazy, file de concurrence globale 4) + `FileTile` affiche la miniature réelle (fallback `FileIcon` pendant chargement/erreur)
 
-**Commandes Rust** : 47 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager` + `TerminalManager`)
+**Commandes Rust** : 48 enregistrées dans `lib.rs` (manage `ExtractionManager` + `DirWatcher` + `TransferManager` + `TerminalManager`)
 
 **Transferts contrôlables** : `TransferManager` (state, AtomicBool paused/cancelled par job) + `transfer_pause`/`transfer_resume`/`transfer_cancel`. La boucle de copie par chunks vérifie le contrôle à chaque tranche (pause = spin-wait 50 ms, annulation = nettoyage du partiel + statut `cancelled`). Boutons Pause/Reprendre + Annuler sur copie ET déplacement. **Déplacement intelligent** : `rename` si même FS (instantané) ; sinon (cross-device EXDEV) copie par chunks pausable/annulable + suppression de la source **différée à la fin** (annuler ne perd jamais de données). Annulation = restauration : rename inverse des renommés, suppression des copies cross-device partielles. `MoveState` (renamed/copied), `undo_move`, `is_cross_device`, `validate_move_target`
 
@@ -106,5 +106,13 @@ Aperçus (PDF, HTML, thumbnails) + transferts robustes (progression octets, paus
 - Clic droit sur un onglet terminal → menu : **Renommer** + rangée de pastilles (palette `TAG_COLORS` partagée) + ✕ pour retirer. Double-clic sur l'onglet = renommage inline. Pastille couleur affichée à gauche du titre.
 - État en mémoire seulement (`useTerminals.rename`/`setColor`, champ `color?` sur `TermTab`) — les sessions PTY sont éphémères, aucune persistance disque pertinente. Réutilise `hexFor`/`TAG_COLORS` de `services/tags.ts`.
 
+## v1.11 — P2 confort ✅ (livré, installé)
+- **Apparence** (`useAppearance` + section interactive dans `SettingsPanel`) : couleur d'accent (6 presets) → override runtime `--color-accent` + `--color-accent-dim` (dérivé par `darken()`) sur `document.documentElement` ; densité compact/normal/confort = `html { font-size }` 14/15/16px (le spacing Tailwind en rem scale proportionnellement). Persisté `vela-appearance`.
+- **Recherches récentes** (`useSearch`) : 8 dernières `{q, mode}` persistées `vela-search-recents`, poussées après chaque recherche aboutie ; champ vide → overlay liste cliquable (rejoue q+mode), bouton Effacer.
+- **Taille de dossier à la demande** : clic droit dossier → « Calculer la taille » → `get_entry_props` (taille récursive déjà existante) → `folderSizes` map dans `App` → affichée dans la colonne Taille de `FileTable` (vue liste).
+- **Analyse disque** (`analyze.rs` → `analyze_disk` + `DiskAnalyzer.tsx`) : `walkdir` collecte tailles → top 40 plus gros fichiers + doublons (groupés par taille puis hash `DefaultHasher` std, cap 2 Go/fichier, dédup → groupes triés par espace récupérable). Overlay 2 onglets (plus gros / doublons), clic → navigue vers le dossier parent. Déclenché par clic droit dossier → « Analyser l'espace… ». Util de formatage partagé `services/format.ts` (`fmtSize`/`fmtDate`, factorisé depuis `FileTable`).
+
+**Commandes Rust** : 48 (ajout `analyze_disk`).
+
 ## Backlog
-`BACKLOG.md` — P1 livré (v1.9). Restent P2 (confort : thèmes, recherches récentes, taille dossier, analyse disque) et P3 (aperçu vidéo/audio, comparaison de dossiers).
+`BACKLOG.md` — P1 (v1.9) + P2 (v1.11) livrés. Reste P3 : aperçu vidéo/audio, comparaison de dossiers. Restent P2 (confort : thèmes, recherches récentes, taille dossier, analyse disque) et P3 (aperçu vidéo/audio, comparaison de dossiers).

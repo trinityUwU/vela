@@ -1,6 +1,14 @@
-// Panneau Réglages : référence de toutes les features de Vela et comment les utiliser.
+// Panneau Réglages : apparence (accent + densité) + référence des features et raccourcis.
 import { useEffect } from "react";
 import { Settings } from "./icons";
+import { ACCENT_PRESETS, type Density } from "../hooks/useAppearance";
+
+interface AppearanceProps {
+  accent: string;
+  density: Density;
+  onAccent: (hex: string) => void;
+  onDensity: (d: Density) => void;
+}
 
 interface Row {
   keys?: string[];
@@ -65,6 +73,8 @@ const SECTIONS: Section[] = [
       { keys: ["Maj", "Suppr"], label: "Supprimer définitivement" },
       { label: "Compresser en ZIP ou TAR.GZ ; extraire les archives (menu contextuel)" },
       { label: "Étiquettes couleur — clic droit → pastille (applicable à une sélection)" },
+      { label: "Dossier — clic droit « Calculer la taille » (affichée dans la colonne Taille)" },
+      { label: "Dossier — clic droit « Analyser l'espace » : plus gros fichiers + doublons" },
       { label: "Copier le chemin · Propriétés · Ouvrir avec (app par défaut ou commande)" },
     ],
   },
@@ -91,6 +101,7 @@ const SECTIONS: Section[] = [
     rows: [
       { keys: ["Ctrl", "F"], label: "Ouvrir la recherche (hors éditeur)" },
       { label: "Bascule Nom (récursif) / Contenu (grep dans les fichiers)" },
+      { label: "Champ vide → liste des recherches récentes (cliquer pour rejouer)" },
     ],
   },
   {
@@ -106,7 +117,13 @@ const SECTIONS: Section[] = [
   },
 ];
 
-export function SettingsPanel({ onClose }: { onClose: () => void }) {
+const DENSITIES: { key: Density; label: string }[] = [
+  { key: "compact", label: "Compact" },
+  { key: "cozy", label: "Normal" },
+  { key: "comfortable", label: "Confort" },
+];
+
+export function SettingsPanel({ onClose, appearance }: { onClose: () => void; appearance: AppearanceProps }) {
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", h);
@@ -128,7 +145,45 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div className="overflow-y-auto px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+        <div className="overflow-y-auto px-5 py-4">
+          <section className="mb-5 pb-5 border-b border-[var(--color-border)]">
+            <h3 className="text-[11px] uppercase tracking-wider text-[var(--color-accent)] font-semibold mb-2.5">Apparence</h3>
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[var(--color-text-dim)] mr-1">Accent</span>
+                {ACCENT_PRESETS.map((c) => (
+                  <button
+                    key={c.key}
+                    onClick={() => appearance.onAccent(c.hex)}
+                    style={{ backgroundColor: c.hex }}
+                    className={`w-5 h-5 rounded-full transition-transform hover:scale-110 ${
+                      appearance.accent === c.hex ? "ring-2 ring-[var(--color-text)] ring-offset-2 ring-offset-[var(--color-surface)]" : ""
+                    }`}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[var(--color-text-dim)] mr-1">Densité</span>
+                <div className="flex rounded-md bg-[var(--color-bg)] p-0.5 border border-[var(--color-border)]">
+                  {DENSITIES.map((d) => (
+                    <button
+                      key={d.key}
+                      onClick={() => appearance.onDensity(d.key)}
+                      className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                        appearance.density === d.key
+                          ? "bg-[var(--color-accent)] text-[var(--color-bg)] font-medium"
+                          : "text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
           {SECTIONS.map((s) => (
             <section key={s.title}>
               <h3 className="text-[11px] uppercase tracking-wider text-[var(--color-accent)] font-semibold mb-2">{s.title}</h3>
@@ -146,6 +201,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
               </ul>
             </section>
           ))}
+          </div>
         </div>
 
         <div className="px-5 py-3 border-t border-[var(--color-border)] text-[11px] text-[var(--color-text-dim)] shrink-0">

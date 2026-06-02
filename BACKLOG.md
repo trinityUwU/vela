@@ -12,14 +12,14 @@ Statut : `à faire` · `en cours` · `livré`. Quand livré → migrer la ligne 
 | 3 | Navigation clavier | Flèches déplacent la sélection, Entrée ouvre. | livré |
 | 4 | Ouvrir terminal ici | Clic droit dossier → onglet PTY dans ce dossier. | livré |
 
-## P2 — confort
+## P2 — confort — ✅ LIVRÉ v1.11
 
 | # | Feature | Détail | Statut |
 |---|---------|--------|--------|
-| 5 | Thèmes / personnalisation | Couleur d'accent + densité (compact/confort) configurables, persistées. | à faire |
-| 6 | Recherches récentes | Historique des dernières recherches Nom/Contenu, rappel rapide. | à faire |
-| 7 | Taille de dossier à la demande | Calcul récursif (du-like) déclenché manuellement sur un dossier. | à faire |
-| 8 | Analyse disque | Mode doublons + fichiers volumineux (scan + tri par taille). | à faire |
+| 5 | Thèmes / personnalisation | Accent (6 presets) + densité (compact/normal/confort via font-size rem) dans Réglages, persisté `vela-appearance`. | livré |
+| 6 | Recherches récentes | 8 dernières (q+mode) persistées `vela-search-recents`, champ vide → liste cliquable. | livré |
+| 7 | Taille de dossier à la demande | Clic droit dossier → « Calculer la taille » (réutilise `get_entry_props`), affichée colonne Taille (vue liste). | livré |
+| 8 | Analyse disque | `analyze_disk` Rust (walkdir + dédup hash DefaultHasher) → overlay plus gros fichiers + doublons. | livré |
 
 ## P3 — avancé / souveraineté
 

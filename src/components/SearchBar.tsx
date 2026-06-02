@@ -1,7 +1,7 @@
 // Barre de recherche live : input dans la topbar, résultats superposés sous la topbar.
 import { useEffect, useRef } from "react";
 import type { ContentMatch, DirEntry } from "../types";
-import type { SearchMode } from "../hooks/useSearch";
+import type { SearchMode, RecentSearch } from "../hooks/useSearch";
 import { FileIcon } from "./FileIcon";
 
 interface BarProps {
@@ -52,13 +52,38 @@ interface ResultsProps {
   contentResults: ContentMatch[];
   searching: boolean;
   query: string;
+  recents: RecentSearch[];
+  onApplyRecent: (r: RecentSearch) => void;
+  onClearRecents: () => void;
   onOpen: (e: DirEntry) => void;
   onNavigate: (path: string) => void;
   onOpenMatch: (path: string) => void;
 }
 
-export function SearchResults({ mode, results, contentResults, searching, query, onOpen, onNavigate, onOpenMatch }: ResultsProps) {
-  if (!query.trim()) return null;
+export function SearchResults({ mode, results, contentResults, searching, query, recents, onApplyRecent, onClearRecents, onOpen, onNavigate, onOpenMatch }: ResultsProps) {
+  if (!query.trim()) {
+    if (recents.length === 0) return null;
+    return (
+      <div className="absolute top-12 left-56 right-0 z-40 border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl max-h-[70vh] overflow-y-auto">
+        <div className="flex items-center px-3 py-1.5 text-[10px] text-[var(--color-text-dim)] border-b border-[var(--color-border)]">
+          <span className="flex-1">Recherches récentes</span>
+          <button onClick={onClearRecents} className="hover:text-[var(--color-text)]">Effacer</button>
+        </div>
+        {recents.map((r, i) => (
+          <button
+            key={`${r.mode}:${r.q}:${i}`}
+            onClick={() => onApplyRecent(r)}
+            className="w-full flex items-center gap-3 px-3 py-1.5 text-left hover:bg-[var(--color-surface-hover)] border-b border-[var(--color-border)]/40"
+          >
+            <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-[var(--color-bg)] text-[var(--color-text-dim)]">
+              {r.mode === "name" ? "Nom" : "Contenu"}
+            </span>
+            <span className="flex-1 min-w-0 truncate text-sm text-[var(--color-text)]">{r.q}</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
   const count = mode === "name" ? results.length : contentResults.length;
 
   return (

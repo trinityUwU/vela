@@ -30,6 +30,8 @@ interface Props {
   onSetColor: (color: string) => void;
   currentColor?: string;
   onOpenTerminal?: () => void;
+  onComputeSize?: () => void;
+  onAnalyze?: () => void;
   onExtractHere?: () => void;
   onExtractTo?: () => void;
 }
@@ -45,7 +47,7 @@ function copyToClipboard(text: string) {
 
 export function ContextMenu(props: Props) {
   const { menu, onClose, onOpen, onRename, onTrash, onDeletePermanent, onProperties } = props;
-  const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onOpenTerminal, onExtractHere, onExtractTo } = props;
+  const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onOpenTerminal, onComputeSize, onAnalyze, onExtractHere, onExtractTo } = props;
 
   useEffect(() => {
     window.addEventListener("click", onClose);
@@ -67,6 +69,12 @@ export function ContextMenu(props: Props) {
       {!multi && <Item label="Ouvrir" onClick={onOpen} />}
       {!multi && menu.isDir && onOpenTerminal && (
         <Item label="Ouvrir un terminal ici" onClick={() => { onOpenTerminal(); onClose(); }} />
+      )}
+      {!multi && menu.isDir && onComputeSize && (
+        <Item label="Calculer la taille" onClick={() => { onComputeSize(); onClose(); }} />
+      )}
+      {!multi && menu.isDir && onAnalyze && (
+        <Item label="Analyser l'espace…" onClick={() => { onAnalyze(); onClose(); }} />
       )}
       {isArchive && (
         <>

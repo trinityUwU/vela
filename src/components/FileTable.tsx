@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DirEntry } from "../types";
 import type { SortBy, SortState } from "../hooks/useSort";
 import { FileIcon } from "./FileIcon";
+import { fmtSize, fmtDate } from "../services/format";
 
 interface Props {
   entries: DirEntry[];
@@ -16,23 +17,8 @@ interface Props {
   onContextBg: (e: React.MouseEvent) => void;
   onClearBg: () => void;
   onMove: (src: string, destDir: string) => void;
+  folderSizes: Record<string, number>;
   colorOf: (path: string) => string | undefined;
-}
-
-function fmtSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`;
-  const units = ["Ko", "Mo", "Go", "To"];
-  let v = bytes / 1024;
-  let i = 0;
-  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
-  return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`;
-}
-
-function fmtDate(secs: number): string {
-  if (!secs) return "—";
-  return new Date(secs * 1000).toLocaleString("fr", {
-    year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
-  });
 }
 
 const COLS: { by: SortBy; label: string; className: string }[] = [
@@ -43,7 +29,7 @@ const COLS: { by: SortBy; label: string; className: string }[] = [
 ];
 
 export function FileTable(props: Props) {
-  const { entries, selection, active, sort, onToggleBy, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, colorOf } = props;
+  const { entries, selection, active, sort, onToggleBy, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, folderSizes, colorOf } = props;
   const handleBg = (e: React.MouseEvent) => { e.preventDefault(); onContextBg(e); };
   const arrow = (by: SortBy) => (sort.by === by ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
 
@@ -69,6 +55,7 @@ export function FileTable(props: Props) {
               entry={e}
               selected={selection.has(e.path)}
               active={active === e.path}
+              dirSize={folderSizes[e.path]}
               color={colorOf(e.path)}
               onSelect={onSelect}
               onOpen={onOpen}
@@ -82,10 +69,11 @@ export function FileTable(props: Props) {
   );
 }
 
-function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onMove }: {
+function Row({ entry, selected, active, dirSize, color, onSelect, onOpen, onContext, onMove }: {
   entry: DirEntry;
   selected: boolean;
   active: boolean;
+  dirSize?: number;
   color?: string;
   onSelect: (e: DirEntry, ev: React.MouseEvent) => void;
   onOpen: (e: DirEntry) => void;
@@ -130,7 +118,7 @@ function Row({ entry, selected, active, color, onSelect, onOpen, onContext, onMo
         <span className="truncate text-sm text-[var(--color-text)]">{entry.name}</span>
         {color && <span className="shrink-0 w-2 h-2 rounded-full" style={{ backgroundColor: color }} />}
       </span>
-      <span className="w-24 text-right text-xs text-[var(--color-text-dim)] tabular-nums">{entry.is_dir ? "—" : fmtSize(entry.size)}</span>
+      <span className="w-24 text-right text-xs text-[var(--color-text-dim)] tabular-nums">{entry.is_dir ? (dirSize !== undefined ? fmtSize(dirSize) : "—") : fmtSize(entry.size)}</span>
       <span className="w-36 text-xs text-[var(--color-text-dim)] tabular-nums">{fmtDate(entry.modified)}</span>
       <span className="w-20 text-xs text-[var(--color-text-dim)] truncate">{entry.is_dir ? "dossier" : entry.extension || "—"}</span>
     </button>

@@ -14,6 +14,10 @@ export function getEntryProps(path: string): Promise<import("../types").EntryPro
   return invoke("get_entry_props", { path });
 }
 
+export function analyzeDisk(path: string): Promise<import("../types").DiskReport> {
+  return invoke("analyze_disk", { path });
+}
+
 export function getAppsForFile(path: string): Promise<import("../types").FileApps> {
   return invoke("get_apps_for_file", { path });
 }

@@ -4,6 +4,14 @@ import type { ContentMatch, DirEntry } from "../types";
 import { searchContent, searchDir } from "../services/fs";
 
 export type SearchMode = "name" | "content";
+export interface RecentSearch { q: string; mode: SearchMode; }
+
+const RECENTS_KEY = "vela-search-recents";
+const MAX_RECENTS = 8;
+
+function loadRecents(): RecentSearch[] {
+  try { return JSON.parse(localStorage.getItem(RECENTS_KEY) ?? "[]"); } catch { return []; }
+}
 
 export function useSearch(cwd: string) {
   const [open, setOpen] = useState(false);
@@ -12,7 +20,22 @@ export function useSearch(cwd: string) {
   const [results, setResults] = useState<DirEntry[]>([]);
   const [contentResults, setContentResults] = useState<ContentMatch[]>([]);
   const [searching, setSearching] = useState(false);
+  const [recents, setRecents] = useState<RecentSearch[]>(loadRecents);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pushRecent = useCallback((q: string, m: SearchMode) => {
+    setRecents((prev) => {
+      const next = [{ q, mode: m }, ...prev.filter((r) => !(r.q === q && r.mode === m))].slice(0, MAX_RECENTS);
+      try { localStorage.setItem(RECENTS_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const applyRecent = useCallback((r: RecentSearch) => { setMode(r.mode); setQuery(r.q); }, []);
+  const clearRecents = useCallback(() => {
+    setRecents([]);
+    try { localStorage.removeItem(RECENTS_KEY); } catch { /* ignore */ }
+  }, []);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -38,13 +61,15 @@ export function useSearch(cwd: string) {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       try {
+        const q = query.trim();
         if (mode === "name") {
-          setResults(await searchDir(cwd, query.trim()));
+          setResults(await searchDir(cwd, q));
           setContentResults([]);
         } else {
-          setContentResults(await searchContent(cwd, query.trim()));
+          setContentResults(await searchContent(cwd, q));
           setResults([]);
         }
+        pushRecent(q, mode);
       } catch {
         setResults([]);
         setContentResults([]);
@@ -53,7 +78,7 @@ export function useSearch(cwd: string) {
       }
     }, 500);
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [query, cwd, open, mode]);
+  }, [query, cwd, open, mode, pushRecent]);
 
-  return { open, setOpen, mode, setMode, query, setQuery, results, contentResults, searching, close };
+  return { open, setOpen, mode, setMode, query, setQuery, results, contentResults, searching, close, recents, applyRecent, clearRecents };
 }

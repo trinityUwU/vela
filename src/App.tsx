@@ -10,7 +10,10 @@ import { useTerminals } from "./hooks/useTerminals";
 import { useUndo } from "./hooks/useUndo";
 import { useEditorTabs } from "./hooks/useEditorTabs";
 import { useTags } from "./hooks/useTags";
+import { useAppearance } from "./hooks/useAppearance";
 import { hexFor } from "./services/tags";
+import { getEntryProps } from "./services/fs";
+import { DiskAnalyzer } from "./components/DiskAnalyzer";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TerminalPanel } from "./components/TerminalPanel";
 import { termInput, availableShells } from "./services/term";
@@ -88,7 +91,14 @@ export default function App() {
   useEffect(() => { fm.setRecorder(undo.push); }, [fm.setRecorder, undo.push]);
   const editorTabs = useEditorTabs(fm.opened, fm.setOpened);
   const tags = useTags();
+  const { appearance, setAccent, setDensity } = useAppearance();
   const tagHex = useCallback((path: string) => hexFor(tags.colorOf(path)), [tags]);
+  const [folderSizes, setFolderSizes] = useState<Record<string, number>>({});
+  const [analyzePath, setAnalyzePath] = useState<string | null>(null);
+
+  const computeSize = useCallback((path: string) => {
+    getEntryProps(path).then((p) => setFolderSizes((m) => ({ ...m, [path]: p.size }))).catch((e) => fm.setError(String(e)));
+  }, [fm]);
   const [termVisible, setTermVisible] = useState(false);
   const [termHeight, setTermHeight] = useState(280);
   const [shells, setShells] = useState<string[]>([]);
@@ -309,6 +319,9 @@ export default function App() {
           contentResults={search.contentResults}
           searching={search.searching}
           query={search.query}
+          recents={search.recents}
+          onApplyRecent={search.applyRecent}
+          onClearRecents={search.clearRecents}
           onOpen={(e) => { fm.openEntry(e); search.close(); }}
           onNavigate={(p) => { fm.navigate(p); search.close(); }}
           onOpenMatch={openMatch}
@@ -371,6 +384,7 @@ export default function App() {
             onContextBg={onContextBg}
             onClearBg={fm.clearSelection}
             onMove={fm.moveEntry}
+            folderSizes={folderSizes}
             colorOf={tagHex}
           />
         ) : (
@@ -447,6 +461,8 @@ export default function App() {
           onSetColor={(color) => tags.setColor(selPaths(menu.entry.path), color)}
           currentColor={tags.colorOf(menu.entry.path)}
           onOpenTerminal={() => { openTerminalHere(menu.entry.path); setMenu(null); }}
+          onComputeSize={() => { computeSize(menu.entry.path); setMenu(null); }}
+          onAnalyze={() => { setAnalyzePath(menu.entry.path); setMenu(null); }}
           onExtractHere={() => {
             const dest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
             startExtraction(menu.entry.path, dest).catch((e) => fm.setError(String(e)));
@@ -563,8 +579,16 @@ export default function App() {
 
       <ExtractionPanel jobs={extractionJobs} transfers={transferJobs} onNavigate={fm.navigate} />
 
-      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsPanel
+          onClose={() => setSettingsOpen(false)}
+          appearance={{ accent: appearance.accent, density: appearance.density, onAccent: setAccent, onDensity: setDensity }}
+        />
+      )}
       {diff && <DiffViewer a={diff.a} b={diff.b} onClose={() => setDiff(null)} onError={fm.setError} />}
+      {analyzePath && (
+        <DiskAnalyzer path={analyzePath} onClose={() => setAnalyzePath(null)} onReveal={fm.navigate} onError={fm.setError} />
+      )}
     </div>
   );
 }

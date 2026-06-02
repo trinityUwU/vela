@@ -190,5 +190,11 @@ Mémoire : ne pas garder toutes les base64 en RAM, laisser le GC ; le cache disq
 ## Livré — v1.10 ✅
 - [x] Onglets terminaux : clic droit → renommer + pastille couleur (double-clic = renommer), état en mémoire
 
+## Livré — v1.11 (P2 confort) ✅
+- [x] P2·5 — Apparence : accent (6 presets) + densité (font-size rem), persisté `vela-appearance` (`useAppearance`)
+- [x] P2·6 — Recherches récentes : 8 dernières persistées, champ vide → liste cliquable
+- [x] P2·7 — Taille de dossier à la demande : clic droit → calcul, affiché colonne Taille
+- [x] P2·8 — Analyse disque : `analyze_disk` (plus gros fichiers + doublons par hash), overlay `DiskAnalyzer`
+
 ## Backlog
-Voir `BACKLOG.md` — P2 (confort) et P3 (avancé) en attente.
+Voir `BACKLOG.md` — P3 (avancé : aperçu vidéo/audio, comparaison de dossiers) en attente.

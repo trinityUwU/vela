@@ -1,4 +1,5 @@
 // Point d'entrée Tauri : enregistre les commandes filesystem exposées au front.
+mod analyze;
 mod apps;
 mod archive;
 mod favorites;
@@ -57,6 +58,7 @@ pub fn run() {
             favorites::save_favorites,
             tags::load_tags,
             tags::set_tag,
+            analyze::analyze_disk,
             archive::list_archive,
             archive::start_extraction,
             archive::extraction_pause,

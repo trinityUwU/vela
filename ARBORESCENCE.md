@@ -24,7 +24,8 @@ vela/
 │   │   │                           trash/delete/copy/moveEntries, createArchive, searchContent, watchDir
 │   │   ├── file-kind.ts            Preview type (code/md/image/table/archive/binary)
 │   │   │                           + isEditable + langExtension (CodeMirror)
-│   │   └── tags.ts                 Palette couleur (7 clés→hex) + load_tags/set_tag wrappers
+│   │   ├── tags.ts                 Palette couleur (7 clés→hex) + load_tags/set_tag wrappers
+│   │   └── format.ts               Util partagé fmtSize / fmtDate
 │   │
 │   ├── hooks/
 │   │   ├── useFileManager.ts       État central : nav, mode, sélection multiple (Set + anchor),
@@ -32,7 +33,7 @@ vela/
 │   │   │                           renameMany, watch live (fs-changed), persistance session
 │   │   ├── useFileContent.ts       Chargement fichier : édition (≤1Mo) / chunks (>1Mo) / skip
 │   │   ├── useFavorites.ts         Pins + groupes, persistance auto via save_favorites
-│   │   ├── useSearch.ts            Recherche live (debounce 500ms) : mode Nom / Contenu
+│   │   ├── useSearch.ts            Recherche live (debounce 500ms) : Nom / Contenu + recherches récentes
 │   │   ├── useSort.ts              Tri (name/size/modified/extension, ASC/DESC) + filtre
 │   │   │                           (all/files/dirs) + dirsFirst — persisté localStorage
 │   │   ├── useKeyboard.ts          Raccourcis globaux (C/X/V/A/F/Z, F2/F5, Suppr, Espace, Échap,
@@ -40,6 +41,7 @@ vela/
 │   │   ├── useUndo.ts              Pile Ctrl+Z (rename/move/copy/trash) — ops inverses, max 30
 │   │   ├── useEditorTabs.ts        Onglets multi-fichiers mode Édition (sync sur fm.opened)
 │   │   ├── useTags.ts              Étiquettes couleur : chargement + application optimiste
+│   │   ├── useAppearance.ts        Accent + densité (override CSS vars + font-size), persisté
 │   │   ├── useExtractions.ts       Écoute events Tauri extraction-progress → Map<id, ExtractionJob>
 │   │   │                           auto-dismiss 6s états terminaux
 │   │   ├── useTransfers.ts         Écoute transfer-progress → Map<id, TransferJob> (copie/déplacement)
@@ -57,8 +59,9 @@ vela/
 │       ├── FileIcon.tsx            Icônes devicon (20+ langages) + SVG génériques
 │       ├── Editor.tsx              CodeMirror + save + search + MD preview + image + archive + table (prop active)
 │       ├── EditorArea.tsx          Mode Édition multi-onglets : barre + un Editor monté par fichier
-│       ├── SettingsPanel.tsx       Overlay Réglages : référence des features + raccourcis <kbd>
+│       ├── SettingsPanel.tsx       Overlay Réglages : apparence (accent + densité) + référence features + raccourcis
 │       ├── DiffViewer.tsx          Comparaison 2 fichiers (CodeMirror MergeView, lecture seule)
+│       ├── DiskAnalyzer.tsx        Overlay analyse disque : plus gros fichiers + doublons (analyze_disk)
 │       ├── TableViewer.tsx         CSV/TSV (auto-sep) + XLSX/XLS/ODS (SheetJS), filtre live
 │       ├── ArchiveViewer.tsx       Liste archive + extraction non-bloquante (ici / chemin custom)
 │       ├── ExtractionPanel.tsx     Panel fixe bas-droite : extractions + transferts empilés, progression,
@@ -84,7 +87,8 @@ vela/
     ├── capabilities/default.json   core:default, start-dragging, opener:default + allow-open-path
     └── src/
         ├── main.rs
-        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal Manager) + 47 commandes
+        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal Manager) + 48 commandes
+        ├── analyze.rs              analyze_disk : plus gros fichiers + doublons (walkdir + hash DefaultHasher)
         ├── fs_ops.rs               CRUD + chunks + search + move + props + open_native + createFile
         ├── ops.rs                  trash/delete/copy/move groupés (copy retourne chemins créés),
         │                           transfer_pause/resume/cancel, create_archive, search_content,

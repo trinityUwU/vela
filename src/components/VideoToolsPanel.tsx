@@ -76,8 +76,7 @@ const modalCls =
   "bg-[var(--color-surface)] shadow-2xl";
 
 const embeddedCls =
-  "w-full max-h-full overflow-y-auto p-4 rounded-lg border border-[var(--color-border)] " +
-  "bg-[var(--color-surface)] shadow-2xl";
+  "w-full p-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl";
 
 export function VideoToolsPanel({ input, onError, onClose, embedded = false }: MediaPanelProps): React.ReactElement {
   const { dir, stem, ext } = parsePath(input);

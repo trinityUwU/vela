@@ -216,7 +216,7 @@ export function Editor({ entry, onClose, onError, active = true, editPath = null
       )}
 
       {editing && canEdit && (
-        <div className="absolute bottom-3 right-3 z-40 w-[min(38rem,calc(100%-1.5rem))] max-h-[72%] overflow-hidden">
+        <div className="absolute bottom-3 right-3 z-40 w-[min(38rem,calc(100%-1.5rem))] max-h-[78%] overflow-y-auto rounded-lg">
           <MediaToolsModal
             path={entry.path}
             ext={entry.extension}

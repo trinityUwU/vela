@@ -468,7 +468,12 @@ export default function App() {
           onOpenTerminal={() => { openTerminalHere(menu.entry.path); setMenu(null); }}
           onComputeSize={() => { computeSize(menu.entry.path); setMenu(null); }}
           onAnalyze={() => { setAnalyzePath(menu.entry.path); setMenu(null); }}
-          onMediaTools={() => { fm.openEntry(menu.entry); setEditPath(menu.entry.path); setMenu(null); }}
+          onMediaTools={() => {
+            fm.setMode("edit");
+            fm.setOpened(menu.entry);
+            setEditPath(menu.entry.path);
+            setMenu(null);
+          }}
           onExtractHere={() => {
             const dest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
             startExtraction(menu.entry.path, dest).catch((e) => fm.setError(String(e)));

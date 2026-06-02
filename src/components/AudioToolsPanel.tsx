@@ -72,11 +72,11 @@ export function AudioToolsPanel({ input, onError, onClose, embedded = false }: M
     <div
       onClick={(e) => e.stopPropagation()}
       className={embedded
-        ? "w-full max-h-full flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
+        ? "w-full flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
         : "w-[min(560px,94vw)] max-h-[88vh] flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"}
     >
       <PanelHeader title={`${stem}.${ext}`} onClose={onClose} />
-      <div className="flex-1 overflow-y-auto px-5">
+      <div className={embedded ? "px-5 pb-2" : "flex-1 overflow-y-auto px-5"}>
         {done && <p className="mt-3 text-xs text-green-400 truncate" title={done}>✓ Exporté : {done}</p>}
         <TrimSection dir={dir} stem={stem} ext={ext} duration={duration} input={input} run={run} />
         <FadeSection dir={dir} stem={stem} ext={ext} input={input} run={run} />

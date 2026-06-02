@@ -1,6 +1,7 @@
 // Assemblage du gestionnaire : topbar, sidebar, zone centrale (grille ou éditeur), modals.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFileManager } from "./hooks/useFileManager";
+import { useProfiles } from "./hooks/useProfiles";
 import { useFavorites } from "./hooks/useFavorites";
 import { useSearch } from "./hooks/useSearch";
 import { useSort, applySortFilter } from "./hooks/useSort";
@@ -21,18 +22,12 @@ import { Topbar } from "./components/Topbar";
 import type { View } from "./components/Topbar";
 import { SearchResults } from "./components/SearchBar";
 import { SortBar } from "./components/SortBar";
-import { Sidebar } from "./components/Sidebar";
-import { FileGrid } from "./components/FileGrid";
-import { FileTable } from "./components/FileTable";
-import { FileList } from "./components/FileList";
-import { EditorArea } from "./components/EditorArea";
+import { ZoneLayout } from "./components/ZoneLayout";
+import { ResizeHandle } from "./components/ResizeHandle";
 import { ContextMenu } from "./components/ContextMenu";
 import { BgContextMenu } from "./components/BgContextMenu";
-import { InputModal } from "./components/InputModal";
-import { ConfirmModal } from "./components/ConfirmModal";
-import { PropertiesModal } from "./components/PropertiesModal";
-import { CompressModal } from "./components/CompressModal";
-import { BatchRenameModal } from "./components/BatchRenameModal";
+import { DialogHost } from "./components/DialogHost";
+import type { Dialog } from "./components/DialogHost";
 import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
@@ -44,18 +39,6 @@ import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
 type BgMenu = { x: number; y: number } | null;
-type Dialog =
-  | { kind: "rename"; entry: DirEntry }
-  | { kind: "newfolder" }
-  | { kind: "newfile" }
-  | { kind: "trash"; paths: string[]; label: string }
-  | { kind: "delete"; paths: string[]; label: string }
-  | { kind: "props"; entry: DirEntry }
-  | { kind: "compress"; paths: string[] }
-  | { kind: "batchrename"; names: string[] }
-  | { kind: "emptytrash" }
-  | { kind: "extractto"; archivePath: string; defaultDest: string }
-  | null;
 
 function archiveStem(name: string): string {
   const compounds = [".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".tar"];
@@ -77,6 +60,11 @@ function baseName(path: string): string {
 
 export default function App() {
   const fm = useFileManager();
+  const profiles = useProfiles();
+  const activeProfile = profiles.active;
+  const editorActive = Object.values(activeProfile.zones).includes("editor");
+  const { setEditorActive } = fm;
+  useEffect(() => { setEditorActive(editorActive); }, [editorActive, setEditorActive]);
   const favs = useFavorites();
   const search = useSearch(fm.cwd);
   const { sort, toggleBy, update: updateSort } = useSort();
@@ -157,10 +145,10 @@ export default function App() {
   }, [entries, fm.selected, fm.selectOne]);
 
   const navSel = useCallback((delta: number, axis: "x" | "y") => {
-    const grid = view === "grid" && fm.mode === "files";
+    const grid = view === "grid" && !editorActive;
     if (!grid) { if (axis === "x") return; moveSel(delta); return; }
     moveSel(axis === "y" ? delta * gridCols.current : delta);
-  }, [view, fm.mode, moveSel]);
+  }, [view, editorActive, moveSel]);
 
   const activateSel = useCallback(() => {
     const e = entries.find((x) => x.path === fm.selected);
@@ -212,36 +200,27 @@ export default function App() {
   const pinCurrent = () => favs.pinPath(fm.cwd, baseName(fm.cwd));
 
   const cwdEntry: DirEntry = {
-    name: baseName(fm.cwd) || "/",
-    path: fm.cwd,
-    is_dir: true,
-    size: 0,
-    modified: 0,
-    extension: "",
+    name: baseName(fm.cwd) || "/", path: fm.cwd, is_dir: true, size: 0, modified: 0, extension: "",
   };
 
   // ── actions menu (mono ou multi) ──────────────────────────────────────────
   const selPaths = (fallback?: string) => fm.selectionPaths(fallback);
 
-  const askTrash = (paths: string[]) => {
-    const label = paths.length > 1 ? `${paths.length} éléments` : `« ${baseName(paths[0])} »`;
-    setDialog({ kind: "trash", paths, label });
-  };
-  const askDelete = (paths: string[]) => {
-    const label = paths.length > 1 ? `${paths.length} éléments` : `« ${baseName(paths[0])} »`;
-    setDialog({ kind: "delete", paths, label });
-  };
+  const askLabel = (paths: string[]): string =>
+    paths.length > 1 ? `${paths.length} éléments` : `« ${baseName(paths[0])} »`;
+  const askTrash = (paths: string[]) => setDialog({ kind: "trash", paths, label: askLabel(paths) });
+  const askDelete = (paths: string[]) => setDialog({ kind: "delete", paths, label: askLabel(paths) });
+
+  const switchToEdition = useCallback(() => {
+    const edition = profiles.profiles.find((p) => p.id === "edition");
+    if (edition) profiles.setActive(edition.id);
+    else fm.setEditorActive(true);
+  }, [profiles, fm]);
 
   const openMatch = (path: string) => {
-    const entry: DirEntry = {
-      name: baseName(path),
-      path,
-      is_dir: false,
-      size: 0,
-      modified: 0,
-      extension: path.includes(".") ? path.slice(path.lastIndexOf(".") + 1) : "",
-    };
-    fm.setMode("edit");
+    const extension = path.includes(".") ? path.slice(path.lastIndexOf(".") + 1) : "";
+    const entry: DirEntry = { name: baseName(path), path, is_dir: false, size: 0, modified: 0, extension };
+    switchToEdition();
     fm.setOpened(entry);
     fm.setSelected(path);
     search.close();
@@ -289,8 +268,10 @@ export default function App() {
   return (
     <div className="h-full flex flex-col relative">
       <Topbar
-        mode={fm.mode}
-        onMode={fm.setMode}
+        profiles={profiles.profiles}
+        activeId={profiles.activeId}
+        onSwitchProfile={profiles.setActive}
+        showViewToggle={!editorActive}
         path={fm.cwd}
         showHidden={fm.showHidden}
         view={view}
@@ -334,83 +315,59 @@ export default function App() {
         />
       )}
 
-      <SortBar
-        sort={sort}
-        onToggleBy={toggleBy}
-        onFilter={(f) => updateSort({ filter: f })}
-        onToggleDirsFirst={() => updateSort({ dirsFirst: !sort.dirsFirst })}
-      />
-
-      <div className="flex-1 flex min-h-0">
-        <Sidebar
-          favs={favs}
-          places={fm.places}
-          cwd={fm.cwd}
-          trashDir={trashPath}
-          trashCount={fm.trashCount}
-          onSelect={fm.navigate}
-          onPinCurrent={pinCurrent}
-          onMove={fm.moveEntry}
-          onOpenTrash={fm.openTrash}
-          onEmptyTrash={() => setDialog({ kind: "emptytrash" })}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onOpenDownload={() => setDownloadOpen(true)}
+      {!activeProfile.filter_bar_hidden && (
+        <SortBar
+          sort={sort}
+          onToggleBy={toggleBy}
+          onFilter={(f) => updateSort({ filter: f })}
+          onToggleDirsFirst={() => updateSort({ dirsFirst: !sort.dirsFirst })}
         />
+      )}
 
-        {fm.mode === "edit" ? (
-          <div className="flex-1 flex min-w-0">
-            <FileList
-              entries={entries}
-              selection={fm.selection}
-              active={fm.selected}
-              onSelect={onSelectEdit}
-              onOpen={fm.openEntry}
-              onContext={onContext}
-              onContextBg={onContextBg}
-              onMove={fm.moveEntry}
-              colorOf={tagHex}
-            />
-            <EditorArea
-              tabs={editorTabs.tabs}
-              activePath={editorTabs.activePath}
-              onSelect={editorTabs.select}
-              onClose={editorTabs.close}
-              onError={fm.setError}
-              editPath={editPath}
-            />
-          </div>
-        ) : view === "list" ? (
-          <FileTable
-            entries={entries}
-            selection={fm.selection}
-            active={fm.selected}
-            sort={sort}
-            onToggleBy={toggleBy}
-            onSelect={onSelect}
-            onOpen={fm.openEntry}
-            onContext={onContext}
-            onContextBg={onContextBg}
-            onClearBg={fm.clearSelection}
-            onMove={fm.moveEntry}
-            folderSizes={folderSizes}
-            colorOf={tagHex}
-          />
-        ) : (
-          <FileGrid
-            entries={entries}
-            selection={fm.selection}
-            active={fm.selected}
-            onSelect={onSelect}
-            onOpen={fm.openEntry}
-            onContext={onContext}
-            onContextBg={onContextBg}
-            onClearBg={fm.clearSelection}
-            onMove={fm.moveEntry}
-            onColumns={(c) => { gridCols.current = c; }}
-            colorOf={tagHex}
-          />
-        )}
-      </div>
+      <ZoneLayout
+        zones={activeProfile.zones}
+        view={view}
+        editorActive={editorActive}
+        listing={{
+          entries,
+          selection: fm.selection,
+          active: fm.selected,
+          sort,
+          onToggleBy: toggleBy,
+          onSelect,
+          onSelectEdit,
+          onOpen: fm.openEntry,
+          onContext,
+          onContextBg,
+          onClearBg: fm.clearSelection,
+          onMove: fm.moveEntry,
+          folderSizes,
+          colorOf: tagHex,
+          onColumns: (c) => { gridCols.current = c; },
+        }}
+        editor={{
+          tabs: editorTabs.tabs,
+          activePath: editorTabs.activePath,
+          onSelect: editorTabs.select,
+          onClose: editorTabs.close,
+          onError: fm.setError,
+          editPath,
+        }}
+        sidebar={{
+          favs,
+          places: fm.places,
+          cwd: fm.cwd,
+          trashDir: trashPath,
+          trashCount: fm.trashCount,
+          onSelect: fm.navigate,
+          onPinCurrent: pinCurrent,
+          onMove: fm.moveEntry,
+          onOpenTrash: fm.openTrash,
+          onEmptyTrash: () => setDialog({ kind: "emptytrash" }),
+          onOpenSettings: () => setSettingsOpen(true),
+          onOpenDownload: () => setDownloadOpen(true),
+        }}
+      />
 
       {(termVisible || terminals.tabs.length > 0) && (
         <div
@@ -472,7 +429,7 @@ export default function App() {
           onComputeSize={() => { computeSize(menu.entry.path); setMenu(null); }}
           onAnalyze={() => { setAnalyzePath(menu.entry.path); setMenu(null); }}
           onMediaTools={() => {
-            fm.setMode("edit");
+            switchToEdition();
             fm.setOpened(menu.entry);
             setEditPath(menu.entry.path);
             setMenu(null);
@@ -507,85 +464,13 @@ export default function App() {
         />
       )}
 
-      {dialog?.kind === "rename" && (
-        <InputModal
-          title="Renommer"
-          initial={dialog.entry.name}
-          onSubmit={(name) => { fm.rename(dialog.entry.path, name); setDialog(null); }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-      {dialog?.kind === "newfolder" && (
-        <InputModal
-          title="Nouveau dossier"
-          confirmLabel="Créer"
-          onSubmit={(name) => { fm.newFolder(name); setDialog(null); }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-      {dialog?.kind === "newfile" && (
-        <InputModal
-          title="Nouveau fichier"
-          confirmLabel="Créer"
-          placeholder="nom.txt"
-          onSubmit={(name) => { fm.createFile(name); setDialog(null); }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-      {dialog?.kind === "trash" && (
-        <ConfirmModal
-          message={`Mettre ${dialog.label} à la corbeille ?`}
-          onConfirm={() => { fm.trash(dialog.paths); setDialog(null); }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-      {dialog?.kind === "delete" && (
-        <ConfirmModal
-          message={`Supprimer définitivement ${dialog.label} ? Cette action est irréversible.`}
-          onConfirm={() => { fm.deletePermanent(dialog.paths); setDialog(null); }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-      {dialog?.kind === "props" && (
-        <PropertiesModal entry={dialog.entry} onClose={() => setDialog(null)} />
-      )}
-      {dialog?.kind === "compress" && (
-        <CompressModal
-          count={dialog.paths.length}
-          defaultName={dialog.paths.length === 1 ? archiveStem(baseName(dialog.paths[0])) : "archive"}
-          onSubmit={(name, format) => {
-            fm.compress(dialog.paths, `${fm.cwd}/${name}`, format);
-            setDialog(null);
-          }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-      {dialog?.kind === "emptytrash" && (
-        <ConfirmModal
-          message="Vider la corbeille ? Tous les éléments seront supprimés définitivement."
-          onConfirm={() => { fm.emptyTrash(); setDialog(null); }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-      {dialog?.kind === "batchrename" && (
-        <BatchRenameModal
-          names={dialog.names}
-          onSubmit={(renames) => { fm.renameMany(fm.cwd, renames); setDialog(null); }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-      {dialog?.kind === "extractto" && (
-        <InputModal
-          title="Extraire vers…"
-          confirmLabel="Extraire"
-          initial={dialog.defaultDest}
-          onSubmit={(dest) => {
-            if (dest.trim()) startExtraction(dialog.archivePath, dest.trim()).catch((e) => fm.setError(String(e)));
-            setDialog(null);
-          }}
-          onCancel={() => setDialog(null)}
-        />
-      )}
+      <DialogHost
+        dialog={dialog}
+        onClose={() => setDialog(null)}
+        fm={fm}
+        archiveStem={archiveStem}
+        baseName={baseName}
+      />
 
       {quickLook && (
         <QuickLook entry={quickLook} onClose={() => setQuickLook(null)} onError={fm.setError} />
@@ -606,23 +491,5 @@ export default function App() {
         <DiskAnalyzer path={analyzePath} onClose={() => setAnalyzePath(null)} onReveal={fm.navigate} onError={fm.setError} />
       )}
     </div>
-  );
-}
-
-// Poignée de redimensionnement vertical du panneau terminal (drag).
-function ResizeHandle({ onResize }: { onResize: (dy: number) => void }) {
-  const onMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    let last = e.clientY;
-    const move = (ev: MouseEvent) => { onResize(ev.clientY - last); last = ev.clientY; };
-    const up = () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-  };
-  return (
-    <div
-      onMouseDown={onMouseDown}
-      className="h-1 cursor-ns-resize bg-[var(--color-border)] hover:bg-[var(--color-accent)] shrink-0"
-    />
   );
 }

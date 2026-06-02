@@ -1,10 +1,10 @@
-// État central du gestionnaire : navigation, listing, mode, sélection multiple, presse-papier, ops.
+// État central du gestionnaire : navigation, listing, sélection multiple, presse-papier, ops.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import * as fs from "../services/fs";
 import { isEditable } from "../services/file-kind";
 import type { UndoEntry } from "./useUndo";
-import type { Clipboard, ClipboardOp, DirEntry, DirListing, Mode, Place } from "../types";
+import type { Clipboard, ClipboardOp, DirEntry, DirListing, Place } from "../types";
 
 function baseName(path: string): string {
   return path.split("/").filter(Boolean).pop() ?? path;
@@ -14,7 +14,6 @@ const SESSION_KEY = "vela-session";
 
 interface Session {
   cwd?: string;
-  mode?: Mode;
   showHidden?: boolean;
 }
 
@@ -36,7 +35,7 @@ function saveSession(s: Session): void {
 
 export function useFileManager() {
   const session = useRef(loadSession()).current;
-  const [mode, setMode] = useState<Mode>(session.mode ?? "files");
+  const [editorActive, setEditorActive] = useState(false);
   const [cwd, setCwd] = useState<string>("");
   const [listing, setListing] = useState<DirListing | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
@@ -110,8 +109,8 @@ export function useFileManager() {
   }, []);
 
   useEffect(() => {
-    if (cwd) saveSession({ cwd, mode, showHidden });
-  }, [cwd, mode, showHidden]);
+    if (cwd) saveSession({ cwd, showHidden });
+  }, [cwd, showHidden]);
 
   // ── watch live du dossier courant ───────────────────────────────────────────
   const refreshRef = useRef<() => void>(() => {});
@@ -187,7 +186,7 @@ export function useFileManager() {
   const openEntry = useCallback(
     async (entry: DirEntry) => {
       if (entry.is_dir) return navigate(entry.path);
-      if (mode === "edit" && isEditable(entry.extension)) {
+      if (editorActive && isEditable(entry.extension)) {
         setOpened(entry);
         return;
       }
@@ -197,7 +196,7 @@ export function useFileManager() {
         setError(String(e));
       }
     },
-    [mode, navigate],
+    [editorActive, navigate],
   );
 
   const previewEntry = useCallback(
@@ -393,7 +392,7 @@ export function useFileManager() {
   const toggleHidden = useCallback(() => setShowHidden((v) => !v), []);
 
   return {
-    mode, setMode,
+    editorActive, setEditorActive,
     cwd, listing, places,
     selected, setSelected,
     selection, selectOne, toggleSelect, rangeSelect, selectAll, clearSelection, selectionPaths,

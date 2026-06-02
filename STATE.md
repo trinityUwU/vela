@@ -3,9 +3,9 @@
 ## Objectif
 File manager Linux (Tauri v2 + React/TypeScript) avec deux modes : navigation classique et édition intégrée. Alternative souveraine à Nemo.
 
-## État — v1.14 (fonctionnel, installé) · 67 commandes Rust
+## État — v1.15 (fonctionnel, installé) · 71 commandes Rust
 
-Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.14 sont documentés dans leurs sections dédiées.
+Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.15 sont documentés dans leurs sections dédiées.
 
 ## Socle — v1.5
 
@@ -157,5 +157,17 @@ Refonte complète de l'aperçu audio (`AudioPlayer.tsx` extrait de `MediaViewer.
 
 **Commandes Rust** : 67 (+10 : media_capabilities, media_probe, audio×5, stems×4 — image_apply_ops, video×5 répartis). Aucune dépendance crate ajoutée (ffmpeg/demucs = binaires externes ; `image` déjà présent).
 
+## v1.15 — Téléchargeur YouTube/Spotify ✅ (livré, installé)
+Téléchargement de fichiers volants intégré, 100 % local. Déclencheur Sidebar « Système → Télécharger… ».
+- **Backend** : `downloader.rs` (capacités + sonde) + `download_job.rs` (jobs).
+  - `download_capabilities` / `download_probe` = **async + spawn_blocking** (obligatoire : lancent yt-dlp/spotdl en réseau plusieurs secondes ; en synchrone ça figeait le thread Tauri → freeze/quasi-crash UI au sondage).
+  - `download_probe` : yt-dlp `-J` → `DownloadInfo { kind, title, is_playlist, entries[], formats[], subtitle_langs[] }`. Distinction single vs playlist via `_type`/présence `entries`. Spotify : yt-dlp ne gère pas les URL Spotify → `spotdl save` → liste des pistes. Parsers purs `parse_ytdlp_json`/`parse_spotdl_json` (testés sur fixtures, validés contre la vraie sortie yt-dlp 2026.03.17 : single 31 formats + playlist 183 entrées).
+  - `DownloadManager { Mutex<HashMap<job_id, Arc<AtomicBool>>> }` + `download_start` (thread, `yt-dlp --newline` → parse `%` stdout → emit `download-progress` {percent, speed, eta, status} ; cancel via flag) + `download_cancel`. spotdl n'émet pas de `%` → progression **indéterminée** (0 % au start, 100 % au done) → barre animée côté UI.
+  - Résolution binaire **venv-first** `~/.local/share/vela/dl-venv/bin/{yt-dlp,spotdl}` puis PATH (modèle `demucs_executable`).
+- **Frontend** : `services/download.ts` + types ; `DownloadModal.tsx` + `download-ui.tsx` + hook `use-download.ts`. URL → Sonder → affichage adaptatif (single vs playlist) ; playlist **lazy >10** (fenêtre +20) + **scroll** `max-h-[40vh]` + **select all/none/individuel** (`Set<string>`) ; format/qualité (single) + Audio seulement + audio-format + sous-titres (chips) ; destination cwd éditable + case « nouveau dossier » ; **batch** = 1 `job_id` par entrée, suivi via `listen("download-progress")`, barres + cancel. Select stylé `appearance-none` + chevron SVG (le `<select>` natif WebKitGTK rendait un chrome clair cassé).
+- **install.sh** : yt-dlp + spotdl installés auto dans `dl-venv` (yt-dlp NON optionnel = moteur core ; non bloquant si échec).
+
+**Commandes Rust** : 71 (+4 : download_capabilities, download_probe, download_start, download_cancel).
+
 ## Backlog
-`BACKLOG.md` : P1 (v1.9) + P2 (v1.11) + P3 (v1.12) + P4 média (v1.14) livrés. Reste : édition image en plein écran (remonter le HUD dans le conteneur fullscreen du lecteur). Autres idées à définir avec Chris.
+`BACKLOG.md` : P1 (v1.9) + P2 (v1.11) + P3 (v1.12) + P4 média (v1.14) + téléchargeur (v1.15) livrés. Reste : édition image en plein écran (HUD dans conteneur fullscreen). **Prochaine grosse update : système de profils + layout dynamique (feature B, voir TODO.md — décision d'archi A/B à trancher avec Chris avant de coder).**

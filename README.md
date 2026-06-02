@@ -43,6 +43,15 @@ Le fichier s'ouvre dans le viewer avec un HUD d'édition docké (toggle via le b
 - **Audio** — découper (sans réencodage), fondu entrée/sortie, normaliser (loudnorm), convertir (mp3/flac/wav/ogg/m4a + bitrate), supprimer la voix (rapide, filtre center-removal sans IA), et **séparation de stems via demucs** (voix/batterie/basse/autres ou voix+accompagnement, GPU si CUDA dispo). demucs est optionnel : installé automatiquement par `install.sh`, ou à la demande depuis le panneau.
 - **Vidéo** — découper (sans réencodage), convertir/compresser (CRF, job background avec progression + annulation), extraire une image (timestamp → png), extraire l'audio (m4a/mp3/wav).
 
+**Téléchargeur (Sidebar → Système → « Télécharger… »)**
+
+Coller une URL YouTube ou Spotify → télécharger sans passer par un site de conversion en ligne. 100 % local (yt-dlp + spotdl).
+- Détection automatique titre unique vs playlist. Playlist → liste des morceaux (chargement progressif au-delà de 10, scroll), tout sélectionner / désélectionner / au cas par cas.
+- Choix du format / qualité / langue audio / sous-titres (parmi ceux disponibles), ou extraction audio seule (mp3/flac/wav/m4a/opus).
+- Destination = dossier courant par défaut, modifiable, avec option « créer un nouveau dossier ».
+- Téléchargement par lot, progression et annulation par morceau.
+- Spotify : pas de téléchargement direct (DRM) — spotdl résout le titre et récupère l'équivalent. yt-dlp + spotdl sont installés automatiquement par `install.sh`.
+
 ## Stack
 
 - **Tauri v2** (Rust) + **React 19** + **TypeScript** + **Tailwind v4**

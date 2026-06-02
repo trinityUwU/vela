@@ -222,6 +222,18 @@ Frontend :
 - [x] **Image en édition accumulée** : ops empilées + preview CSS live cumulative + un seul Sauvegarder (`_edited`, non destructif)
 - [x] install.sh : setup demucs auto (idempotent, opt-out `VELA_SKIP_STEMS=1`)
 
+## Livré — v1.15 (téléchargeur YouTube/Spotify) ✅
+Backend Rust (`downloader.rs` + `download_job.rs`, 15 tests) :
+- [x] `download_capabilities` / `download_probe` (async + spawn_blocking) — yt-dlp `-J` : détection single vs playlist (`_type`/`entries`), formats détaillés, sous-titres ; Spotify via `spotdl save`. Parsers purs testés sur fixtures.
+- [x] `DownloadManager` + `download_start` (job background, parse `%` stdout yt-dlp `--newline`, emit `download-progress`, cancel via `AtomicBool`) + `download_cancel`. spotdl = progression indéterminée (0→100).
+- [x] Résolution binaire venv-first `~/.local/share/vela/dl-venv` puis PATH (modèle `demucs_executable`).
+Frontend :
+- [x] `services/download.ts` + types, `DownloadModal` + `download-ui.tsx` + hook `use-download.ts`
+- [x] URL → sonde → playlist **lazy >10 + scroll** + **select all/none/individuel** ; format/qualité/langue/sous-titres ; destination cwd modifiable + case **nouveau dossier** ; **batch** (1 job/entrée) + progression + cancel
+- [x] Déclencheur Sidebar « Système → Télécharger… »
+- [x] install.sh : yt-dlp + spotdl auto dans `dl-venv` (yt-dlp non optionnel = core)
+- [x] Fix : `download_probe`/`capabilities` async (anti-freeze UI au sondage) · select dark (`appearance-none` + chevron, fix chrome natif WebKitGTK) · barre indéterminée animée pour spotdl
+
 ## Backlog
 - [ ] Édition image en plein écran (remonter le HUD dans le conteneur fullscreen du lecteur pour préserver l'immersion)
 

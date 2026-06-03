@@ -7,6 +7,7 @@ mod browser;
 mod audio;
 mod convert;
 mod dircmp;
+mod translate;
 mod download_job;
 mod downloader;
 mod favorites;
@@ -68,6 +69,10 @@ pub fn run() {
             ops::transfer_resume,
             ops::transfer_cancel,
             archive::start_compression,
+            translate::translate_capabilities,
+            translate::translate_text,
+            translate::translate_install_lang,
+            translate::translate_file,
             ops::search_content,
             ops::trash_dir,
             ops::trash_count,

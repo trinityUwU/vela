@@ -82,6 +82,7 @@ export default function App() {
   const tagHex = useCallback((path: string) => hexFor(tags.colorOf(path)), [tags]);
   const [folderSizes, setFolderSizes] = useState<Record<string, number>>({});
   const [analyzePath, setAnalyzePath] = useState<string | null>(null);
+  const [translatePath, setTranslatePath] = useState<string | null>(null);
   const [editPath, setEditPath] = useState<string | null>(null);
 
   const computeSize = useCallback((path: string) => {
@@ -427,6 +428,7 @@ export default function App() {
           }}
           onConvert={(target) => { runConvert(menu.entry.path, target); setMenu(null); }}
           onOcr={() => { runOcr(menu.entry.path); setMenu(null); }}
+          onTranslate={() => { setTranslatePath(menu.entry.path); setMenu(null); }}
           entries={selectedEntries.length ? selectedEntries : [menu.entry]}
           onSmartAction={(id) => { runSmartAction(id, selectedEntries.length ? selectedEntries : [menu.entry]); setMenu(null); }}
         />
@@ -479,6 +481,7 @@ export default function App() {
         diff={diff ? { a: diff.a, b: diff.b, onClose: () => setDiff(null), onError: fm.setError } : null}
         dirDiff={dirDiff ? { a: dirDiff.a, b: dirDiff.b, onClose: () => setDirDiff(null), onError: fm.setError } : null}
         analyzer={analyzePath ? { path: analyzePath, onClose: () => setAnalyzePath(null), onReveal: fm.navigate, onError: fm.setError } : null}
+        translate={translatePath ? { path: translatePath, onClose: () => setTranslatePath(null), onDone: () => { setTranslatePath(null); fm.refresh(); } } : null}
         palette={palette.open ? {
           commands, entries, onOpenEntry: fm.openEntry,
           onGlobalSearch: (q) => globalSearch(q, 20),

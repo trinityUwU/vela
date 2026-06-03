@@ -75,6 +75,28 @@ else
   fi
 fi
 
+# ── Traduction locale (Argos Translate) — automatique, idempotent, non bloquant ──────────────
+# Venv Vela dédié. Traduction 100% offline après téléchargement des paquets de langue (à la demande
+# depuis l'app). Installe en plus les paires fr<->en par défaut pour un usage immédiat.
+TR_VENV="$HOME/.local/share/vela/translate-venv"
+if [ -x "$TR_VENV/bin/python" ] && "$TR_VENV/bin/python" -c "import argostranslate" 2>/dev/null; then
+  echo "✓ Argos Translate déjà présent : $TR_VENV"
+elif ! command -v python3 >/dev/null; then
+  echo "⚠ python3 absent — traduction non installée (à faire plus tard)"
+else
+  echo "→ installation d'Argos Translate (traduction locale)…"
+  if python3 -m venv "$TR_VENV" \
+     && "$TR_VENV/bin/pip" install -q --upgrade pip \
+     && "$TR_VENV/bin/pip" install -q argostranslate; then
+    echo "✓ Argos Translate installé : $TR_VENV"
+    # Paires fr<->en par défaut (non bloquant : nécessite le réseau une fois).
+    "$TR_VENV/bin/python" -c "import argostranslate.package as p; p.update_package_index(); av=p.get_available_packages(); [p.install_from_path(x.download()) for x in av if (x.from_code,x.to_code) in [('en','fr'),('fr','en')]]" 2>/dev/null \
+      && echo "✓ paires fr<->en installées" || echo "⚠ paquets fr/en non téléchargés (réseau ?) — installables depuis l'app"
+  else
+    echo "⚠ install Argos échouée — Vela fonctionne ; réessaie plus tard"
+  fi
+fi
+
 # ── Stack OCR (tesseract + langues + poppler) — auto-install, idempotent, non bloquant ───────
 # Paquets système : nécessite sudo. --needed = idempotent. Un échec n'interrompt pas l'install.
 echo ""

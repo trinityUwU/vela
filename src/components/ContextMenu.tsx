@@ -41,6 +41,7 @@ interface Props {
   onExtractTo?: () => void;
   onConvert?: (target: string) => void;
   onOcr?: () => void;
+  onTranslate?: () => void;
   entries?: DirEntry[];
   onSmartAction?: (id: SmartActionId) => void;
 }
@@ -70,6 +71,7 @@ export function ContextMenu(props: Props) {
   const mediaKind = !multi && !menu.isDir ? previewKind(menu.extension) : "binary";
   const isMedia = mediaKind === "image" || mediaKind === "audio" || mediaKind === "video";
   const isOcrable = mediaKind === "image" || mediaKind === "pdf";
+  const isTextable = mediaKind === "code" || mediaKind === "markdown" || mediaKind === "table";
   const mediaLabel =
     mediaKind === "image" ? "Éditer l'image…" : mediaKind === "audio" ? "Outils audio…" : "Outils vidéo…";
 
@@ -111,6 +113,9 @@ export function ContextMenu(props: Props) {
       )}
       {isOcrable && props.onOcr && (
         <Item label="Extraire le texte (OCR)" onClick={() => { props.onOcr?.(); onClose(); }} />
+      )}
+      {isTextable && props.onTranslate && (
+        <Item label="Traduire…" onClick={() => { props.onTranslate?.(); onClose(); }} />
       )}
       {!multi && !menu.isDir && onConvert && (
         <ConvertSubmenu path={menu.path} onConvert={(t) => { onConvert(t); onClose(); }} />

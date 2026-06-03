@@ -7,6 +7,7 @@ import { DownloadModal } from "./DownloadModal";
 import { DiffViewer } from "./DiffViewer";
 import { DirCompareViewer } from "./DirCompareViewer";
 import { DiskAnalyzer } from "./DiskAnalyzer";
+import { CommandPalette } from "./CommandPalette";
 
 interface Props {
   settings: ComponentProps<typeof SettingsPanel> | null;
@@ -15,11 +16,13 @@ interface Props {
   diff: ComponentProps<typeof DiffViewer> | null;
   dirDiff: ComponentProps<typeof DirCompareViewer> | null;
   analyzer: ComponentProps<typeof DiskAnalyzer> | null;
+  palette: ComponentProps<typeof CommandPalette> | null;
 }
 
-export function OverlayHost({ settings, profileEditor, download, diff, dirDiff, analyzer }: Props) {
+export function OverlayHost({ settings, profileEditor, download, diff, dirDiff, analyzer, palette }: Props) {
   return (
     <>
+      {palette && <CommandPalette {...palette} />}
       {settings && <SettingsPanel {...settings} />}
       {profileEditor && <ProfileEditor {...profileEditor} />}
       {download && <DownloadModal {...download} />}

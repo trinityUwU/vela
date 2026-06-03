@@ -16,6 +16,7 @@ export interface KeyHandlers {
   onUndo?: () => void;
   onBack?: () => void;
   onForward?: () => void;
+  onPalette?: () => void;
 }
 
 function inEditable(target: EventTarget | null): boolean {
@@ -32,6 +33,8 @@ export function useKeyboard(h: KeyHandlers): void {
         h.onEscape?.();
         return;
       }
+      // Ctrl+K : disponible même depuis un champ/éditeur (avant le guard inEditable).
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") { e.preventDefault(); h.onPalette?.(); return; }
       if (inEditable(e.target)) return;
       const mod = e.ctrlKey || e.metaKey;
 

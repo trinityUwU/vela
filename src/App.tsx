@@ -1,5 +1,5 @@
 // Assemblage du gestionnaire : topbar, sidebar, zone centrale (grille ou éditeur), modals.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFileManager } from "./hooks/useFileManager";
 import { useProfiles } from "./hooks/useProfiles";
 import { useBrowser } from "./hooks/useBrowser";
@@ -16,6 +16,10 @@ import { useAppearance } from "./hooks/useAppearance";
 import { hexFor } from "./services/tags";
 import { getEntryProps } from "./services/fs";
 import { OverlayHost } from "./components/OverlayHost";
+import { useGridNav } from "./hooks/useGridNav";
+import { useCommandPalette } from "./hooks/useCommandPalette";
+import { useCommandRegistry } from "./hooks/useCommandRegistry";
+import type { CommandContext } from "./hooks/useCommandRegistry";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TerminalDock } from "./components/TerminalDock";
 import { termInput, availableShells } from "./services/term";
@@ -98,6 +102,7 @@ export default function App() {
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
+  const palette = useCommandPalette();
   const profileEditorProps = {
     profiles: profiles.profiles, activeId: profiles.activeId, onSwitch: profiles.setActive,
     upsert: profiles.upsertProfile, remove: profiles.removeProfile };
@@ -144,42 +149,10 @@ export default function App() {
     [fm.listing, sort],
   );
 
-  const gridCols = useRef(1);
-  const moveSel = useCallback((delta: number) => {
-    if (!entries.length) return;
-    const i = entries.findIndex((e) => e.path === fm.selected);
-    const next = i < 0 ? (delta > 0 ? 0 : entries.length - 1) : Math.max(0, Math.min(entries.length - 1, i + delta));
-    fm.selectOne(entries[next].path);
-  }, [entries, fm.selected, fm.selectOne]);
-
-  const navSel = useCallback((delta: number, axis: "x" | "y") => {
-    const grid = view === "grid" && !editorActive;
-    if (!grid) { if (axis === "x") return; moveSel(delta); return; }
-    moveSel(axis === "y" ? delta * gridCols.current : delta);
-  }, [view, editorActive, moveSel]);
-
-  const activateSel = useCallback(() => {
-    const e = entries.find((x) => x.path === fm.selected);
-    if (e) fm.openEntry(e);
-  }, [entries, fm.selected, fm.openEntry]);
-
-  // Navigation clavier : capture phase → preventDefault annule le scroll natif, indépendant du focus.
-  // e.code (position physique) : robuste aux variantes WebKitGTK (e.key peut valoir "Up" vs "ArrowUp").
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (search.open || e.altKey || e.ctrlKey || e.metaKey) return;
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable || t.closest(".cm-editor"))) return;
-      const k = e.code || e.key;
-      if (k === "Enter" || k === "NumpadEnter") { e.preventDefault(); activateSel(); return; }
-      if (k === "ArrowUp" || k === "Up") { e.preventDefault(); navSel(-1, "y"); return; }
-      if (k === "ArrowDown" || k === "Down") { e.preventDefault(); navSel(1, "y"); return; }
-      if (k === "ArrowLeft" || k === "Left") { e.preventDefault(); navSel(-1, "x"); return; }
-      if (k === "ArrowRight" || k === "Right") { e.preventDefault(); navSel(1, "x"); return; }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [search.open, navSel, activateSel]);
+  const gridCols = useGridNav({
+    entries, view, editorActive, selected: fm.selected,
+    selectOne: fm.selectOne, openEntry: fm.openEntry, searchOpen: search.open,
+  });
 
   const onSelect = (entry: DirEntry, e: React.MouseEvent) => {
     if (e.shiftKey) fm.rangeSelect(entry.path, entries);
@@ -239,6 +212,19 @@ export default function App() {
     setDiff({ a, b });
   };
 
+  const cmdCtx: CommandContext = {
+    refresh: fm.refresh, toggleHidden: fm.toggleHidden, goUp: fm.goUp, goBack: fm.goBack, goForward: fm.goForward,
+    navigate: fm.navigate, switchProfile: profiles.setActive, places: fm.places, profiles: profiles.profiles,
+    activeProfileId: profiles.activeId,
+    openTerminal: () => openTerminalHere(fm.cwd),
+    openSettings: () => setSettingsOpen(true), openProfileEditor: () => setProfileEditorOpen(true),
+    openDownload: () => setDownloadOpen(true), openBrowser: () => setBrowserOpen(true),
+    openSearch: () => search.setOpen(true),
+    newFile: () => setDialog({ kind: "newfile" }), newFolder: () => setDialog({ kind: "newfolder" }),
+    emptyTrash: () => setDialog({ kind: "emptytrash" }),
+  };
+  const commands = useCommandRegistry(cmdCtx);
+
   useKeyboard({
     onCopy: () => fm.copyToClipboard("copy", selPaths()),
     onCut: () => fm.copyToClipboard("cut", selPaths()),
@@ -265,6 +251,7 @@ export default function App() {
     onUndo: undo.undo,
     onBack: fm.goBack,
     onForward: fm.goForward,
+    onPalette: palette.toggle,
   });
 
   return (
@@ -485,6 +472,7 @@ export default function App() {
         diff={diff ? { a: diff.a, b: diff.b, onClose: () => setDiff(null), onError: fm.setError } : null}
         dirDiff={dirDiff ? { a: dirDiff.a, b: dirDiff.b, onClose: () => setDirDiff(null), onError: fm.setError } : null}
         analyzer={analyzePath ? { path: analyzePath, onClose: () => setAnalyzePath(null), onReveal: fm.navigate, onError: fm.setError } : null}
+        palette={palette.open ? { commands, entries, onOpenEntry: fm.openEntry, onClose: palette.close } : null}
       />
     </div>
   );

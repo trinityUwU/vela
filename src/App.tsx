@@ -37,30 +37,14 @@ import { ExtractionPanel } from "./components/ExtractionPanel";
 import { BrowserView } from "./components/BrowserView";
 import { startExtraction, trashDir, homeDir } from "./services/fs";
 import { convertFile, imagesToPdf } from "./services/convert";
+import { globalSearch } from "./services/search-index";
+import { archiveStem, parentDir, baseName } from "./services/path-util";
 import { mergeCsv, organizeDir } from "./services/actions";
 import type { SmartActionId } from "./services/smart-actions";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
 type BgMenu = { x: number; y: number } | null;
-
-function archiveStem(name: string): string {
-  const compounds = [".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".tar"];
-  for (const c of compounds) {
-    if (name.toLowerCase().endsWith(c)) return name.slice(0, -c.length);
-  }
-  const dot = name.lastIndexOf(".");
-  return dot > 0 ? name.slice(0, dot) : name;
-}
-
-function parentDir(path: string): string {
-  const slash = path.lastIndexOf("/");
-  return slash > 0 ? path.slice(0, slash) : "/";
-}
-
-function baseName(path: string): string {
-  return path.split("/").filter(Boolean).pop() ?? path;
-}
 
 export default function App() {
   const fm = useFileManager();
@@ -492,7 +476,7 @@ export default function App() {
         diff={diff ? { a: diff.a, b: diff.b, onClose: () => setDiff(null), onError: fm.setError } : null}
         dirDiff={dirDiff ? { a: dirDiff.a, b: dirDiff.b, onClose: () => setDirDiff(null), onError: fm.setError } : null}
         analyzer={analyzePath ? { path: analyzePath, onClose: () => setAnalyzePath(null), onReveal: fm.navigate, onError: fm.setError } : null}
-        palette={palette.open ? { commands, entries, onOpenEntry: fm.openEntry, onClose: palette.close } : null}
+        palette={palette.open ? { commands, entries, onOpenEntry: fm.openEntry, onGlobalSearch: (q) => globalSearch(q, 20), onClose: palette.close } : null}
       />
     </div>
   );

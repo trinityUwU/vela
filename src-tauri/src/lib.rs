@@ -12,6 +12,7 @@ mod downloader;
 mod favorites;
 mod fs_ops;
 mod git;
+mod index;
 mod imaging;
 mod media_probe;
 mod ops;
@@ -37,6 +38,13 @@ pub fn run() {
         .manage(video::VideoJobManager::new())
         .manage(stems::StemsManager::new())
         .manage(download_job::DownloadManager::new())
+        .manage(index::SearchIndex::new())
+        .setup(|app| {
+            use tauri::Manager;
+            let idx = app.state::<index::SearchIndex>().inner().clone();
+            std::thread::spawn(move || idx.rebuild_from_home());
+            Ok(())
+        })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             fs_ops::list_dir,
@@ -149,6 +157,8 @@ pub fn run() {
             git::git_commit,
             git::git_checkout_branch,
             git::git_diff_file,
+            index::index_refresh,
+            index::global_search,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

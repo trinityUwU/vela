@@ -16,14 +16,16 @@ interface Props {
   commands: Command[];
   entries: DirEntry[];
   onOpenEntry: (e: DirEntry) => void;
+  onGlobalSearch?: (query: string) => Promise<DirEntry[]>;
   onClose: () => void;
 }
 
 const MAX = 40;
 
-export function CommandPalette({ commands, entries, onOpenEntry, onClose }: Props) {
+export function CommandPalette({ commands, entries, onOpenEntry, onGlobalSearch, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
+  const [globals, setGlobals] = useState<DirEntry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const activeRef = useRef<HTMLButtonElement>(null);
 
@@ -35,19 +37,30 @@ export function CommandPalette({ commands, entries, onOpenEntry, onClose }: Prop
   useEffect(() => { setActive(0); }, [query]);
   useEffect(() => { activeRef.current?.scrollIntoView({ block: "nearest" }); }, [active]);
 
+  // Recherche globale (index) débouncée, hors dossier courant.
+  useEffect(() => {
+    if (!onGlobalSearch || query.trim().length < 2) { setGlobals([]); return; }
+    const id = setTimeout(() => { onGlobalSearch(query).then(setGlobals).catch(() => setGlobals([])); }, 150);
+    return () => clearTimeout(id);
+  }, [query, onGlobalSearch]);
+
   const items = useMemo<Item[]>(() => {
     const cmds: Item[] = commands.map((c) => ({ key: c.id, title: c.title, hint: c.hint ?? c.group, group: c.group, run: c.run }));
     if (!query) return cmds.slice(0, MAX);
     const files: Item[] = entries.map((e) => ({
       key: `file:${e.path}`, title: e.name, hint: e.is_dir ? "dossier" : e.extension, group: "Fichiers", run: () => onOpenEntry(e),
     }));
-    return [...cmds, ...files]
+    const local = [...cmds, ...files]
       .map((it) => ({ it, s: fuzzyScore(query, it.title) }))
       .filter((x) => x.s > 0)
       .sort((a, b) => b.s - a.s)
-      .slice(0, MAX)
       .map((x) => x.it);
-  }, [query, commands, entries, onOpenEntry]);
+    const localPaths = new Set(entries.map((e) => e.path));
+    const globalItems: Item[] = globals
+      .filter((e) => !localPaths.has(e.path))
+      .map((e) => ({ key: `g:${e.path}`, title: e.name, hint: e.path, group: "Global", run: () => onOpenEntry(e) }));
+    return [...local, ...globalItems].slice(0, MAX);
+  }, [query, commands, entries, onOpenEntry, globals]);
 
   const choose = (it?: Item) => { if (it) { it.run(); onClose(); } };
   const onKey = (e: React.KeyboardEvent) => {

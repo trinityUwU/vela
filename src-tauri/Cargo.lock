@@ -5352,6 +5352,7 @@ dependencies = [
  "gstreamer",
  "gstreamer-app",
  "gstreamer-video",
+ "gtk",
  "image",
  "mime_guess",
  "notify",
@@ -5365,6 +5366,8 @@ dependencies = [
  "tauri-plugin-opener",
  "trash",
  "walkdir",
+ "webkit2gtk",
+ "wry",
  "xz2",
  "zip",
 ]

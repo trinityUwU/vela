@@ -3,7 +3,7 @@
 ## Objectif
 File manager Linux (Tauri v2 + React/TypeScript) avec **profils de layout** : chaque profil compose une disposition par zones (favoris, listing, éditeur, arborescence, terminal). Alternative souveraine à Nemo.
 
-## État — v1.16 (fonctionnel, installé) · 73 commandes Rust
+## État — v1.17 (fonctionnel, installé) · 80 commandes Rust
 
 Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.15 sont documentés dans leurs sections dédiées.
 
@@ -65,6 +65,7 @@ Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1
 
 ## Piège infra connu — lecture vidéo WebKitGTK
 L'élément HTML5 `<video>` est **inutilisable sur Nvidia/Wayland** (RTX 3060) : frame figée hors seek, écran noir, ou 2fps. Diagnostiqué à fond — décodage OK, codecs OK, c'est le compositing GL du calque vidéo qui ne se repeint pas. **Aucune** variable d'env ne corrige (testé : `WEBKIT_DISABLE_DMABUF_RENDERER`, `WEBKIT_DISABLE_COMPOSITING_MODE` → 2fps software, `GST_GL_DISABLED`, `GDK_BACKEND=x11`). Les mainteneurs Tauri classent ça bug non résolu. **Ne pas perdre de temps à réessayer `<video>` ou MSE** (MSE alimente aussi un `<video>` → même bug). La solution retenue = décodage Rust GStreamer → `<canvas>` (voir section v1.12 `player.rs`). **Idem audio** : le blob `<audio>` lit le son mais n'est **pas seekable** (blob URL sans byte-range) et bufferise mal (coupures ~4s). Abandonné en v1.13 → audio aussi décodé par GStreamer natif.
+**Nuance navigateur intégré (v1.17)** : dans les webviews wry du navigateur, la vidéo (YouTube) **fonctionne** en posant `HardwareAccelerationPolicy::Never` sur le webview (rendu software). Sans ça → crash de l'app à la lecture. C'est un réglage par-webview, pas une variable d'env globale (qui dégraderait toute l'UI).
 
 ## Piège infra connu — install release
 - **NE JAMAIS** faire `pkill -f vela-bin` : le motif `-f` matche la ligne de commande du script/commande courante (qui contient « vela-bin ») et **tue le shell avant le `cp`** → le nouveau binaire n'est jamais installé, on relance l'ancien. Ce bug a coûté 1h le 2026-06-02 (la nav clavier semblait cassée alors que les correctifs n'étaient simplement jamais déployés). Toujours `pkill -x vela-bin` (nom de process exact). Rituel figé dans `install.sh`.
@@ -184,6 +185,19 @@ Remplace les 2 modes (files|edit) par des **profils** nommés, chacun = un layou
 - **Validation** : tsc + cargo check verts, `bun tauri build` (deb+rpm), smoke-test binaire réel (boot 7s sans panic). Contrainte connue : `invoke` non drivable par Playwright (WebKitGTK ≠ Chromium).
 
 **Commandes Rust** : 73 (+2 : load_profiles, save_profiles). Aucune dépendance crate ajoutée (xterm.js + portable-pty déjà présents pour le terminal).
+
+## v1.17 — Navigateur intégré ✅ (livré, installé)
+Navigateur web multi-onglets dans la zone centrale (bouton Globe topbar), vrai moteur WebKit, navigation libre. Toujours au centre quel que soit le profil actif.
+- **Backend** : `browser.rs` (NOUVEAU, ~280 lignes, Linux uniquement, stubs `Err` sur autres OS). Commandes synchrones `browser_create/navigate/show/hide/eval/close/reset`.
+  - **Positionnement — contournement bug Tauri #10420** : `add_child` (build_as_child) ne respecte PAS la géométrie des webviews enfants sur WebKitGTK/Wayland (rendu empilé). Solution : bypass total → webviews **wry** via `WebViewBuilder::new_with_web_context(ctx).build_gtk(&fixed)`. Un `gtk::Fixed` flottant est placé par un `gtk::Overlay` (le webview principal est reparenté comme enfant de base), positionné via le signal `connect_get_child_position` qui retourne les bounds de la zone centrale. wry ≥ 0.35.2 respecte les bounds dans un `gtk::Fixed` (≠ build_as_child).
+  - **Threading** : commandes **synchrones** → exécutées sur le main thread (où vit GTK) → accès direct, état en `thread_local` (VIEWS, LAYER, CONTEXT, DATA_DIR). Pas de marshalling.
+  - **Crash vidéo résolu** : la lecture vidéo crashait toute l'app (audio OK, image jamais composée). Cause = compositing GPU/DMABUF WebKitGTK. Fix : `HardwareAccelerationPolicy::Never` via `WebViewExt::settings()` posé **uniquement sur les webviews du navigateur** (UI principale reste accélérée). YouTube en software fonctionne — contrairement au `<video>` du player natif (voir piège infra).
+  - **Persistance** : `wry::WebContext::new(Some(app_data_dir()/browser))` partagé par tous les onglets → cookies/sessions/localStorage survivent au redémarrage. `browser_reset` = clear views + drop contexte + `remove_dir_all` du dossier.
+- **Frontend** : `useBrowser.ts` (modèle onglets + actions open/close/navigate/back/forward/reload/reset, écoute event `browser-nav`), `BrowserView.tsx` (chrome onglets + barre d'adresse + `useNativeSync` qui mesure les bounds via `getBoundingClientRect` et réconcilie la couche native via ResizeObserver), `services/browser.ts` (wrappers + `normalizeUrl`). `ZoneLayout` reçoit `centerOverride`. Bouton **Globe** dans `Topbar` (bouton « nouveau dossier » retiré au passage). Bouton **« Réinitialiser le navigateur »** dans `SettingsPanel`.
+- **Refacto** : `TerminalDock.tsx` extrait d'`App.tsx` pour rester sous 500 lignes.
+- **Déploiement** : `bun tauri build` (deb+rpm), `pkill -x vela-bin` + cp + sha256, relance. Validé à chaud : positionnement correct, vidéo YouTube OK, crash résolu.
+
+**Commandes Rust** : 80 (+7 : browser×7). Deps Linux ajoutées : `wry 0.55`, `gtk 0.18`, `webkit2gtk 2.0` (cfg target_os=linux ; wry/gtk déjà transitifs via Tauri).
 
 ## Backlog
 `BACKLOG.md` : P1 (v1.9) + P2 (v1.11) + P3 (v1.12) + P4 média (v1.14) + téléchargeur (v1.15) + profils (v1.16) livrés. Reste : édition image en plein écran (HUD dans conteneur fullscreen). Dette : `App.tsx` reste à ~499 lignes (sous la limite mais dense — candidat à découpage si une feature s'y ajoute).

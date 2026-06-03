@@ -57,6 +57,12 @@ export interface ProfilesState {
   profiles: Profile[];
 }
 
+export interface BrowserTab {
+  id: string;
+  url: string;
+  title: string;
+}
+
 export interface Place {
   name: string;
   path: string;

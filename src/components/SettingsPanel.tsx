@@ -126,7 +126,11 @@ const DENSITIES: { key: Density; label: string }[] = [
   { key: "comfortable", label: "Confort" },
 ];
 
-export function SettingsPanel({ onClose, appearance }: { onClose: () => void; appearance: AppearanceProps }) {
+export function SettingsPanel({ onClose, appearance, onResetBrowser }: {
+  onClose: () => void;
+  appearance: AppearanceProps;
+  onResetBrowser: () => void;
+}) {
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", h);
@@ -183,6 +187,21 @@ export function SettingsPanel({ onClose, appearance }: { onClose: () => void; ap
                   ))}
                 </div>
               </div>
+            </div>
+          </section>
+
+          <section className="mb-5 pb-5 border-b border-[var(--color-border)]">
+            <h3 className="text-[11px] uppercase tracking-wider text-[var(--color-accent)] font-semibold mb-2.5">Navigateur</h3>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-xs text-[var(--color-text-dim)]">
+                Cookies et sessions sont conservés entre les lancements. Réinitialiser efface tout (déconnexion de tous les sites).
+              </span>
+              <button
+                onClick={onResetBrowser}
+                className="shrink-0 px-3 py-1.5 text-xs rounded-md text-[var(--color-danger)] border border-[var(--color-danger)]/40 hover:bg-[var(--color-danger)]/10 transition-colors"
+              >
+                Réinitialiser le navigateur
+              </button>
             </div>
           </section>
 

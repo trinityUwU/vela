@@ -60,6 +60,14 @@ Coller une URL YouTube ou Spotify → télécharger sans passer par un site de c
 - Téléchargement par lot, progression et annulation par morceau.
 - Spotify : pas de téléchargement direct (DRM) — spotdl résout le titre et récupère l'équivalent. yt-dlp + spotdl sont installés automatiquement par `install.sh`.
 
+**Navigateur intégré (bouton globe dans la barre du haut)**
+
+Un vrai navigateur web multi-onglets dans la zone centrale, moteur WebKit, navigation libre vers n'importe quel site.
+- Onglets multiples avec barre d'adresse (URL directe ou recherche), précédent / suivant / recharger.
+- Cookies et sessions conservés entre les lancements : tu restes connecté à tes sites d'une fois sur l'autre.
+- Bouton « Réinitialiser le navigateur » dans les Réglages : efface tout (cookies, sessions, cache) d'un coup.
+- La vidéo (YouTube...) passe en rendu logiciel sur ce navigateur pour éviter un crash de compositing — fluide à l'usage.
+
 ## Stack
 
 - **Tauri v2** (Rust) + **React 19** + **TypeScript** + **Tailwind v4**

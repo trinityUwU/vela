@@ -2,6 +2,7 @@
 mod analyze;
 mod apps;
 mod archive;
+mod browser;
 mod audio;
 mod dircmp;
 mod download_job;
@@ -73,6 +74,13 @@ pub fn run() {
             favorites::save_favorites,
             profiles::load_profiles,
             profiles::save_profiles,
+            browser::browser_create,
+            browser::browser_navigate,
+            browser::browser_show,
+            browser::browser_hide,
+            browser::browser_eval,
+            browser::browser_close,
+            browser::browser_reset,
             tags::load_tags,
             tags::set_tag,
             analyze::analyze_disk,

@@ -26,6 +26,7 @@ vela/
 │   │   │                           + isEditable + langExtension (CodeMirror)
 │   │   ├── tags.ts                 Palette couleur (7 clés→hex) + load_tags/set_tag wrappers
 │   │   ├── profiles.ts             Wrappers load/save_profiles
+│   │   ├── browser.ts              Wrappers navigateur (create/navigate/show/hide/eval/close/reset) + normalizeUrl
 │   │   └── format.ts               Util partagé fmtSize / fmtDate
 │   │
 │   ├── hooks/
@@ -48,11 +49,14 @@ vela/
 │   │   │                           auto-dismiss 6s états terminaux
 │   │   ├── useTransfers.ts         Écoute transfer-progress → Map<id, TransferJob> (copie/déplacement)
 │   │   ├── useThumbnail.ts         Miniature lazy (IntersectionObserver) + file concurrence globale 4
-│   │   └── useTerminals.ts         Onglets terminal : open/close PTY, onglet actif, rename + color (mémoire)
+│   │   ├── useTerminals.ts         Onglets terminal : open/close PTY, onglet actif, rename + color (mémoire)
+│   │   └── useBrowser.ts           Onglets navigateur : open/close/navigate/back/forward/reload/reset, event browser-nav
 │   │
 │   └── components/
 │       ├── Topbar.tsx              Sélecteur de profil + bouton éditeur, PathBar éditable, search, drop crumbs
-│       ├── ZoneLayout.tsx          Rend le centre par zones (left/center/right/bottom) selon le profil actif
+│       ├── ZoneLayout.tsx          Rend le centre par zones (left/center/right/bottom) selon le profil actif (+ centerOverride navigateur)
+│       ├── BrowserView.tsx         Navigateur intégré : chrome onglets + barre d'adresse + useNativeSync (mesure bounds → couche wry native)
+│       ├── TerminalDock.tsx        Dock terminal bas (extrait d'App.tsx) — rendu hors zone profil
 │       ├── FileTree.tsx            Arborescence dossiers pliable, lazy par expand (listDir filtré), cwd surligné
 │       ├── ProfileEditor.tsx       Modale gestion profils : CRUD + assignation panneau→zone + toggle barre filtres
 │       ├── DialogHost.tsx          Hub des modales (rename/newfolder/trash/props/compress…) extrait de App
@@ -97,12 +101,15 @@ vela/
 └── src-tauri/
     ├── Cargo.toml                  zip, tar, flate2, bzip2, xz2, base64, mime_guess, trash, walkdir, notify, image,
     │                               portable-pty, gstreamer + gstreamer-app + gstreamer-video (lecteur vidéo),
-    │                               spectrum-analyzer (FFT spectre audio)
+    │                               spectrum-analyzer (FFT spectre audio) ;
+    │                               [cfg linux] wry 0.55, gtk 0.18, webkit2gtk 2.0 (navigateur intégré)
     ├── tauri.conf.json             1200×780, decorations:false, devUrl:1430, targets:deb+rpm
     ├── capabilities/default.json   core:default, start-dragging, opener:default + allow-open-path
     └── src/
         ├── main.rs
-        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal/Player Manager) + 57 commandes
+        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal/Player Manager) + 80 commandes
+        ├── browser.rs              Navigateur intégré (Linux) : webviews wry build_gtk dans gtk::Fixed/Overlay,
+        │                           contourne bug Tauri #10420, HW accel Never (anti-crash vidéo), WebContext persistant + reset
         ├── analyze.rs              analyze_disk : plus gros fichiers + doublons (walkdir + hash DefaultHasher)
         ├── dircmp.rs               compare_dirs : diff 2 arbres (only_a/only_b/modified/same)
         ├── player.rs               Lecteur média natif GStreamer. Vidéo : playbin (NVDEC GPU) → JPEG → Channel.

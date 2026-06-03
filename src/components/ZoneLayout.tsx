@@ -88,6 +88,7 @@ interface ZoneLayoutProps {
   sidebar: SidebarProps;
   filetree: FileTreeProps;
   terminal: TerminalProps;
+  centerOverride?: React.ReactNode;
 }
 
 function ListingPanel({ view, editorActive, p }: {
@@ -140,12 +141,14 @@ function renderPanel(panel: PanelId, props: ZoneLayoutProps): React.ReactElement
 }
 
 export function ZoneLayout(props: ZoneLayoutProps): React.ReactElement {
-  const { zones } = props;
+  const { zones, centerOverride } = props;
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <div className="flex-1 flex min-h-0">
         {zones.left && renderPanel(zones.left, props)}
-        {renderPanel(zones.center, props)}
+        {centerOverride
+          ? <div className="relative flex-1 flex min-h-0">{centerOverride}</div>
+          : renderPanel(zones.center, props)}
         {zones.right && renderPanel(zones.right, props)}
       </div>
       {zones.bottom && (

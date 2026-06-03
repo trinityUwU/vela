@@ -246,6 +246,17 @@ Architecture **Option A** (profils first-class, `mode` files|edit supprimé). No
 - [x] Extractions DialogHost + ResizeHandle (App.tsx < 500 lignes)
 - [x] Validé : tsc + cargo + `bun tauri build` + smoke-test binaire
 
+## Livré — v1.17 (navigateur intégré) ✅
+Navigateur web multi-onglets dans la zone centrale (bouton Globe), vrai moteur WebKit, navigation libre.
+- [x] Backend `browser.rs` (Linux) : webviews wry `build_gtk` dans `gtk::Fixed` + `gtk::Overlay` → contourne bug Tauri #10420 (géométrie ignorée par add_child sur WebKitGTK)
+- [x] Commandes **synchrones** (main thread, état thread_local) — pas d'async, pas de marshalling
+- [x] Crash vidéo résolu : `HardwareAccelerationPolicy::Never` par-webview (compositing GPU/DMABUF) — UI principale reste accélérée
+- [x] Persistance cookies/sessions : `wry::WebContext` sur `app_data_dir()/browser` partagé par les onglets
+- [x] `browser_reset` + bouton « Réinitialiser le navigateur » dans SettingsPanel
+- [x] Front : `useBrowser` + `BrowserView` (useNativeSync mesure les bounds) + `services/browser.ts` + Globe dans Topbar (bouton « nouveau dossier » retiré)
+- [x] Refacto `TerminalDock.tsx` extrait d'App.tsx
+- [x] Validé à chaud : positionnement OK, vidéo YouTube OK, persistance + reset confirmés par Chris
+
 ## Backlog
 - [ ] Édition image en plein écran (remonter le HUD dans le conteneur fullscreen du lecteur pour préserver l'immersion)
 - [ ] `App.tsx` ~499 lignes : découper si une nouvelle feature doit s'y greffer

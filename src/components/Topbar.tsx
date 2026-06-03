@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Profile } from "../types";
 import type { SearchMode } from "../hooks/useSearch";
-import { ArrowUp, Refresh, Eye, FolderPlus, Search, Trash, TerminalIcon, ChevronLeft, ChevronRight, GridIcon, ListIcon, Sliders } from "./icons";
+import { ArrowUp, Refresh, Eye, Search, Trash, TerminalIcon, ChevronLeft, ChevronRight, GridIcon, ListIcon, Sliders, Globe } from "./icons";
 import { SearchInput } from "./SearchBar";
 
 export type View = "grid" | "list";
@@ -24,7 +24,6 @@ interface Props {
   onUp: () => void;
   onRefresh: () => void;
   onToggleHidden: () => void;
-  onNewFolder: () => void;
   onCrumb: (path: string) => void;
   onMove: (src: string, destDir: string) => void;
   inTrash: boolean;
@@ -32,6 +31,8 @@ interface Props {
   onEmptyTrash: () => void;
   termOpen: boolean;
   onToggleTerm: () => void;
+  browserOpen: boolean;
+  onToggleBrowser: () => void;
   searchOpen: boolean;
   searchQuery: string;
   searchMode: SearchMode;
@@ -113,10 +114,12 @@ export function Topbar(props: Props) {
       <IconBtn onClick={props.onToggleHidden} active={props.showHidden} title="Fichiers cachés">
         <Eye />
       </IconBtn>
+      <IconBtn onClick={props.onToggleBrowser} active={props.browserOpen} title="Navigateur">
+        <Globe />
+      </IconBtn>
       <IconBtn onClick={props.onToggleTerm} active={props.termOpen} title="Terminal (Ctrl+`)">
         <TerminalIcon />
       </IconBtn>
-      <IconBtn onClick={props.onNewFolder} title="Nouveau dossier"><FolderPlus /></IconBtn>
     </div>
   );
 }

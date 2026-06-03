@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFileManager } from "./hooks/useFileManager";
 import { useProfiles } from "./hooks/useProfiles";
+import { useBrowser } from "./hooks/useBrowser";
 import { useFavorites } from "./hooks/useFavorites";
 import { useSearch } from "./hooks/useSearch";
 import { useSort, applySortFilter } from "./hooks/useSort";
@@ -16,14 +17,13 @@ import { hexFor } from "./services/tags";
 import { getEntryProps } from "./services/fs";
 import { DiskAnalyzer } from "./components/DiskAnalyzer";
 import { useKeyboard } from "./hooks/useKeyboard";
-import { TerminalPanel } from "./components/TerminalPanel";
+import { TerminalDock } from "./components/TerminalDock";
 import { termInput, availableShells } from "./services/term";
 import { Topbar } from "./components/Topbar";
 import type { View } from "./components/Topbar";
 import { SearchResults } from "./components/SearchBar";
 import { SortBar } from "./components/SortBar";
 import { ZoneLayout } from "./components/ZoneLayout";
-import { ResizeHandle } from "./components/ResizeHandle";
 import { ContextMenu } from "./components/ContextMenu";
 import { BgContextMenu } from "./components/BgContextMenu";
 import { DialogHost } from "./components/DialogHost";
@@ -33,6 +33,7 @@ import { ExtractionPanel } from "./components/ExtractionPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ProfileEditor } from "./components/ProfileEditor";
 import { DownloadModal } from "./components/DownloadModal";
+import { BrowserView } from "./components/BrowserView";
 import { DiffViewer } from "./components/DiffViewer";
 import { DirCompareViewer } from "./components/DirCompareViewer";
 import { startExtraction, trashDir, homeDir } from "./services/fs";
@@ -62,6 +63,7 @@ function baseName(path: string): string {
 export default function App() {
   const fm = useFileManager();
   const profiles = useProfiles();
+  const browser = useBrowser();
   const activeProfile = profiles.active;
   const editorActive = Object.values(activeProfile.zones).includes("editor");
   const terminalInZone = Object.values(activeProfile.zones).includes("terminal");
@@ -100,6 +102,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
+  const [browserOpen, setBrowserOpen] = useState(false);
   const profileEditorProps = {
     profiles: profiles.profiles, activeId: profiles.activeId, onSwitch: profiles.setActive,
     upsert: profiles.upsertProfile, remove: profiles.removeProfile };
@@ -108,6 +111,8 @@ export default function App() {
 
   useEffect(() => { trashDir().then(setTrashPath).catch(() => {}); homeDir().then(setHomePath).catch(() => {}); }, []);
   useEffect(() => { availableShells().then(setShells).catch(() => {}); }, []);
+  useEffect(() => { if (browserOpen && browser.tabs.length === 0) browser.open(); }, [browserOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (browserOpen && browser.tabs.length === 0) setBrowserOpen(false); }, [browser.tabs.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleTerm = useCallback(() => {
     if (terminalInZone) { if (terminals.tabs.length === 0) terminals.open(fm.cwd); return; }
@@ -119,10 +124,7 @@ export default function App() {
   }, [terminalInZone, terminals, fm.cwd]);
 
   const newTerm = useCallback(() => { terminals.open(fm.cwd); }, [terminals, fm.cwd]);
-  const openTerminalHere = useCallback((path: string) => {
-    terminals.open(path);
-    setTermVisible(true);
-  }, [terminals]);
+  const openTerminalHere = useCallback((p: string) => { terminals.open(p); setTermVisible(true); }, [terminals]);
   const followTerm = useCallback(() => {
     if (!terminals.activeId) { terminals.open(fm.cwd); return; }
     const escaped = fm.cwd.replace(/'/g, "'\\''");
@@ -289,7 +291,6 @@ export default function App() {
         onUp={fm.goUp}
         onRefresh={fm.refresh}
         onToggleHidden={fm.toggleHidden}
-        onNewFolder={() => setDialog({ kind: "newfolder" })}
         onCrumb={fm.navigate}
         onMove={fm.moveEntry}
         inTrash={!!trashPath && fm.cwd === trashPath}
@@ -297,6 +298,8 @@ export default function App() {
         onEmptyTrash={() => setDialog({ kind: "emptytrash" })}
         termOpen={termVisible}
         onToggleTerm={toggleTerm}
+        browserOpen={browserOpen}
+        onToggleBrowser={() => setBrowserOpen((v) => !v)}
         searchOpen={search.open}
         searchQuery={search.query}
         searchMode={search.mode}
@@ -331,6 +334,7 @@ export default function App() {
       )}
 
       <ZoneLayout
+        centerOverride={browserOpen ? <BrowserView browser={browser} /> : undefined}
         zones={activeProfile.zones}
         view={view}
         editorActive={editorActive}
@@ -384,21 +388,17 @@ export default function App() {
       />
 
       {!terminalInZone && (termVisible || terminals.tabs.length > 0) && (
-        <div
-          className={`shrink-0 flex flex-col ${termVisible ? "" : "hidden"}`}
-          style={{ height: termVisible ? termHeight : 0 }}
-        >
-          <ResizeHandle onResize={(dy) => setTermHeight((h) => Math.max(120, Math.min(window.innerHeight - 160, h - dy)))} />
-          <div className="flex-1 min-h-0">
-            <TerminalPanel {...terminalProps} />
-          </div>
-        </div>
+        <TerminalDock
+          visible={termVisible}
+          height={termHeight}
+          terminal={terminalProps}
+          onResize={(dy) => setTermHeight((h) => Math.max(120, Math.min(window.innerHeight - 160, h - dy)))}
+        />
       )}
 
       {fm.error && (
         <div className="absolute bottom-3 right-3 max-w-md px-3 py-2 rounded-md bg-[var(--color-danger)] text-[var(--color-bg)] text-xs shadow-lg">
-          {fm.error}
-          <button className="ml-3 underline" onClick={() => fm.setError(null)}>OK</button>
+          {fm.error}<button className="ml-3 underline" onClick={() => fm.setError(null)}>OK</button>
         </div>
       )}
 
@@ -483,6 +483,7 @@ export default function App() {
         <SettingsPanel
           onClose={() => setSettingsOpen(false)}
           appearance={{ accent: appearance.accent, density: appearance.density, onAccent: setAccent, onDensity: setDensity }}
+          onResetBrowser={browser.reset}
         />
       )}
       {profileEditorOpen && (

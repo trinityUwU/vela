@@ -35,9 +35,10 @@ import type { Dialog } from "./components/DialogHost";
 import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { BrowserView } from "./components/BrowserView";
-import { startExtraction, trashDir, homeDir } from "./services/fs";
+import { startExtraction, trashDir, homeDir, writeFile } from "./services/fs";
 import { convertFile, imagesToPdf } from "./services/convert";
 import { globalSearch } from "./services/search-index";
+import { ocrCapabilities, ocrExtract } from "./services/ocr";
 import { archiveStem, parentDir, baseName } from "./services/path-util";
 import { mergeCsv, organizeDir } from "./services/actions";
 import type { SmartActionId } from "./services/smart-actions";
@@ -220,6 +221,15 @@ export default function App() {
     }
   };
   const selectedEntries = entries.filter((e) => fm.selection.has(e.path));
+
+  const runOcr = (path: string) => {
+    ocrCapabilities().then((c) => {
+      if (!c.tesseract) { fm.setError("tesseract non installé (sudo pacman -S tesseract tesseract-data-fra)"); return; }
+      const lang = ["fra", "eng"].filter((l) => c.langs.includes(l)).join("+") || c.langs[0] || "eng";
+      const out = path.replace(/\.[^.]+$/, "") + ".ocr.txt";
+      ocrExtract(path, lang).then((text) => writeFile(out, text)).then(() => fm.refresh()).catch((e) => fm.setError(String(e)));
+    }).catch((e) => fm.setError(String(e)));
+  };
 
   useKeyboard({
     onCopy: () => fm.copyToClipboard("copy", selPaths()),
@@ -429,6 +439,7 @@ export default function App() {
             convertFile(menu.entry.path, target).then(() => fm.refresh()).catch((e) => fm.setError(String(e)));
             setMenu(null);
           }}
+          onOcr={() => { runOcr(menu.entry.path); setMenu(null); }}
           entries={selectedEntries.length ? selectedEntries : [menu.entry]}
           onSmartAction={(id) => { runSmartAction(id, selectedEntries.length ? selectedEntries : [menu.entry]); setMenu(null); }}
         />

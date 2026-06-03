@@ -15,6 +15,7 @@ mod git;
 mod index;
 mod imaging;
 mod media_probe;
+mod ocr;
 mod ops;
 mod places;
 mod player;
@@ -159,6 +160,8 @@ pub fn run() {
             git::git_diff_file,
             index::index_refresh,
             index::global_search,
+            ocr::ocr_capabilities,
+            ocr::ocr_extract,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

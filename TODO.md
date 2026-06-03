@@ -259,5 +259,281 @@ Navigateur web multi-onglets dans la zone centrale (bouton Globe), vrai moteur W
 
 ## Backlog
 - [ ] Édition image en plein écran (remonter le HUD dans le conteneur fullscreen du lecteur pour préserver l'immersion)
-- [ ] `App.tsx` ~499 lignes : découper si une nouvelle feature doit s'y greffer
+- [ ] `App.tsx` à 500 lignes (limite dure atteinte) : découpe obligatoire avant toute nouvelle feature → **chantier 0 de la Roadmap v2 ci-dessous**
+
+---
+
+# ROADMAP v2 — « Effet waouh » : palette + intelligence contextuelle
+
+**Thèse** : inverser le paradigme. Aujourd'hui l'utilisateur cherche l'outil ; demain il exprime une
+intention (**taper** ou **sélectionner**) et Vela propose + exécute. Pas une feature de plus enterrée
+dans un menu — un point d'entrée unique (palette) + des actions qui apparaissent quand elles sont
+pertinentes + des capacités locales (conversion, OCR, git, recherche globale, LLM local). 8 chantiers.
+
+## Contraintes transverses — à respecter sur TOUS les chantiers (ne rien casser)
+
+- **App.tsx est à 500/500 lignes (limite dure atteinte).** Aucune feature ne s'y greffe directement.
+  Prérequis = refacto (chantier 0). Toute extension d'App.tsx passe par un host extrait.
+- **Limites code** (rappel norme) : fichier ≤500, fonction ≤35, ligne ≤120 ; zéro `any` ; return types
+  explicites sur fonctions publiques ; try/catch + log (`eprintln!` Rust / `console.error` TS) sur tout
+  I/O (FS, process, réseau local).
+- **Souveraineté** : zéro réseau au runtime (sauf chantier 7 = LLM 100% local). Binaires externes
+  optionnels, détectés via le pattern `media_capabilities`, **dégradation gracieuse** (jamais de crash
+  ni de blocage si absent — message « non installé » + aide).
+- **WebKitGTK quirks** (déjà documentés, à respecter) : `<select>` natif cassé → `appearance-none` +
+  chevron custom. Autofocus d'un input = `ref` + `requestAnimationFrame` (le focus immédiat échoue
+  parfois sous WebKitGTK). Navigation clavier globale = capture phase + `e.code` (jamais `e.key` seul).
+  Pas d'API navigateur récente non supportée par WebKitGTK 2.x. `navigator.clipboard.writeText` OK
+  (déjà utilisé dans ContextMenu).
+- **E2E** : `invoke` ne tourne QUE dans le webview WebKitGTK → **non pilotable par Playwright** (Chromium).
+  Validation = `cargo check` + `cargo test` + `bun tauri build` (deb+rpm) + install + `grim` screenshot
+  + test interactif Chris. Les helpers purs (fuzzy, routage formats, smart-actions) → `bun test`.
+- **Rituel install** : `pkill -x vela-bin` (**JAMAIS `-f`** — tue le shell avant le cp), `cp` →
+  `~/.local/bin/vela-bin`, vérif sha256. Lancement via wrapper `~/.local/bin/vela`
+  (`WEBKIT_DISABLE_DMABUF_RENDERER=1`). Géré par `./install.sh`.
+- **Checkpoint git** `[CHECKPOINT]` après chaque chantier passé au vert. Commit final par chantier.
+- **Enregistrement commandes Rust** : 80 actuellement. Nouveau module = `mod X;` dans `lib.rs` +
+  entrées dans `invoke_handler` + `.manage(...)` si état partagé. Mettre à jour le compteur dans
+  STATE.md + ARBORESCENCE.md à chaque chantier.
+- **ARBORESCENCE.md** : ajouter chaque fichier créé au fil de l'eau (documente le réel, pas le prévu).
+
+## Ordre d'implémentation (dépendances)
+
+0. Refacto App.tsx (prérequis dur)
+1. Palette `Ctrl+K` (multiplicateur — rend tout le reste découvrable)
+2. Conversion universelle (effet waouh le plus large, brique réutilisée par 3)
+3. Actions contextuelles intelligentes (réutilise conversion + OCR)
+4. Git natif visuel
+5. Recherche globale indexée (alimente la palette pour les fichiers hors cwd)
+6. OCR / extraction de texte
+7. Langage naturel local via EchoHub (optionnel, opt-in strict — dernier)
+
+---
+
+## Chantier 0 — Refacto App.tsx (prérequis, non-régression totale)
+
+**Objectif** : libérer App.tsx (500/500) et créer les ancrages pour la palette + le registre d'actions.
+
+**Plan**
+- `src/components/OverlayHost.tsx` (nouveau) : extraire le bloc des overlays conditionnels de fin
+  d'App.tsx (Settings, ProfileEditor, Download, Diff, DirCompare, DiskAnalyzer, + futur CommandPalette).
+  Reçoit un objet `overlays` (états booléens + handlers `onClose` déjà présents dans App). Calqué sur
+  `DialogHost`. Déplacement pur, zéro changement de logique.
+- Si encore trop long : extraire le listener Ctrl+` et les blocs de props (`terminalProps`,
+  `profileEditorProps`) déjà regroupés.
+
+**Points de vigilance** : non-régression absolue — chaque overlay doit s'ouvrir/fermer exactement
+comme avant. Tester manuellement chaque modale après extraction. Ne pas toucher à la logique métier.
+
+**Fichiers** : `App.tsx`, `OverlayHost.tsx` (nouveau).
+**Validation** : `tsc` + `bun tauri build` + ouvrir chaque overlay à la main. Checkpoint git.
+
+---
+
+## Chantier 1 — Palette de commandes `Ctrl+K`
+
+**Objectif** : barre unique centrale, fuzzy match **simultané** sur fichiers (cwd, puis global via
+chantier 5), actions (toutes les commandes existantes), emplacements/favoris. Zéro courbe d'apprentissage.
+
+**Frontend**
+- `src/lib/fuzzy.ts` (nouveau) : matcher fuzzy **pur, sans dépendance** (score subséquence + bonus
+  début-de-mot + bonus séparateur/camel), ~40 lignes, testable. **Ne pas ajouter fuse.js/fzf** (souv. + simplicité).
+- `src/hooks/useCommandRegistry.ts` (nouveau) : prend un objet `ctx` (handlers existants d'App :
+  `openTerminalHere`, `setSettingsOpen`, `setDownloadOpen`, `browser.open`, `compareSelection`,
+  `fm.refresh`, `fm.toggleHidden`, profils, etc.) → retourne `Command[]`
+  (`{ id, title, hint?, group, run, when? }`). **Source unique de vérité** : la palette lit ce registre,
+  pas de duplication des actions.
+- `src/components/CommandPalette.tsx` (nouveau) : overlay centré, input **autofocus (ref + rAF)**,
+  liste filtrée groupée (Fichiers / Actions / Lieux), navigation ↑↓/Entrée/Échap. Fichier → openEntry /
+  navigate ; action → `run()`.
+- `src/hooks/useCommandPalette.ts` (nouveau) : état `open` + ouverture.
+- `src/hooks/useKeyboard.ts` : ajouter `onPalette?` géré **AVANT** le guard `inEditable` (comme
+  `Escape`) sur `mod && e.key === "k"` (la palette doit s'ouvrir même depuis l'éditeur). `e.preventDefault()`.
+
+**Points de vigilance** : autofocus WebKitGTK (rAF obligatoire). Perf matcher < 16 ms sur ~1000 entrées.
+Le registre doit refléter les **vraies** actions (généré depuis les handlers, jamais réécrit en dur).
+Branchement via `OverlayHost` (pas dans App.tsx directement).
+
+**Fichiers** : `fuzzy.ts`, `useCommandRegistry.ts`, `CommandPalette.tsx`, `useCommandPalette.ts`
+(nouveaux), `useKeyboard.ts`, `OverlayHost.tsx`.
+**Validation** : `bun test` fuzzy ; manuel : Ctrl+K → taper un fichier (ouvre), taper « terminal »
+(action), ouvrir depuis l'éditeur. Checkpoint git.
+
+---
+
+## Chantier 2 — Conversion universelle
+
+**Objectif** : « Convertir vers… » partout (clic droit, palette, drag&drop). 100 % local.
+
+**Stack / matrice / souveraineté**
+- **Images** : crate `image` (**DÉJÀ présente**) — png/jpg/webp/gif/bmp/tiff/ico. Zéro dep ajoutée.
+- **Images → PDF** : crate `printpdf` (**pure Rust, souverain**) — pas de bin externe. Nouvelle dep Cargo.
+- **Documents** : `pandoc` (md/html/docx/odt/epub/rst/latex) + `libreoffice --headless --convert-to`
+  (office → pdf/docx). **Binaires externes optionnels.**
+- **Audio/vidéo** : `ffmpeg` (**DÉJÀ utilisé**) — déléguer aux commandes `audio_convert`/`video_convert`
+  existantes quand le couple source→cible le permet.
+
+**Backend** : `src-tauri/src/convert.rs` (nouveau)
+- `convert_capabilities() -> ConvertCapabilities { pandoc, libreoffice }` (pattern `media_capabilities`
+  + `binary_exists`).
+- `convert_targets(path) -> Vec<String>` : formats cibles selon le type source (table de routage pure, testable).
+- `convert_file(input, target, output?) -> Result<String>` : dispatch image / doc / pdf. Jobs longs
+  (libreoffice) en background + event progress si nécessaire (réutiliser le pattern `video::video_convert`).
+  try/catch + log. **Ne jamais écraser la source** (suffixe ou dossier de sortie).
+
+**Frontend** : `src/services/convert.ts` (nouveau) + `useCapabilities` (calqué `use-download`) ;
+sous-menu « Convertir vers › <formats> » dans `ContextMenu` (formats issus de `convert_targets`) ;
+entrée registre palette.
+
+**Points de vigilance** : pandoc/libreoffice = paquets **système** (pacman), PAS pip → `install.sh`
+propose la ligne `pacman -S` (sans `sudo` auto), détection gracieuse « non installé ». libreoffice
+headless lent au 1er lancement (création de profil) → job background + feedback. printpdf augmente le
+temps de build (acceptable).
+
+**Fichiers** : `convert.rs` (nouveau), `lib.rs`, `Cargo.toml` (`printpdf`), `services/convert.ts`
+(nouveau), `ContextMenu.tsx`, `useCommandRegistry.ts`, `install.sh`.
+**Validation** : `cargo test` (routage formats sur fixtures) ; png→jpg, md→pdf (si pandoc), docx→pdf
+(si libreoffice) ; binaire absent → message propre. Checkpoint git.
+
+---
+
+## Chantier 3 — Actions contextuelles intelligentes
+
+**Objectif** : `ContextMenu` réactif au **type collectif** de la sélection ; bonnes actions en tête.
+
+**Frontend**
+- `src/services/smart-actions.ts` (nouveau) : `smartActions(entries: DirEntry[]): SmartAction[]` —
+  **pur, testable**. Règles : toutes images → « Créer un PDF », « Tout redimensionner »,
+  « Convertir en JPG », « Planche contact » ; tous CSV → « Fusionner » ; tous audio/vidéo → outils
+  média par lot ; 2 fichiers → « Comparer » (déjà géré, le centraliser) ; dossier → « Ranger par
+  type / par date ».
+- `ContextMenu.tsx` : recevoir `entries: DirEntry[]` (**la sélection résolue**, pas seulement le clic
+  actuel) ; afficher une section « Actions » en tête depuis `smartActions`. Si la section grossit,
+  l'extraire (`ContextMenu` doit rester < 500 lignes).
+- `App.tsx`/`OverlayHost` : passer la sélection résolue (`entries.filter(e => selection.has(e.path))`)
+  au ContextMenu.
+
+**Backends utilitaires**
+- « Créer un PDF » → `printpdf` (chantier 2).
+- « Fusionner CSV » → `merge_csv(paths, output)` dans `convert.rs` ou `fs_ops.rs`.
+- « Ranger par type/date » → `organize_dir(path, by)` (déplace dans des sous-dossiers). **ANNULABLE** :
+  brancher `useUndo` (op move inverse) + **confirmation** avant exécution.
+
+**Points de vigilance** : « Ranger » déplace des fichiers → réversible (useUndo) + confirmation
+obligatoire. N'afficher une action que si ses outils sont disponibles (`when` ← capabilities).
+
+**Fichiers** : `smart-actions.ts` (nouveau), `ContextMenu.tsx`, `App.tsx`, `convert.rs`/`ops.rs`,
+`lib.rs`, `useUndo.ts`.
+**Validation** : `bun test` smartActions ; 5 images → « Créer un PDF » ; ranger un dossier → Ctrl+Z
+restaure. Checkpoint git.
+
+---
+
+## Chantier 4 — Git natif visuel
+
+**Stack / souveraineté** : crate `git2` (libgit2, build **vendored**, offline). Pas de process `git` externe.
+
+**Backend** : `src-tauri/src/git.rs` (nouveau) — stateless (cache léger optionnel)
+- `git_repo_root(path) -> Option<String>`
+- `git_status(root) -> Vec<GitFileStatus { path, status }>` (`StatusOptions` : `include_untracked`,
+  **pas** de `recurse_untracked_dirs` sur gros repo). `spawn_blocking`.
+- `git_current_branch`, `git_branches`, `git_log(n)`, `git_stage(paths)`, `git_unstage(paths)`,
+  `git_commit(msg)`, `git_checkout_branch`, `git_diff_file(path) -> { old, new }` (HEAD blob vs worktree).
+
+**Frontend**
+- `src/hooks/useGitStatus.ts` (nouveau) : résout le repo du cwd, mappe `path → status`, refresh sur
+  event `fs-changed` (watcher **existant**) + debounce.
+- Badges dans `FileTile.tsx` / `FileTable.tsx` (pastille couleur : modifié / ajouté / non-suivi / ignoré).
+- `src/components/GitPanel.tsx` (nouveau) : **nouveau `PanelId` `"git"`** intégré au système de
+  zones/profils (comme terminal/filetree) → status, stage/unstage, message + commit, branches, log.
+  Diff fichier réutilise `DiffViewer` (mode contenu-vs-contenu, blob HEAD vs worktree, sans fichier temp).
+- `profiles.rs` / `types.ts` : ajouter `"git"` à `PanelId` ; `ProfileEditor` le propose ; `ZoneLayout`
+  le rend.
+
+**Points de vigilance** : perf `git_status` sur gros repo → `StatusOptions` restrictives + cache +
+debounce + `spawn_blocking` (jamais bloquer l'UI). Hors repo → panneau « pas un dépôt git » (pas
+d'erreur). `git2` vendored = temps de build +. `DiffViewer` attend 2 fichiers → l'adapter pour
+recevoir du **contenu brut** (blob HEAD) sans écrire de fichier temporaire.
+
+**Fichiers** : `git.rs` (nouveau), `lib.rs`, `Cargo.toml` (`git2`), `useGitStatus.ts` (nouveau),
+`GitPanel.tsx` (nouveau), `FileTile.tsx`, `FileTable.tsx`, `profiles.rs`, `types.ts`, `ZoneLayout.tsx`,
+`ProfileEditor.tsx`, `DiffViewer.tsx`.
+**Validation** : `cargo test` (status sur repo fixture temporaire init+commit) ; ouvrir Vela dans un
+repo → badges + commit depuis le panneau ; dossier non-git → message propre. Checkpoint git.
+
+---
+
+## Chantier 5 — Recherche globale indexée
+
+**Objectif** : recherche système **instantanée** par nom, branchée dans la palette + la barre de
+recherche (mode « global »). Contenu à la demande = `search_content` existant.
+
+**Stack / souveraineté** : index **en mémoire** (zéro dep — pas de SQLite/tantivy au début).
+Persistance cache disque optionnelle pour démarrage rapide.
+
+**Backend** : `src-tauri/src/index.rs` (nouveau)
+- `.manage(SearchIndex)` : `RwLock<Vec<IndexedEntry { path, name_lc }>>`. Construit en **background
+  thread** par `walkdir` des racines (HOME + montages), `hidden`/`.git`/`node_modules`/`target` exclus.
+- `global_search(query, limit) -> Vec<DirEntry>` : filtre subséquence/substring + tri par score.
+- `index_refresh()` : reconstruction. Incrémental via watcher = option v2.
+
+**Frontend** : `src/services/search-index.ts` (nouveau) ; mode « global » dans `useSearch` ; fichiers
+hors cwd dans la palette (chantier 1).
+
+**Points de vigilance** : 1er build peut prendre quelques secondes sur gros HOME → background + état
+« indexation… » **non bloquant**. Mémoire : stocker uniquement `path` + `name_lc`. Exclure dossiers
+lourds. Respecter `hidden`. Pas de scan de montages réseau distants.
+
+**Fichiers** : `index.rs` (nouveau), `lib.rs`, `services/search-index.ts` (nouveau), `useSearch.ts`,
+`CommandPalette.tsx`.
+**Validation** : `cargo test` (filtre sur index fixture) ; palette → nom de fichier hors cwd → trouvé.
+Checkpoint git.
+
+---
+
+## Chantier 6 — OCR / extraction de texte
+
+**Stack / souveraineté** : `tesseract` (binaire) + données langue (`tesseract-data-fra`/`-eng`).
+Optionnel, détecté.
+
+**Backend** : `src-tauri/src/ocr.rs` (nouveau)
+- `ocr_capabilities() -> { tesseract: bool, langs: Vec<String> }` (pattern capabilities).
+- `ocr_extract(path, lang) -> Result<String>` : image directe via tesseract. PDF scanné → rasteriser
+  les pages (`pdftoppm` si dispo) puis tesseract (dépendances en cascade, toutes optionnelles).
+
+**Frontend** : `src/services/ocr.ts` (nouveau) ; clic droit image/PDF → « Extraire le texte » →
+résultat dans un nouveau buffer éditeur (ou copié) ; entrée registre palette + `smart-actions`.
+
+**Points de vigilance** : tesseract absent → message + ligne `pacman`. Langue défaut `fra+eng`,
+configurable (Réglages). try/catch + log.
+
+**Fichiers** : `ocr.rs` (nouveau), `lib.rs`, `services/ocr.ts` (nouveau), `ContextMenu.tsx`,
+`smart-actions.ts`, `useCommandRegistry.ts`, `install.sh`.
+**Validation** : `cargo test` (skip si tesseract absent, comme media) ; OCR image de texte → texte
+correct. Checkpoint git.
+
+---
+
+## Chantier 7 — Langage naturel local via EchoHub (optionnel, opt-in strict)
+
+**Objectif** : la palette comprend l'intention en langage naturel via LLM **100 % local**
+(EchoHub `http://127.0.0.1:37821`, API Anthropic Messages). **DÉSACTIVÉ par défaut.**
+
+**Stack / souveraineté** : endpoint local uniquement. Endpoint absent → feature **invisible**, zéro impact.
+
+**Backend / logique** : `src/services/nl.ts` (ou `nl.rs`) — `nlResolve(prompt, context) -> Action[]` :
+appelle le LLM local avec, comme schéma d'outils, le **registre d'actions** (function calling /
+structured output), retourne les actions à exécuter.
+
+**Frontend** : toggle Réglages « Palette intelligente (LLM local) » + champ endpoint. Dans la palette,
+si activé et la saisie n'est pas un match direct → bouton « interpréter ».
+
+**Points de vigilance** : **opt-in strict**. Toute action destructive (suppr, déplacement massif) passe
+par **confirmation**. Timeout court + fallback silencieux si LLM lent/absent. Le LLM ne reçoit que le
+registre + la sélection courante (jamais de contenu fichier sans consentement).
+
+**Fichiers** : `services/nl.ts` (nouveau), `SettingsPanel.tsx`, `CommandPalette.tsx`,
+`useCommandRegistry.ts`.
+**Validation** : EchoHub chargé → « range mes images » déclenche `organize` (avec confirmation) ;
+EchoHub absent → feature masquée. Checkpoint git.
 

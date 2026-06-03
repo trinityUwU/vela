@@ -15,7 +15,7 @@ import { useTags } from "./hooks/useTags";
 import { useAppearance } from "./hooks/useAppearance";
 import { hexFor } from "./services/tags";
 import { getEntryProps } from "./services/fs";
-import { DiskAnalyzer } from "./components/DiskAnalyzer";
+import { OverlayHost } from "./components/OverlayHost";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TerminalDock } from "./components/TerminalDock";
 import { termInput, availableShells } from "./services/term";
@@ -30,12 +30,7 @@ import { DialogHost } from "./components/DialogHost";
 import type { Dialog } from "./components/DialogHost";
 import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
-import { SettingsPanel } from "./components/SettingsPanel";
-import { ProfileEditor } from "./components/ProfileEditor";
-import { DownloadModal } from "./components/DownloadModal";
 import { BrowserView } from "./components/BrowserView";
-import { DiffViewer } from "./components/DiffViewer";
-import { DirCompareViewer } from "./components/DirCompareViewer";
 import { startExtraction, trashDir, homeDir } from "./services/fs";
 import type { DirEntry } from "./types";
 
@@ -479,22 +474,18 @@ export default function App() {
 
       <ExtractionPanel jobs={extractionJobs} transfers={transferJobs} onNavigate={fm.navigate} />
 
-      {settingsOpen && (
-        <SettingsPanel
-          onClose={() => setSettingsOpen(false)}
-          appearance={{ accent: appearance.accent, density: appearance.density, onAccent: setAccent, onDensity: setDensity }}
-          onResetBrowser={browser.reset}
-        />
-      )}
-      {profileEditorOpen && (
-        <ProfileEditor {...profileEditorProps} onClose={() => setProfileEditorOpen(false)} />
-      )}
-      {downloadOpen && <DownloadModal cwd={fm.cwd} onClose={() => setDownloadOpen(false)} onError={fm.setError} />}
-      {diff && <DiffViewer a={diff.a} b={diff.b} onClose={() => setDiff(null)} onError={fm.setError} />}
-      {dirDiff && <DirCompareViewer a={dirDiff.a} b={dirDiff.b} onClose={() => setDirDiff(null)} onError={fm.setError} />}
-      {analyzePath && (
-        <DiskAnalyzer path={analyzePath} onClose={() => setAnalyzePath(null)} onReveal={fm.navigate} onError={fm.setError} />
-      )}
+      <OverlayHost
+        settings={settingsOpen ? {
+          onClose: () => setSettingsOpen(false),
+          appearance: { accent: appearance.accent, density: appearance.density, onAccent: setAccent, onDensity: setDensity },
+          onResetBrowser: browser.reset,
+        } : null}
+        profileEditor={profileEditorOpen ? { ...profileEditorProps, onClose: () => setProfileEditorOpen(false) } : null}
+        download={downloadOpen ? { cwd: fm.cwd, onClose: () => setDownloadOpen(false), onError: fm.setError } : null}
+        diff={diff ? { a: diff.a, b: diff.b, onClose: () => setDiff(null), onError: fm.setError } : null}
+        dirDiff={dirDiff ? { a: dirDiff.a, b: dirDiff.b, onClose: () => setDirDiff(null), onError: fm.setError } : null}
+        analyzer={analyzePath ? { path: analyzePath, onClose: () => setAnalyzePath(null), onReveal: fm.navigate, onError: fm.setError } : null}
+      />
     </div>
   );
 }

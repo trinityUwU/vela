@@ -7,6 +7,24 @@ File manager Linux (Tauri v2 + React/TypeScript) avec **profils de layout** : ch
 
 Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.15 sont documentés dans leurs sections dédiées.
 
+## Roadmap v2 — « Effet waouh » (specs complètes dans TODO.md → section « ROADMAP v2 »)
+
+Thèse : l'utilisateur exprime une intention (taper / sélectionner), Vela propose + exécute. 8 chantiers,
+dans l'ordre :
+0. **Refacto App.tsx** (500/500 lignes — prérequis dur, extraction `OverlayHost`)
+1. **Palette `Ctrl+K`** — fuzzy fichiers + actions + lieux, registre unique généré (multiplicateur)
+2. **Conversion universelle** — image (crate `image`)/doc (`pandoc`+`libreoffice`)/pdf (`printpdf`), tout local
+3. **Actions contextuelles** — ContextMenu réactif au type collectif de la sélection (`smart-actions.ts`)
+4. **Git visuel** — `git2`, badges sur les tuiles + nouveau panneau de zone `GitPanel` (réutilise `DiffViewer`)
+5. **Recherche globale indexée** — index nom en mémoire, background, branché palette + search
+6. **OCR** — `tesseract` (optionnel), clic droit image/PDF → texte
+7. **Langage naturel local** — EchoHub `127.0.0.1:37821`, opt-in strict, désactivé par défaut
+
+Contraintes transverses (détail TODO.md) : limites code (500/35/120, zéro `any`, try/catch+log), binaires
+externes optionnels + dégradation gracieuse (pattern `media_capabilities`), quirks WebKitGTK (autofocus rAF,
+`<select>` custom, clavier capture+`e.code`), validation hors Playwright (`cargo`/`bun tauri build`/`grim`),
+rituel install `pkill -x vela-bin`, checkpoint git par chantier.
+
 ## Socle — v1.5
 
 **Backend Rust — modules**

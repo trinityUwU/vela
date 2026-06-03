@@ -1,21 +1,32 @@
-// Modal de création d'archive : nom de sortie + choix du format (ZIP / TAR.GZ).
+// Modal de création d'archive : nom + format (ZIP / TAR.GZ / 7Z / RAR) + mot de passe optionnel.
 import { useState } from "react";
+import type { ArchiveFormat } from "../services/fs";
 
 interface Props {
   defaultName: string;
   count: number;
-  onSubmit: (name: string, format: "zip" | "targz") => void;
+  onSubmit: (name: string, format: ArchiveFormat, password?: string) => void;
   onCancel: () => void;
 }
 
-export function CompressModal({ defaultName, count, onSubmit, onCancel }: Props) {
-  const [format, setFormat] = useState<"zip" | "targz">("zip");
-  const ext = format === "zip" ? ".zip" : ".tar.gz";
-  const [name, setName] = useState(defaultName);
+const FORMATS: { id: ArchiveFormat; label: string; ext: string; encrypt: boolean }[] = [
+  { id: "zip", label: "ZIP", ext: ".zip", encrypt: true },
+  { id: "targz", label: "TAR.GZ", ext: ".tar.gz", encrypt: false },
+  { id: "7z", label: "7Z", ext: ".7z", encrypt: true },
+  { id: "rar", label: "RAR", ext: ".rar", encrypt: true },
+];
 
-  const submit = () => {
+export function CompressModal({ defaultName, count, onSubmit, onCancel }: Props) {
+  const [format, setFormat] = useState<ArchiveFormat>("zip");
+  const [name, setName] = useState(defaultName);
+  const [password, setPassword] = useState("");
+  const current = FORMATS.find((f) => f.id === format)!;
+
+  const submit = (): void => {
     const trimmed = name.trim();
-    if (trimmed) onSubmit(trimmed.endsWith(ext) ? trimmed : trimmed + ext, format);
+    if (!trimmed) return;
+    const full = trimmed.endsWith(current.ext) ? trimmed : trimmed + current.ext;
+    onSubmit(full, format, current.encrypt ? password.trim() || undefined : undefined);
   };
 
   return (
@@ -35,21 +46,30 @@ export function CompressModal({ defaultName, count, onSubmit, onCancel }: Props)
           placeholder="nom de l'archive"
           className="w-full px-2 py-1.5 mb-3 rounded bg-[var(--color-bg)] border border-[var(--color-border)] text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
         />
-        <div className="flex gap-2 mb-4">
-          {(["zip", "targz"] as const).map((f) => (
+        <div className="grid grid-cols-4 gap-2 mb-3">
+          {FORMATS.map((f) => (
             <button
-              key={f}
-              onClick={() => setFormat(f)}
-              className={`flex-1 px-3 py-1.5 rounded text-sm transition-colors ${
-                format === f
+              key={f.id}
+              onClick={() => setFormat(f.id)}
+              className={`px-2 py-1.5 rounded text-sm transition-colors ${
+                format === f.id
                   ? "bg-[var(--color-accent)] text-[var(--color-bg)]"
                   : "bg-[var(--color-bg)] text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)]"
               }`}
             >
-              {f === "zip" ? "ZIP" : "TAR.GZ"}
+              {f.label}
             </button>
           ))}
         </div>
+        <input
+          type="password"
+          value={password}
+          disabled={!current.encrypt}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+          placeholder={current.encrypt ? "Mot de passe (optionnel)" : "Mot de passe non supporté pour ce format"}
+          className="w-full px-2 py-1.5 mb-4 rounded bg-[var(--color-bg)] border border-[var(--color-border)] text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] disabled:opacity-40"
+        />
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}

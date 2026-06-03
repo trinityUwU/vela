@@ -378,15 +378,15 @@ export function useFileManager() {
   }, [clipboard, cwd, refresh]);
 
   const compress = useCallback(
-    async (paths: string[], dest: string, format: "zip" | "targz") => {
+    async (paths: string[], dest: string, format: fs.ArchiveFormat, password?: string) => {
       try {
         // Job de fond : la progression et le rafraîchissement sont gérés via les events extraction-progress.
-        await fs.startCompression(paths, dest, format);
+        await fs.startCompression(paths, dest, format, password);
       } catch (e) {
         setError(String(e));
       }
     },
-    [refresh],
+    [setError],
   );
 
   const toggleHidden = useCallback(() => setShowHidden((v) => !v), []);

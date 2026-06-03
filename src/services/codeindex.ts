@@ -20,6 +20,6 @@ export function codeindexSearch(project: string, question: string): Promise<Code
   return invoke("codeindex_search", { project, question });
 }
 
-export function codeindexIndex(project: string): Promise<void> {
+export function codeindexIndex(project: string): Promise<string> {
   return invoke("codeindex_index", { project });
 }

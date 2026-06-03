@@ -146,8 +146,12 @@ export function moveEntries(paths: string[], destDir: string): Promise<void> {
   return invoke("move_entries", { paths, destDir });
 }
 
-export function startCompression(paths: string[], dest: string, format: "zip" | "targz"): Promise<string> {
-  return invoke<string>("start_compression", { paths, dest, format });
+export type ArchiveFormat = "zip" | "targz" | "7z" | "rar";
+
+export function startCompression(
+  paths: string[], dest: string, format: ArchiveFormat, password?: string,
+): Promise<string> {
+  return invoke<string>("start_compression", { paths, dest, format, password: password || null });
 }
 
 export function searchContent(root: string, query: string): Promise<import("../types").ContentMatch[]> {

@@ -49,7 +49,7 @@ impl ExtractionManager {
         Self { jobs: Mutex::new(HashMap::new()) }
     }
 
-    fn add(&self, id: &str) -> Arc<JobControl> {
+    pub fn add(&self, id: &str) -> Arc<JobControl> {
         let jc = Arc::new(JobControl {
             paused: Arc::new(AtomicBool::new(false)),
             cancelled: Arc::new(AtomicBool::new(false)),
@@ -71,10 +71,22 @@ impl ExtractionManager {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-fn new_job_id() -> String {
+pub fn new_job_id() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let ts = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis();
     format!("job-{ts}")
+}
+
+// Émet une progression de job générique vers le panneau d'activité (event extraction-progress).
+// Permet à d'autres modules (CodeIndex…) d'afficher leurs tâches longues en bas à droite.
+pub fn emit_progress(app: &AppHandle, job_id: &str, name: &str, dest: &str,
+    current: u64, total: u64, status: &str, error: Option<String>) {
+    emit(app, ProgressPayload {
+        job_id: job_id.to_string(),
+        archive_name: name.to_string(),
+        dest: dest.to_string(),
+        current, total, status: status.to_string(), error,
+    });
 }
 
 fn emit(app: &AppHandle, p: ProgressPayload) {
@@ -487,9 +499,83 @@ fn run_targz_compress_job(app: AppHandle, jc: Arc<JobControl>, job_id: String, p
     }
 }
 
+// Compression via 7z (formats 7z/zip avec mot de passe + AES). Progression parsée sur -bsp1.
+fn run_7z_compress_job(app: AppHandle, jc: Arc<JobControl>, job_id: String,
+    paths: Vec<String>, dest: String, as_zip: bool, pwd: Option<String>) {
+    let base = compress_base(&job_id, Path::new(&dest));
+    let Some(cmd) = find_7z() else {
+        finish(&app, base, Some("7z non trouvé — installer p7zip".into())); return;
+    };
+    let mut args = vec!["a".to_string(), "-bsp1".to_string(), "-y".to_string()];
+    if as_zip { args.push("-tzip".to_string()); }
+    if let Some(ref p) = pwd {
+        args.push(format!("-p{p}"));
+        if !as_zip { args.push("-mhe=on".to_string()); }
+    }
+    args.push(dest.clone());
+    args.extend(paths);
+    run_cli_archiver(app, jc, base, cmd, args);
+}
+
+fn find_rar() -> Option<&'static str> {
+    ["rar"].iter().find(|c| {
+        Command::new("which").arg(c).output().map(|o| o.status.success()).unwrap_or(false)
+    }).copied()
+}
+
+// Compression via rar (mot de passe + en-têtes chiffrés via -hp). Progression indéterminée.
+fn run_rar_compress_job(app: AppHandle, jc: Arc<JobControl>, job_id: String,
+    paths: Vec<String>, dest: String, pwd: Option<String>) {
+    let base = compress_base(&job_id, Path::new(&dest));
+    let Some(cmd) = find_rar() else {
+        finish(&app, base, Some("rar non trouvé — installer rar".into())); return;
+    };
+    let mut args = vec!["a".to_string(), "-ep1".to_string()];
+    if let Some(ref p) = pwd { args.push(format!("-hp{p}")); }
+    args.push("--".to_string());
+    args.push(dest.clone());
+    args.extend(paths);
+    run_cli_archiver(app, jc, base, cmd, args);
+}
+
+// Exécute un archiveur CLI (7z/rar) avec monitoring stdout/progression, pause/cancel via signaux.
+fn run_cli_archiver(app: AppHandle, jc: Arc<JobControl>, base: ProgressPayload, cmd: &str, args: Vec<String>) {
+    emit(&app, base.clone());
+    let mut child = match Command::new(cmd).args(&args).stdout(std::process::Stdio::piped()).spawn() {
+        Ok(c) => c, Err(e) => { finish(&app, base, Some(e.to_string())); return; }
+    };
+    *jc.child_pid.lock().unwrap() = Some(child.id());
+    let stdout = child.stdout.take().unwrap();
+    let (jc2, base2, app2) = (jc.clone(), base.clone(), app.clone());
+    std::thread::spawn(move || {
+        use std::io::BufRead;
+        for line in std::io::BufReader::new(stdout).lines().map_while(Result::ok) {
+            if jc2.cancelled.load(Ordering::Relaxed) { break; }
+            while jc2.paused.load(Ordering::Relaxed) && !jc2.cancelled.load(Ordering::Relaxed) {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            if let Some(pct) = parse_7z_progress(&line) {
+                emit(&app2, ProgressPayload { current: pct, total: 100, ..base2.clone() });
+            }
+        }
+    });
+    let status = child.wait();
+    let pid = jc.child_pid.lock().unwrap().take();
+    if jc.cancelled.load(Ordering::Relaxed) {
+        if let Some(p) = pid { signal_pid(p, "KILL"); }
+        let _ = fs::remove_file(format!("{}/{}", base.dest, base.archive_name));
+        finish(&app, base, Some("Annulé".into())); return;
+    }
+    match status.map(|s| s.success()).unwrap_or(false) {
+        true => finish(&app, base, None),
+        false => finish(&app, base, Some("Compression échouée".into())),
+    }
+}
+
 // ── tauri commands ────────────────────────────────────────────────────────────
 
-// Crée une archive (zip/targz) en tâche de fond, avec progression/pause/annulation.
+// Crée une archive en tâche de fond (progression/pause/annulation). Formats : zip, targz, 7z, rar.
+// `password` (optionnel) chiffre l'archive — supporté pour zip (via 7z), 7z (AES) et rar.
 #[tauri::command]
 pub async fn start_compression(
     app: AppHandle,
@@ -497,14 +583,19 @@ pub async fn start_compression(
     paths: Vec<String>,
     dest: String,
     format: String,
+    password: Option<String>,
 ) -> Result<String, String> {
-    if format != "zip" && format != "targz" { return Err(format!("format inconnu: {format}")); }
+    let pwd = password.filter(|p| !p.is_empty());
     let job_id = new_job_id();
     let jc = state.add(&job_id);
     let jid = job_id.clone();
-    std::thread::spawn(move || {
-        if format == "zip" { run_zip_compress_job(app, jc, jid, paths, dest); }
-        else { run_targz_compress_job(app, jc, jid, paths, dest); }
+    std::thread::spawn(move || match (format.as_str(), pwd) {
+        ("zip", None)   => run_zip_compress_job(app, jc, jid, paths, dest),
+        ("targz", _)    => run_targz_compress_job(app, jc, jid, paths, dest),
+        ("zip", pwd)    => run_7z_compress_job(app, jc, jid, paths, dest, true, pwd),
+        ("7z", pwd)     => run_7z_compress_job(app, jc, jid, paths, dest, false, pwd),
+        ("rar", pwd)    => run_rar_compress_job(app, jc, jid, paths, dest, pwd),
+        (other, _)      => finish(&app, compress_base(&jid, Path::new(&dest)), Some(format!("format inconnu: {other}"))),
     });
     Ok(job_id)
 }

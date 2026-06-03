@@ -105,7 +105,7 @@ export interface ArchiveEntry {
 }
 
 export type ExtractionStatus =
-  | "extracting" | "compressing" | "paused" | "done" | "error" | "cancelled" | "password_required";
+  | "extracting" | "compressing" | "indexing" | "paused" | "done" | "error" | "cancelled" | "password_required";
 
 export interface ExtractionJob {
   id: string;

@@ -5,7 +5,7 @@ import { ConfirmModal } from "./ConfirmModal";
 import { PropertiesModal } from "./PropertiesModal";
 import { CompressModal } from "./CompressModal";
 import { BatchRenameModal } from "./BatchRenameModal";
-import { startExtraction } from "../services/fs";
+import { startExtraction, type ArchiveFormat } from "../services/fs";
 
 export type Dialog =
   | { kind: "rename"; entry: DirEntry }
@@ -27,7 +27,7 @@ interface FmActions {
   createFile: (name: string) => void;
   trash: (paths: string[]) => void;
   deletePermanent: (paths: string[]) => void;
-  compress: (paths: string[], dest: string, format: "zip" | "targz") => void;
+  compress: (paths: string[], dest: string, format: ArchiveFormat, password?: string) => void;
   renameMany: (dir: string, renames: { from: string; to: string }[]) => void;
   emptyTrash: () => void;
   setError: (msg: string | null) => void;
@@ -87,7 +87,7 @@ export function DialogHost({ dialog, onClose, fm, archiveStem, baseName }: Props
         <CompressModal
           count={dialog.paths.length}
           defaultName={dialog.paths.length === 1 ? archiveStem(baseName(dialog.paths[0])) : "archive"}
-          onSubmit={(name, format) => { fm.compress(dialog.paths, `${fm.cwd}/${name}`, format); onClose(); }}
+          onSubmit={(name, format, password) => { fm.compress(dialog.paths, `${fm.cwd}/${name}`, format, password); onClose(); }}
           onCancel={onClose}
         />
       );

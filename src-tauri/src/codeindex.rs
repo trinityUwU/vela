@@ -55,17 +55,36 @@ pub async fn codeindex_search(project: String, question: String) -> Result<Vec<C
     .unwrap_or_else(|e| Err(e.to_string()))
 }
 
-// Indexe (ou réindexe) `project` dans CodeIndex. Opération longue → tâche de fond.
+// Indexe (ou réindexe) `project` en tâche de fond : progression affichée dans le panneau d'activité
+// (bas-droite), annulable. Retourne immédiatement l'id du job sans bloquer l'UI ni la modal.
 #[tauri::command]
-pub async fn codeindex_index(project: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let (py, cli) = codeindex_python().ok_or("CODEINDEX_MISSING: CodeIndex introuvable")?;
-        let status = Command::new(py)
-            .args([&cli, "index", &project, "--device", "gpu", "--json"])
-            .status()
-            .map_err(|e| format!("lancement CodeIndex échoué: {e}"))?;
-        if status.success() { Ok(()) } else { Err("indexation échouée".into()) }
-    })
-    .await
-    .unwrap_or_else(|e| Err(e.to_string()))
+pub async fn codeindex_index(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, crate::archive::ExtractionManager>,
+    project: String,
+) -> Result<String, String> {
+    let (py, cli) = codeindex_python().ok_or("CODEINDEX_MISSING: CodeIndex introuvable")?;
+    let job_id = crate::archive::new_job_id();
+    let jc = state.add(&job_id);
+    let name = Path::new(&project).file_name().map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| project.clone());
+    let (jid, proj) = (job_id.clone(), project.clone());
+    std::thread::spawn(move || {
+        crate::archive::emit_progress(&app, &jid, &name, &proj, 0, 0, "indexing", None);
+        let child = Command::new(&py).args([&cli, "index", &proj, "--device", "gpu", "--json"]).spawn();
+        let mut child = match child {
+            Ok(c) => c,
+            Err(e) => { crate::archive::emit_progress(&app, &jid, &name, &proj, 0, 0, "error", Some(e.to_string())); return; }
+        };
+        *jc.child_pid.lock().unwrap() = Some(child.id());
+        let status = child.wait();
+        if jc.cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+            crate::archive::emit_progress(&app, &jid, &name, &proj, 0, 0, "cancelled", None);
+            return;
+        }
+        let ok = status.map(|s| s.success()).unwrap_or(false);
+        let err = if ok { None } else { Some("indexation échouée".to_string()) };
+        crate::archive::emit_progress(&app, &jid, &name, &proj, 1, 1, if ok { "done" } else { "error" }, err);
+    });
+    Ok(job_id)
 }

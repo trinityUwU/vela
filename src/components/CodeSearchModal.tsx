@@ -8,7 +8,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Phase = "idle" | "searching" | "indexing" | "error";
+type Phase = "idle" | "searching" | "error";
 
 export function CodeSearchModal({ project, onReveal, onClose }: Props) {
   const [query, setQuery] = useState("");
@@ -33,20 +33,19 @@ export function CodeSearchModal({ project, onReveal, onClose }: Props) {
   };
 
   const reindex = async (): Promise<void> => {
-    setPhase("indexing");
-    setMsg("Indexation du projet en cours (peut prendre un moment)…");
     try {
+      // Job de fond : progression et annulation gérées dans le panneau d'activité (bas-droite).
       await codeindexIndex(project);
-      setMsg("Indexation terminée.");
       setPhase("idle");
-      await search();
+      setMsg("Indexation lancée — suivez la progression en bas à droite, puis relancez la recherche.");
     } catch (e) {
+      const err = String(e);
       setPhase("error");
-      setMsg(`Indexation échouée : ${String(e)}`);
+      setMsg(err.includes("CODEINDEX_MISSING") ? "CodeIndex n'est pas installé sur cette machine." : err);
     }
   };
 
-  const busy = phase === "searching" || phase === "indexing";
+  const busy = phase === "searching";
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/50" onClick={onClose}>

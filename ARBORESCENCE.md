@@ -161,7 +161,8 @@ vela/
         │                           extraction_pause/resume/cancel/provide_password — ZIP natif
         │                           (AtomicBool pause, by_index_decrypt password), TAR natif,
         │                           7z/RAR process (SIGSTOP/SIGCONT, stdout -bsp1, retry password) ;
-        │                           start_compression (zip/targz, job de fond, statut compressing)
+        │                           start_compression (zip/targz natifs + 7z/rar CLI + mot de passe,
+        │                           run_cli_archiver factorisé) ; emit_progress/new_job_id publics (jobs longs)
         ├── translate.rs            Traduction locale Argos (venv translate-venv) : translate_text/file,
         │                           translate_install_lang (pivot EN), translate_capabilities — 100% offline
         ├── codeindex.rs            Pont CLI CodeIndex (venv dédié) : codeindex_search (FR→EN auto via Argos),

@@ -7,6 +7,17 @@ File manager Linux (Tauri v2 + React/TypeScript) avec **profils de layout** : ch
 
 Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.15 sont documentés dans leurs sections dédiées.
 
+## v2.2 — Compression multi-formats + jobs longs async ✅ LIVRÉ
+
+- **Compression** : formats zip / tar.gz (natifs) + **7z / rar** (CLI) + **mot de passe** optionnel
+  (zip via 7z, 7z AES `-mhe=on`, rar `-hp`). `run_cli_archiver` factorise 7z/rar (progression `-bsp1`,
+  pause/cancel via signaux). CompressModal : 4 formats + champ mot de passe (désactivé si non supporté).
+- **Indexation CodeIndex async** : `codeindex_index` devient un job de fond annulable affiché dans le
+  panneau bas-droite (statut `indexing`), la modal ne bloque plus. Helpers publics `archive::emit_progress`
+  + `new_job_id` + `ExtractionManager::add` → **pattern réutilisable** pour toute tâche longue lancée
+  depuis une modal (émettre sur event `extraction-progress`, s'enregistrer dans `ExtractionManager`).
+  `ExtractionStatus` gagne `indexing`.
+
 ## v2.1 — Traduction locale + CodeIndex + fix compression ✅ LIVRÉ
 
 1. **Fix freeze compression** — `create_archive` (sync, main thread GTK) → `archive::start_compression`,

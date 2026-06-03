@@ -121,3 +121,8 @@ fi
 for tool in pandoc typst libreoffice; do
   command -v "$tool" >/dev/null 2>&1 && echo "✓ $tool présent" || echo "○ $tool absent (conversion docs)  →  sudo pacman -Syu --needed $tool"
 done
+
+# ── Compression (7z, rar) — signalé, pas auto-installé ────────────────────────────────────────
+# p7zip = formats 7z/zip chiffrés (compression + extraction) ; rar = format RAR (non libre, AUR).
+command -v 7z >/dev/null 2>&1 && echo "✓ 7z présent" || echo "○ 7z absent (compression 7z/zip chiffré)  →  sudo pacman -Syu --needed p7zip"
+command -v rar >/dev/null 2>&1 && echo "✓ rar présent" || echo "○ rar absent (compression RAR)  →  yay -S rar  (AUR, non libre)"

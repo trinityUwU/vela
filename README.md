@@ -68,6 +68,30 @@ Un vrai navigateur web multi-onglets dans la zone centrale, moteur WebKit, navig
 - Bouton « Réinitialiser le navigateur » dans les Réglages : efface tout (cookies, sessions, cache) d'un coup.
 - La vidéo (YouTube...) passe en rendu logiciel sur ce navigateur pour éviter un crash de compositing — fluide à l'usage.
 
+**Palette de commandes (`Ctrl+K`)**
+
+Une barre, tu tapes ce que tu veux. Elle cherche en même temps dans tes fichiers (dossier courant + tout le système via un index), dans les actions (convertir, terminal, télécharger, réglages, profils…) et dans tes emplacements. Pas de menu à connaître : tu exprimes l'intention, Vela la trouve. Option avancée : interprétation en langage naturel via un LLM 100 % local (EchoHub), désactivée par défaut.
+
+**Conversion universelle (clic droit → « Convertir vers »)**
+
+Images entre elles et vers PDF (sans rien installer), documents via pandoc (md/html/docx/odt/epub…), bureautique vers PDF via LibreOffice. Tout en local. Les outils externes sont optionnels : absents, l'entrée disparaît proprement.
+
+**Actions intelligentes (clic droit sur une sélection)**
+
+Le menu s'adapte à ce que tu sélectionnes. Plusieurs images → « Créer un PDF ». Des CSV → « Fusionner ». Un dossier en vrac → « Ranger par type / par date » (annulable avec `Ctrl+Z`).
+
+**Git intégré**
+
+Dans un dépôt, les fichiers portent une pastille d'état (modifié / nouveau / supprimé). Un panneau Git assignable à une zone : statut, sélection à valider, commit, bascule de branche, historique. Natif (libgit2), sans appeler `git`.
+
+**Recherche globale**
+
+Un index des noms de fichiers construit en tâche de fond au démarrage, interrogé instantanément depuis la palette — pour retrouver un fichier où qu'il soit.
+
+**OCR (clic droit sur une image ou un PDF → « Extraire le texte »)**
+
+Reconnaissance de texte locale via tesseract (optionnel). Le résultat est écrit à côté du fichier source.
+
 ## Stack
 
 - **Tauri v2** (Rust) + **React 19** + **TypeScript** + **Tailwind v4**

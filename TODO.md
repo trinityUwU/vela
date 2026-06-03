@@ -265,6 +265,10 @@ Navigateur web multi-onglets dans la zone centrale (bouton Globe), vrai moteur W
 
 # ROADMAP v2 — « Effet waouh » : palette + intelligence contextuelle
 
+**✅ LIVRÉ v2.0** (les 8 chantiers ci-dessous) — 47 tests Rust + tests bun (fuzzy, smart-actions) verts,
+build deb+rpm, installé (`vela-bin`, sha256 vérifié), palette validée à l'écran. Spécifications conservées
+ci-dessous comme référence d'implémentation.
+
 **Thèse** : inverser le paradigme. Aujourd'hui l'utilisateur cherche l'outil ; demain il exprime une
 intention (**taper** ou **sélectionner**) et Vela propose + exécute. Pas une feature de plus enterrée
 dans un menu — un point d'entrée unique (palette) + des actions qui apparaissent quand elles sont
@@ -310,7 +314,7 @@ pertinentes + des capacités locales (conversion, OCR, git, recherche globale, L
 
 ---
 
-## Chantier 0 — Refacto App.tsx (prérequis, non-régression totale)
+## ✅ Chantier 0 — Refacto App.tsx (prérequis, non-régression totale)
 
 **Objectif** : libérer App.tsx (500/500) et créer les ancrages pour la palette + le registre d'actions.
 
@@ -330,7 +334,7 @@ comme avant. Tester manuellement chaque modale après extraction. Ne pas toucher
 
 ---
 
-## Chantier 1 — Palette de commandes `Ctrl+K`
+## ✅ Chantier 1 — Palette de commandes `Ctrl+K`
 
 **Objectif** : barre unique centrale, fuzzy match **simultané** sur fichiers (cwd, puis global via
 chantier 5), actions (toutes les commandes existantes), emplacements/favoris. Zéro courbe d'apprentissage.
@@ -361,7 +365,7 @@ Branchement via `OverlayHost` (pas dans App.tsx directement).
 
 ---
 
-## Chantier 2 — Conversion universelle
+## ✅ Chantier 2 — Conversion universelle
 
 **Objectif** : « Convertir vers… » partout (clic droit, palette, drag&drop). 100 % local.
 
@@ -397,7 +401,7 @@ temps de build (acceptable).
 
 ---
 
-## Chantier 3 — Actions contextuelles intelligentes
+## ✅ Chantier 3 — Actions contextuelles intelligentes
 
 **Objectif** : `ContextMenu` réactif au **type collectif** de la sélection ; bonnes actions en tête.
 
@@ -429,7 +433,7 @@ restaure. Checkpoint git.
 
 ---
 
-## Chantier 4 — Git natif visuel
+## ✅ Chantier 4 — Git natif visuel
 
 **Stack / souveraineté** : crate `git2` (libgit2, build **vendored**, offline). Pas de process `git` externe.
 
@@ -463,7 +467,7 @@ repo → badges + commit depuis le panneau ; dossier non-git → message propre.
 
 ---
 
-## Chantier 5 — Recherche globale indexée
+## ✅ Chantier 5 — Recherche globale indexée
 
 **Objectif** : recherche système **instantanée** par nom, branchée dans la palette + la barre de
 recherche (mode « global »). Contenu à la demande = `search_content` existant.
@@ -491,7 +495,7 @@ Checkpoint git.
 
 ---
 
-## Chantier 6 — OCR / extraction de texte
+## ✅ Chantier 6 — OCR / extraction de texte
 
 **Stack / souveraineté** : `tesseract` (binaire) + données langue (`tesseract-data-fra`/`-eng`).
 Optionnel, détecté.
@@ -514,7 +518,7 @@ correct. Checkpoint git.
 
 ---
 
-## Chantier 7 — Langage naturel local via EchoHub (optionnel, opt-in strict)
+## ✅ Chantier 7 — Langage naturel local via EchoHub (optionnel, opt-in strict)
 
 **Objectif** : la palette comprend l'intention en langage naturel via LLM **100 % local**
 (EchoHub `http://127.0.0.1:37821`, API Anthropic Messages). **DÉSACTIVÉ par défaut.**

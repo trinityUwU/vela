@@ -3,14 +3,14 @@
 ## Objectif
 File manager Linux (Tauri v2 + React/TypeScript) avec **profils de layout** : chaque profil compose une disposition par zones (favoris, listing, éditeur, arborescence, terminal). Alternative souveraine à Nemo.
 
-## État — v1.17 (fonctionnel, installé) · 80 commandes Rust
+## État — v2.0 (fonctionnel, installé) · 114 commandes Rust
 
 Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.15 sont documentés dans leurs sections dédiées.
 
-## Roadmap v2 — « Effet waouh » (specs complètes dans TODO.md → section « ROADMAP v2 »)
+## v2.0 — « Effet waouh » ✅ LIVRÉ (specs dans TODO.md → section « ROADMAP v2 »)
 
-Thèse : l'utilisateur exprime une intention (taper / sélectionner), Vela propose + exécute. 8 chantiers,
-dans l'ordre :
+Thèse : l'utilisateur exprime une intention (taper / sélectionner), Vela propose + exécute. 8 chantiers livrés
+(tests verts, build deb+rpm, installé, palette validée à l'écran) :
 0. **Refacto App.tsx** (500/500 lignes — prérequis dur, extraction `OverlayHost`)
 1. **Palette `Ctrl+K`** — fuzzy fichiers + actions + lieux, registre unique généré (multiplicateur)
 2. **Conversion universelle** — image (crate `image`)/doc (`pandoc`+`libreoffice`)/pdf (`printpdf`), tout local
@@ -24,6 +24,15 @@ Contraintes transverses (détail TODO.md) : limites code (500/35/120, zéro `any
 externes optionnels + dégradation gracieuse (pattern `media_capabilities`), quirks WebKitGTK (autofocus rAF,
 `<select>` custom, clavier capture+`e.code`), validation hors Playwright (`cargo`/`bun tauri build`/`grim`),
 rituel install `pkill -x vela-bin`, checkpoint git par chantier.
+
+**Nouveaux modules Rust v2** : `convert.rs` (conversion universelle + `images_to_pdf`), `actions.rs`
+(`merge_csv`/`organize_dir`), `git.rs` (git2 vendored, `git_status` async), `index.rs` (`SearchIndex`
+managé, build background au setup), `ocr.rs` (tesseract, async). **Front v2** : `services/fuzzy.ts`,
+`useCommandRegistry`/`useCommandPalette`/`CommandPalette`, `useGridNav`, `useGitStatus`/`GitPanel`,
+`useNlSettings`/`services/nl.ts`, `useFileActions`, `OverlayHost`, `smart-actions.ts`,
+`services/{convert,actions,git,search-index,ocr,path-util}.ts`. `PanelId` gagne `git`.
+**Deps ajoutées** : `printpdf 0.7`, `git2 0.19` (vendored). Binaires optionnels : pandoc, libreoffice,
+tesseract, pdftoppm (détectés, non installés auto).
 
 ## Socle — v1.5
 

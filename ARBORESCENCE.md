@@ -27,6 +27,15 @@ vela/
 │   │   ├── tags.ts                 Palette couleur (7 clés→hex) + load_tags/set_tag wrappers
 │   │   ├── profiles.ts             Wrappers load/save_profiles
 │   │   ├── browser.ts              Wrappers navigateur (create/navigate/show/hide/eval/close/reset) + normalizeUrl
+│   │   ├── fuzzy.ts                Matcher fuzzy par subséquence (palette) — pur, testé (+ .test.ts)
+│   │   ├── convert.ts              Wrappers conversion (capabilities/targets/file) + images_to_pdf
+│   │   ├── actions.ts              Wrappers actions intelligentes (merge_csv / organize_dir)
+│   │   ├── smart-actions.ts        Actions selon type collectif de la sélection — pur, testé (+ .test.ts)
+│   │   ├── git.ts                  Wrappers git (status/branch/log/stage/commit/checkout/diff)
+│   │   ├── search-index.ts         Recherche globale (index_refresh / global_search)
+│   │   ├── ocr.ts                  Wrappers OCR (capabilities / extract)
+│   │   ├── nl.ts                   Résolution langage naturel via EchoHub (API Messages locale)
+│   │   ├── path-util.ts            Helpers chemin partagés (archiveStem / parentDir / baseName)
 │   │   └── format.ts               Util partagé fmtSize / fmtDate
 │   │
 │   ├── hooks/
@@ -50,11 +59,20 @@ vela/
 │   │   ├── useTransfers.ts         Écoute transfer-progress → Map<id, TransferJob> (copie/déplacement)
 │   │   ├── useThumbnail.ts         Miniature lazy (IntersectionObserver) + file concurrence globale 4
 │   │   ├── useTerminals.ts         Onglets terminal : open/close PTY, onglet actif, rename + color (mémoire)
-│   │   └── useBrowser.ts           Onglets navigateur : open/close/navigate/back/forward/reload/reset, event browser-nav
+│   │   ├── useBrowser.ts           Onglets navigateur : open/close/navigate/back/forward/reload/reset, event browser-nav
+│   │   ├── useGridNav.ts           Navigation clavier grille/liste (flèches+Entrée, capture phase, e.code)
+│   │   ├── useCommandRegistry.ts   Registre d'actions de la palette (généré depuis les handlers d'App)
+│   │   ├── useCommandPalette.ts    État d'ouverture de la palette Ctrl+K
+│   │   ├── useGitStatus.ts         Statut git du cwd (map path→statut + branche), refresh debounce fs-changed
+│   │   ├── useFileActions.ts       runSmartAction (PDF/CSV/rangement) + runOcr — extraits d'App
+│   │   └── useNlSettings.ts        Réglages palette intelligente (LLM local) — localStorage, off par défaut
 │   │
 │   └── components/
 │       ├── Topbar.tsx              Sélecteur de profil + bouton éditeur, PathBar éditable, search, drop crumbs
-│       ├── ZoneLayout.tsx          Rend le centre par zones (left/center/right/bottom) selon le profil actif (+ centerOverride navigateur)
+│       ├── ZoneLayout.tsx          Rend le centre par zones (left/center/right/bottom) selon le profil actif (+ centerOverride navigateur, panneau git)
+│       ├── OverlayHost.tsx         Hôte des overlays conditionnels (palette, réglages, profils, download, diff, analyse) — extrait d'App
+│       ├── CommandPalette.tsx      Palette Ctrl+K : fuzzy actions + fichiers cwd + recherche globale + « Interpréter » (LLM)
+│       ├── GitPanel.tsx            Panneau git (zone) : statut, sélection à valider, commit, bascule branche, log
 │       ├── BrowserView.tsx         Navigateur intégré : chrome onglets + barre d'adresse + useNativeSync (mesure bounds → couche wry native)
 │       ├── TerminalDock.tsx        Dock terminal bas (extrait d'App.tsx) — rendu hors zone profil
 │       ├── FileTree.tsx            Arborescence dossiers pliable, lazy par expand (listDir filtré), cwd surligné
@@ -101,13 +119,22 @@ vela/
 └── src-tauri/
     ├── Cargo.toml                  zip, tar, flate2, bzip2, xz2, base64, mime_guess, trash, walkdir, notify, image,
     │                               portable-pty, gstreamer + gstreamer-app + gstreamer-video (lecteur vidéo),
-    │                               spectrum-analyzer (FFT spectre audio) ;
+    │                               spectrum-analyzer (FFT spectre audio), printpdf 0.7 (image→pdf),
+    │                               git2 0.19 vendored (intégration git) ;
     │                               [cfg linux] wry 0.55, gtk 0.18, webkit2gtk 2.0 (navigateur intégré)
     ├── tauri.conf.json             1200×780, decorations:false, devUrl:1430, targets:deb+rpm
     ├── capabilities/default.json   core:default, start-dragging, opener:default + allow-open-path
     └── src/
         ├── main.rs
-        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal/Player Manager) + 80 commandes
+        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal/Player/SearchIndex) +
+        │                           setup (build index background) + 114 commandes
+        ├── convert.rs              Conversion universelle : image (crate image) / pandoc / libreoffice → pdf /
+        │                           printpdf (image→pdf, images_to_pdf multi-pages) — routage testé
+        ├── actions.rs              Actions intelligentes : merge_csv (1 header) + organize_dir (type/date, moves undo)
+        ├── git.rs                  Git natif (git2 vendored) : status (async), branch/branches/log, stage/unstage,
+        │                           commit, checkout_branch, diff_file (HEAD vs worktree) — 2 tests
+        ├── index.rs                SearchIndex (Arc<RwLock> noms mémoire) : build background HOME, global_search subséquence
+        ├── ocr.rs                  OCR tesseract (async) : image directe / PDF via pdftoppm — parse_langs testé
         ├── browser.rs              Navigateur intégré (Linux) : webviews wry build_gtk dans gtk::Fixed/Overlay,
         │                           contourne bug Tauri #10420, HW accel Never (anti-crash vidéo), WebContext persistant + reset
         ├── analyze.rs              analyze_disk : plus gros fichiers + doublons (walkdir + hash DefaultHasher)
@@ -124,7 +151,7 @@ vela/
         ├── thumbs.rs               thumbnail (crate image, PNG base64, cache ~/.cache/vela/thumbs)
         ├── places.rs               home_dir, list_places (XDG + mounts)
         ├── favorites.rs            load/save favorites (JSON ~/.config/vela/)
-        ├── profiles.rs             load/save profiles (JSON ~/.config/vela/) + seed Explorateur/Édition
+        ├── profiles.rs             load/save profiles (JSON ~/.config/vela/) + seed Explorateur/Édition ; PanelId inclut git
         ├── tags.rs                 load_tags/set_tag — étiquettes couleur (~/.config/vela/tags.json)
         ├── archive.rs              list_archive, ExtractionManager (Tauri state), start_extraction,
         │                           extraction_pause/resume/cancel/provide_password — ZIP natif

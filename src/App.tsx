@@ -17,9 +17,9 @@ import { hexFor } from "./services/tags";
 import { getEntryProps } from "./services/fs";
 import { OverlayHost } from "./components/OverlayHost";
 import { useGridNav } from "./hooks/useGridNav";
+import { useGitStatus } from "./hooks/useGitStatus";
 import { useCommandPalette } from "./hooks/useCommandPalette";
 import { useCommandRegistry } from "./hooks/useCommandRegistry";
-import type { CommandContext } from "./hooks/useCommandRegistry";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TerminalDock } from "./components/TerminalDock";
 import { termInput, availableShells } from "./services/term";
@@ -89,6 +89,7 @@ export default function App() {
   useEffect(() => { fm.setRecorder(undo.push); }, [fm.setRecorder, undo.push]);
   const editorTabs = useEditorTabs(fm.opened, fm.setOpened);
   const tags = useTags();
+  const git = useGitStatus(fm.cwd);
   const { appearance, setAccent, setDensity } = useAppearance();
   const tagHex = useCallback((path: string) => hexFor(tags.colorOf(path)), [tags]);
   const [folderSizes, setFolderSizes] = useState<Record<string, number>>({});
@@ -215,18 +216,15 @@ export default function App() {
     setDiff({ a, b });
   };
 
-  const cmdCtx: CommandContext = {
+  const commands = useCommandRegistry({
     refresh: fm.refresh, toggleHidden: fm.toggleHidden, goUp: fm.goUp, goBack: fm.goBack, goForward: fm.goForward,
     navigate: fm.navigate, switchProfile: profiles.setActive, places: fm.places, profiles: profiles.profiles,
-    activeProfileId: profiles.activeId,
-    openTerminal: () => openTerminalHere(fm.cwd),
+    activeProfileId: profiles.activeId, openTerminal: () => openTerminalHere(fm.cwd),
     openSettings: () => setSettingsOpen(true), openProfileEditor: () => setProfileEditorOpen(true),
-    openDownload: () => setDownloadOpen(true), openBrowser: () => setBrowserOpen(true),
-    openSearch: () => search.setOpen(true),
+    openDownload: () => setDownloadOpen(true), openBrowser: () => setBrowserOpen(true), openSearch: () => search.setOpen(true),
     newFile: () => setDialog({ kind: "newfile" }), newFolder: () => setDialog({ kind: "newfolder" }),
     emptyTrash: () => setDialog({ kind: "emptytrash" }),
-  };
-  const commands = useCommandRegistry(cmdCtx);
+  });
 
   const runSmartAction = (id: SmartActionId, sel: DirEntry[]) => {
     const paths = sel.map((e) => e.path);
@@ -349,6 +347,7 @@ export default function App() {
           onMove: fm.moveEntry,
           folderSizes,
           colorOf: tagHex,
+          gitOf: (path: string) => git.statusMap.get(path),
           onColumns: (c) => { gridCols.current = c; },
         }}
         editor={{
@@ -381,6 +380,7 @@ export default function App() {
           onError: fm.setError,
         }}
         terminal={terminalProps}
+        git={{ state: git, cwd: fm.cwd, onError: fm.setError }}
       />
 
       {!terminalInZone && (termVisible || terminals.tabs.length > 0) && (

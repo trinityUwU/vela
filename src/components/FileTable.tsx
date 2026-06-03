@@ -19,7 +19,16 @@ interface Props {
   onMove: (src: string, destDir: string) => void;
   folderSizes: Record<string, number>;
   colorOf: (path: string) => string | undefined;
+  gitOf?: (path: string) => string | undefined;
 }
+
+const GIT_COLOR: Record<string, string> = {
+  modified: "#e2b340",
+  new: "#4caf50",
+  deleted: "#e0524f",
+  renamed: "#5b9bd5",
+  ignored: "#6b7280",
+};
 
 const COLS: { by: SortBy; label: string; className: string }[] = [
   { by: "name", label: "Nom", className: "flex-1 min-w-0" },
@@ -29,7 +38,7 @@ const COLS: { by: SortBy; label: string; className: string }[] = [
 ];
 
 export function FileTable(props: Props) {
-  const { entries, selection, active, sort, onToggleBy, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, folderSizes, colorOf } = props;
+  const { entries, selection, active, sort, onToggleBy, onSelect, onOpen, onContext, onContextBg, onClearBg, onMove, folderSizes, colorOf, gitOf } = props;
   const handleBg = (e: React.MouseEvent) => { e.preventDefault(); onContextBg(e); };
   const arrow = (by: SortBy) => (sort.by === by ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
 
@@ -57,6 +66,7 @@ export function FileTable(props: Props) {
               active={active === e.path}
               dirSize={folderSizes[e.path]}
               color={colorOf(e.path)}
+              git={gitOf?.(e.path)}
               onSelect={onSelect}
               onOpen={onOpen}
               onContext={onContext}
@@ -69,12 +79,13 @@ export function FileTable(props: Props) {
   );
 }
 
-function Row({ entry, selected, active, dirSize, color, onSelect, onOpen, onContext, onMove }: {
+function Row({ entry, selected, active, dirSize, color, git, onSelect, onOpen, onContext, onMove }: {
   entry: DirEntry;
   selected: boolean;
   active: boolean;
   dirSize?: number;
   color?: string;
+  git?: string;
   onSelect: (e: DirEntry, ev: React.MouseEvent) => void;
   onOpen: (e: DirEntry) => void;
   onContext: (ev: React.MouseEvent, e: DirEntry) => void;
@@ -117,6 +128,7 @@ function Row({ entry, selected, active, dirSize, color, onSelect, onOpen, onCont
         <span className="shrink-0"><FileIcon entry={entry} size={18} /></span>
         <span className="truncate text-sm text-[var(--color-text)]">{entry.name}</span>
         {color && <span className="shrink-0 w-2 h-2 rounded-full" style={{ backgroundColor: color }} />}
+        {git && <span className="shrink-0 w-2 h-2 rounded-full" style={{ backgroundColor: GIT_COLOR[git] ?? "#888" }} title={`git: ${git}`} />}
       </span>
       <span className="w-24 text-right text-xs text-[var(--color-text-dim)] tabular-nums">{entry.is_dir ? (dirSize !== undefined ? fmtSize(dirSize) : "—") : fmtSize(entry.size)}</span>
       <span className="w-36 text-xs text-[var(--color-text-dim)] tabular-nums">{fmtDate(entry.modified)}</span>

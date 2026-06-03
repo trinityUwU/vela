@@ -11,6 +11,7 @@ pub enum PanelId {
     Editor,
     Filetree,
     Terminal,
+    Git,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

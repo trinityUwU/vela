@@ -36,7 +36,7 @@ export interface Favorites {
   groups: FavGroup[];
 }
 
-export type PanelId = "sidebar" | "listing" | "editor" | "filetree" | "terminal";
+export type PanelId = "sidebar" | "listing" | "editor" | "filetree" | "terminal" | "git";
 
 export interface Zones {
   left: PanelId | null;

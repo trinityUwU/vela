@@ -11,6 +11,7 @@ mod download_job;
 mod downloader;
 mod favorites;
 mod fs_ops;
+mod git;
 mod imaging;
 mod media_probe;
 mod ops;
@@ -138,6 +139,16 @@ pub fn run() {
             convert::images_to_pdf,
             actions::merge_csv,
             actions::organize_dir,
+            git::git_repo_root,
+            git::git_status,
+            git::git_current_branch,
+            git::git_branches,
+            git::git_log,
+            git::git_stage,
+            git::git_unstage,
+            git::git_commit,
+            git::git_checkout_branch,
+            git::git_diff_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

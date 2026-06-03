@@ -10,6 +10,8 @@ import { FileList } from "./FileList";
 import { EditorArea } from "./EditorArea";
 import { FileTree } from "./FileTree";
 import { TerminalPanel } from "./TerminalPanel";
+import { GitPanel } from "./GitPanel";
+import type { GitState } from "../hooks/useGitStatus";
 import type { TermTab } from "../hooks/useTerminals";
 
 type Favs = ReturnType<typeof useFavorites>;
@@ -52,6 +54,7 @@ interface ListingProps {
   onMove: (src: string, destDir: string) => void;
   folderSizes: Record<string, number>;
   colorOf: (path: string) => string | undefined;
+  gitOf?: (path: string) => string | undefined;
   onColumns: (cols: number) => void;
 }
 
@@ -88,6 +91,7 @@ interface ZoneLayoutProps {
   sidebar: SidebarProps;
   filetree: FileTreeProps;
   terminal: TerminalProps;
+  git: { state: GitState; cwd: string; onError: (msg: string) => void };
   centerOverride?: React.ReactNode;
 }
 
@@ -109,7 +113,7 @@ function ListingPanel({ view, editorActive, p }: {
         entries={p.entries} selection={p.selection} active={p.active} sort={p.sort}
         onToggleBy={p.onToggleBy} onSelect={p.onSelect} onOpen={p.onOpen}
         onContext={p.onContext} onContextBg={p.onContextBg} onClearBg={p.onClearBg}
-        onMove={p.onMove} folderSizes={p.folderSizes} colorOf={p.colorOf}
+        onMove={p.onMove} folderSizes={p.folderSizes} colorOf={p.colorOf} gitOf={p.gitOf}
       />
     );
   }
@@ -118,7 +122,7 @@ function ListingPanel({ view, editorActive, p }: {
       entries={p.entries} selection={p.selection} active={p.active}
       onSelect={p.onSelect} onOpen={p.onOpen} onContext={p.onContext}
       onContextBg={p.onContextBg} onClearBg={p.onClearBg} onMove={p.onMove}
-      onColumns={p.onColumns} colorOf={p.colorOf}
+      onColumns={p.onColumns} colorOf={p.colorOf} gitOf={p.gitOf}
     />
   );
 }
@@ -135,6 +139,8 @@ function renderPanel(panel: PanelId, props: ZoneLayoutProps): React.ReactElement
       return <FileTree {...props.filetree} />;
     case "terminal":
       return <TerminalPanel {...props.terminal} />;
+    case "git":
+      return <GitPanel git={props.git.state} cwd={props.git.cwd} onError={props.git.onError} />;
     default:
       return null;
   }

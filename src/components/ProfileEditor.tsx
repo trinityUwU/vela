@@ -4,13 +4,14 @@ import type { PanelId, Profile, Zones } from "../types";
 import { selectCls } from "./download-ui";
 import { Sliders, Trash } from "./icons";
 
-const PANELS: PanelId[] = ["sidebar", "listing", "editor", "filetree", "terminal"];
+const PANELS: PanelId[] = ["sidebar", "listing", "editor", "filetree", "terminal", "git"];
 const PANEL_LABELS: Record<PanelId, string> = {
   sidebar: "Favoris",
   listing: "Liste fichiers",
   editor: "Éditeur",
   filetree: "Arborescence",
   terminal: "Terminal",
+  git: "Git",
 };
 const ZONE_LABELS: { key: keyof Zones; label: string; optional: boolean }[] = [
   { key: "left", label: "Gauche", optional: true },

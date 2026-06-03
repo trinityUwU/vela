@@ -10,13 +10,22 @@ interface Props {
   selected: boolean;
   active: boolean;
   color?: string;
+  git?: string;
   onClick: (e: React.MouseEvent) => void;
   onDouble: () => void;
   onContext: (e: React.MouseEvent) => void;
   onMove: (src: string, destDir: string) => void;
 }
 
-export function FileTile({ entry, selected, active, color, onClick, onDouble, onContext, onMove }: Props) {
+const GIT_COLOR: Record<string, string> = {
+  modified: "#e2b340",
+  new: "#4caf50",
+  deleted: "#e0524f",
+  renamed: "#5b9bd5",
+  ignored: "#6b7280",
+};
+
+export function FileTile({ entry, selected, active, color, git, onClick, onDouble, onContext, onMove }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const isImage = !entry.is_dir && previewKind(entry.extension) === "image";
@@ -83,6 +92,13 @@ export function FileTile({ entry, selected, active, color, onClick, onDouble, on
           <span
             className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-[var(--color-bg)]"
             style={{ backgroundColor: color }}
+          />
+        )}
+        {git && (
+          <span
+            className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-[var(--color-bg)]"
+            style={{ backgroundColor: GIT_COLOR[git] ?? "#888" }}
+            title={`git: ${git}`}
           />
         )}
       </span>

@@ -221,7 +221,7 @@ export default function App() {
     setError: fm.setError, refresh: fm.refresh, pushUndo: undo.push,
     onMissingOcr: () => install.request({
       label: "tesseract (OCR)",
-      cmd: "sudo pacman -S --needed tesseract tesseract-data-fra tesseract-data-eng poppler",
+      cmd: "sudo pacman -Syu --needed tesseract tesseract-data-fra tesseract-data-eng poppler",
     }),
   });
   const selectedEntries = entries.filter((e) => fm.selection.has(e.path));

@@ -83,10 +83,11 @@ if command -v tesseract >/dev/null 2>&1 && command -v pdftoppm >/dev/null 2>&1; 
   echo "✓ OCR déjà disponible (tesseract + poppler)"
 elif command -v pacman >/dev/null 2>&1; then
   echo "→ installation de la stack OCR ($OCR_PKGS)…"
-  if sudo pacman -S --needed --noconfirm $OCR_PKGS; then
+  # -Sy avant -S : rafraîchit le DB local sinon 404 sur miroirs si la base est périmée.
+  if sudo pacman -Sy --needed --noconfirm $OCR_PKGS; then
     echo "✓ OCR installé"
   else
-    echo "⚠ install OCR échouée — Vela fonctionne ; relance plus tard ou via le bouton « Installer » dans l'app"
+    echo "⚠ install OCR échouée — base de paquets périmée ? lance « sudo pacman -Syu » puis relance ./install.sh"
   fi
 else
   echo "○ pacman absent — pour l'OCR : installe $OCR_PKGS avec ton gestionnaire de paquets"

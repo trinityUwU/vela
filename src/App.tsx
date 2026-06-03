@@ -61,7 +61,7 @@ export default function App() {
   const favs = useFavorites();
   const search = useSearch(fm.cwd);
   const { sort, toggleBy, update: updateSort } = useSort();
-  const { jobs: extractionJobs } = useExtractions();
+  const { jobs: extractionJobs } = useExtractions(fm.refresh);
   const { jobs: transferJobs } = useTransfers();
   const { jobs: ocrJobs } = useOcrJobs();
   const [menu, setMenu] = useState<Menu>(null);

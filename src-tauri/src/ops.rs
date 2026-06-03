@@ -9,7 +9,6 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager};
 use walkdir::WalkDir;
-use zip::write::SimpleFileOptions;
 
 // ── contrôle des transferts (pause / reprise / annulation) ───────────────────
 
@@ -476,77 +475,6 @@ pub async fn move_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
     })
     .await
     .map_err(|e| e.to_string())?
-}
-
-// ── compression ─────────────────────────────────────────────────────────────
-
-fn zip_add_path(
-    writer: &mut zip::ZipWriter<fs::File>,
-    base: &Path,
-    src: &Path,
-    opts: SimpleFileOptions,
-) -> std::io::Result<()> {
-    for entry in WalkDir::new(src).into_iter().filter_map(|e| e.ok()) {
-        let path = entry.path();
-        let rel = path.strip_prefix(base).unwrap_or(path).to_string_lossy().replace('\\', "/");
-        if path.is_dir() {
-            if !rel.is_empty() {
-                writer.add_directory(format!("{rel}/"), opts)?;
-            }
-        } else {
-            writer.start_file(rel, opts)?;
-            let mut f = fs::File::open(path)?;
-            std::io::copy(&mut f, writer)?;
-        }
-    }
-    Ok(())
-}
-
-fn create_zip(paths: &[String], dest: &Path) -> std::io::Result<()> {
-    let file = fs::File::create(dest)?;
-    let mut writer = zip::ZipWriter::new(file);
-    let opts = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-    for path in paths {
-        let src = Path::new(path);
-        let base = src.parent().unwrap_or(Path::new("/"));
-        zip_add_path(&mut writer, base, src, opts)?;
-    }
-    writer.finish()?;
-    Ok(())
-}
-
-fn create_targz(paths: &[String], dest: &Path) -> std::io::Result<()> {
-    let file = fs::File::create(dest)?;
-    let enc = flate2::write::GzEncoder::new(file, flate2::Compression::default());
-    let mut builder = tar::Builder::new(enc);
-    for path in paths {
-        let src = Path::new(path);
-        let name = src.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-        if src.is_dir() {
-            builder.append_dir_all(&name, src)?;
-        } else {
-            let mut f = fs::File::open(src)?;
-            builder.append_file(&name, &mut f)?;
-        }
-    }
-    builder.into_inner()?.finish()?;
-    Ok(())
-}
-
-// Crée une archive (format « zip » ou « targz ») depuis une sélection de chemins.
-#[tauri::command]
-pub fn create_archive(paths: Vec<String>, dest: String, format: String) -> Result<String, String> {
-    let dest_path = Path::new(&dest);
-    let res = match format.as_str() {
-        "zip" => create_zip(&paths, dest_path),
-        "targz" => create_targz(&paths, dest_path),
-        other => return Err(format!("format inconnu: {other}")),
-    };
-    res.map_err(|e| {
-        eprintln!("[create_archive] {dest}: {e}");
-        e.to_string()
-    })?;
-    Ok(dest)
 }
 
 // ── recherche dans le contenu ───────────────────────────────────────────────

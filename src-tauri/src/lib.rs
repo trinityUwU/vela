@@ -67,7 +67,7 @@ pub fn run() {
             ops::transfer_pause,
             ops::transfer_resume,
             ops::transfer_cancel,
-            ops::create_archive,
+            archive::start_compression,
             ops::search_content,
             ops::trash_dir,
             ops::trash_count,

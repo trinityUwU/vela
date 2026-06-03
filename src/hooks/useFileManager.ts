@@ -380,8 +380,8 @@ export function useFileManager() {
   const compress = useCallback(
     async (paths: string[], dest: string, format: "zip" | "targz") => {
       try {
-        await fs.createArchive(paths, dest, format);
-        await refresh();
+        // Job de fond : la progression et le rafraîchissement sont gérés via les events extraction-progress.
+        await fs.startCompression(paths, dest, format);
       } catch (e) {
         setError(String(e));
       }

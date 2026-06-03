@@ -15,9 +15,11 @@ interface RawPayload {
 
 const DISMISS_DELAY_MS = 6000;
 
-export function useExtractions() {
+export function useExtractions(onComplete?: () => void) {
   const [jobs, setJobs] = useState<Map<string, ExtractionJob>>(new Map());
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     const unlistenP = listen<RawPayload>("extraction-progress", ({ payload: p }) => {
@@ -39,6 +41,7 @@ export function useExtractions() {
 
       const terminal = ["done", "error", "cancelled"].includes(p.status);
       if (terminal) {
+        if (p.status === "done") onCompleteRef.current?.();
         const existing = timers.current.get(p.job_id);
         if (existing) clearTimeout(existing);
         const t = setTimeout(() => {

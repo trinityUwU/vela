@@ -401,7 +401,113 @@ fn parse_7z_progress(line: &str) -> Option<u64> {
     None
 }
 
+// ── compression avec progression ──────────────────────────────────────────────
+
+struct CompressItem {
+    abs: PathBuf,
+    rel: String,
+    is_dir: bool,
+}
+
+// Liste récursive des fichiers à compresser, avec chemin relatif au parent de chaque racine.
+fn walk_compress_items(paths: &[String]) -> Vec<CompressItem> {
+    let mut out = Vec::new();
+    for path in paths {
+        let src = Path::new(path);
+        let base = src.parent().unwrap_or_else(|| Path::new("/"));
+        for entry in walkdir::WalkDir::new(src).into_iter().filter_map(|e| e.ok()) {
+            let p = entry.path();
+            let rel = p.strip_prefix(base).unwrap_or(p).to_string_lossy().replace('\\', "/");
+            if rel.is_empty() { continue; }
+            out.push(CompressItem { abs: p.to_path_buf(), rel, is_dir: p.is_dir() });
+        }
+    }
+    out
+}
+
+fn compress_base(job_id: &str, dest: &Path) -> ProgressPayload {
+    let archive_name = dest.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let parent = dest.parent().unwrap_or_else(|| Path::new("/")).to_string_lossy().to_string();
+    ProgressPayload { status: "compressing".into(), ..base_payload(job_id, &archive_name, &parent) }
+}
+
+fn zip_write_item(writer: &mut zip::ZipWriter<fs::File>, it: &CompressItem,
+    opts: zip::write::SimpleFileOptions) -> std::io::Result<()> {
+    if it.is_dir {
+        writer.add_directory(format!("{}/", it.rel), opts)?;
+    } else {
+        writer.start_file(it.rel.clone(), opts)?;
+        let mut f = fs::File::open(&it.abs)?;
+        std::io::copy(&mut f, writer)?;
+    }
+    Ok(())
+}
+
+fn run_zip_compress_job(app: AppHandle, jc: Arc<JobControl>, job_id: String, paths: Vec<String>, dest: String) {
+    let dest_path = Path::new(&dest);
+    let base = compress_base(&job_id, dest_path);
+    let items = walk_compress_items(&paths);
+    let total = items.len() as u64;
+    let opts = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let Ok(file) = fs::File::create(dest_path) else {
+        finish(&app, base, Some("Impossible de créer l'archive".into())); return;
+    };
+    let mut writer = zip::ZipWriter::new(file);
+    for (i, it) in items.iter().enumerate() {
+        if pause_wait(&jc) { let _ = fs::remove_file(dest_path); finish(&app, base, Some("Annulé".into())); return; }
+        if let Err(e) = zip_write_item(&mut writer, it, opts) { finish(&app, base, Some(e.to_string())); return; }
+        emit(&app, ProgressPayload { current: (i + 1) as u64, total, ..base.clone() });
+    }
+    match writer.finish() {
+        Ok(_) => finish(&app, base, None),
+        Err(e) => finish(&app, base, Some(e.to_string())),
+    }
+}
+
+fn run_targz_compress_job(app: AppHandle, jc: Arc<JobControl>, job_id: String, paths: Vec<String>, dest: String) {
+    let dest_path = Path::new(&dest);
+    let base = compress_base(&job_id, dest_path);
+    let items = walk_compress_items(&paths);
+    let total = items.len() as u64;
+    let Ok(file) = fs::File::create(dest_path) else {
+        finish(&app, base, Some("Impossible de créer l'archive".into())); return;
+    };
+    let enc = flate2::write::GzEncoder::new(file, flate2::Compression::default());
+    let mut builder = tar::Builder::new(enc);
+    for (i, it) in items.iter().enumerate() {
+        if pause_wait(&jc) { let _ = fs::remove_file(dest_path); finish(&app, base, Some("Annulé".into())); return; }
+        let r = if it.is_dir { builder.append_dir(&it.rel, &it.abs) }
+            else { fs::File::open(&it.abs).and_then(|mut f| builder.append_file(&it.rel, &mut f)) };
+        if let Err(e) = r { finish(&app, base, Some(e.to_string())); return; }
+        emit(&app, ProgressPayload { current: (i + 1) as u64, total, ..base.clone() });
+    }
+    match builder.into_inner().and_then(|enc| enc.finish()) {
+        Ok(_) => finish(&app, base, None),
+        Err(e) => finish(&app, base, Some(e.to_string())),
+    }
+}
+
 // ── tauri commands ────────────────────────────────────────────────────────────
+
+// Crée une archive (zip/targz) en tâche de fond, avec progression/pause/annulation.
+#[tauri::command]
+pub async fn start_compression(
+    app: AppHandle,
+    state: tauri::State<'_, ExtractionManager>,
+    paths: Vec<String>,
+    dest: String,
+    format: String,
+) -> Result<String, String> {
+    if format != "zip" && format != "targz" { return Err(format!("format inconnu: {format}")); }
+    let job_id = new_job_id();
+    let jc = state.add(&job_id);
+    let jid = job_id.clone();
+    std::thread::spawn(move || {
+        if format == "zip" { run_zip_compress_job(app, jc, jid, paths, dest); }
+        else { run_targz_compress_job(app, jc, jid, paths, dest); }
+    });
+    Ok(job_id)
+}
 
 #[tauri::command]
 pub async fn list_archive(path: String) -> Result<Vec<ArchiveEntry>, String> {

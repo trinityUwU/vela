@@ -126,7 +126,7 @@ function JobRow({ job, onNavigate }: { job: ExtractionJob; onNavigate: (p: strin
     <div className="px-3 py-2.5 flex flex-col gap-1.5">
       <div className="flex items-center gap-1.5">
         <span className="flex-1 text-xs text-[var(--color-text)] truncate font-medium" title={job.archiveName}>
-          {job.archiveName}
+          {job.status === "compressing" ? "Compression · " : ""}{job.archiveName}
         </span>
         <StatusBadge job={job} />
       </div>
@@ -248,6 +248,7 @@ function StatusBadge({ job }: { job: ExtractionJob }) {
   const pct = job.total > 0 ? `${Math.round((job.current / job.total) * 100)}%` : null;
   const map: Record<string, { label: string; cls: string }> = {
     extracting:        { label: pct ?? "En cours…", cls: "text-[var(--color-text-dim)]" },
+    compressing:       { label: pct ?? "En cours…", cls: "text-[var(--color-text-dim)]" },
     paused:            { label: "En pause",         cls: "text-amber-400" },
     done:              { label: "Terminé",           cls: "text-green-400" },
     error:             { label: "Erreur",            cls: "text-[var(--color-danger)]" },

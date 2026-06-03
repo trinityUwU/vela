@@ -7,6 +7,23 @@ File manager Linux (Tauri v2 + React/TypeScript) avec **profils de layout** : ch
 
 Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.15 sont documentés dans leurs sections dédiées.
 
+## v2.1 — Traduction locale + CodeIndex + fix compression ✅ LIVRÉ
+
+1. **Fix freeze compression** — `create_archive` (sync, main thread GTK) → `archive::start_compression`,
+   job de fond réutilisant `ExtractionManager` (progression temps réel, pause/reprise/annulation,
+   panneau bas-droite). Statut `compressing`. Plus de « Application Not Responding ».
+2. **Traducteur local (Argos Translate)** — `translate.rs` (capabilities, `translate_text`,
+   `translate_file` → sidecar `<nom>.<lang>.txt`, `translate_install_lang` avec pivot EN). Venv
+   `~/.local/share/vela/translate-venv` (install.sh, paires fr<->en par défaut). 100% offline après
+   1er téléchargement. UI : clic droit fichier texte → « Traduire… » + `TranslateModal`.
+3. **CodeIndex intégré** — `codeindex.rs` : pont vers le CLI CodeIndex local (venv dédié). Requête FR
+   traduite en EN (Argos) avant l'appel. UI : `CodeSearchModal` (palette « Recherche de code »),
+   résultats classés cluster/score, clic = navigation, bouton réindexer.
+
+**Modules Rust v2.1** : `translate.rs`, `codeindex.rs`. Compression déplacée `ops.rs`→`archive.rs`.
+**Front v2.1** : `services/{translate,codeindex}.ts`, `TranslateModal`, `CodeSearchModal`,
+`useExtractions(onComplete)`, `ExtractionStatus` gagne `compressing`, commande palette `code-search`.
+
 ## v2.0 — « Effet waouh » ✅ LIVRÉ (specs dans TODO.md → section « ROADMAP v2 »)
 
 Thèse : l'utilisateur exprime une intention (taper / sélectionner), Vela propose + exécute. 8 chantiers livrés

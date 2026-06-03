@@ -34,6 +34,8 @@ vela/
 │   │   ├── git.ts                  Wrappers git (status/branch/log/stage/commit/checkout/diff)
 │   │   ├── search-index.ts         Recherche globale (index_refresh / global_search)
 │   │   ├── ocr.ts                  Wrappers OCR (capabilities / extract)
+│   │   ├── translate.ts            Wrappers traduction Argos (capabilities/text/file/install) + LANGUAGES
+│   │   ├── codeindex.ts            Wrappers CodeIndex (available/search/index) + type CodeHit
 │   │   ├── nl.ts                   Résolution langage naturel via EchoHub (API Messages locale)
 │   │   ├── path-util.ts            Helpers chemin partagés (archiveStem / parentDir / baseName)
 │   │   └── format.ts               Util partagé fmtSize / fmtDate
@@ -54,7 +56,7 @@ vela/
 │   │   ├── useEditorTabs.ts        Onglets multi-fichiers mode Édition (sync sur fm.opened)
 │   │   ├── useTags.ts              Étiquettes couleur : chargement + application optimiste
 │   │   ├── useAppearance.ts        Accent + densité (override CSS vars + font-size), persisté
-│   │   ├── useExtractions.ts       Écoute events Tauri extraction-progress → Map<id, ExtractionJob>
+│   │   ├── useExtractions.ts       Écoute events extraction-progress → Map<id, ExtractionJob> ; onComplete sur done
 │   │   │                           auto-dismiss 6s états terminaux
 │   │   ├── useTransfers.ts         Écoute transfer-progress → Map<id, TransferJob> (copie/déplacement)
 │   │   ├── useThumbnail.ts         Miniature lazy (IntersectionObserver) + file concurrence globale 4
@@ -70,7 +72,9 @@ vela/
 │   └── components/
 │       ├── Topbar.tsx              Sélecteur de profil + bouton éditeur, PathBar éditable, search, drop crumbs
 │       ├── ZoneLayout.tsx          Rend le centre par zones (left/center/right/bottom) selon le profil actif (+ centerOverride navigateur, panneau git)
-│       ├── OverlayHost.tsx         Hôte des overlays conditionnels (palette, réglages, profils, download, diff, analyse) — extrait d'App
+│       ├── OverlayHost.tsx         Hôte des overlays conditionnels (palette, réglages, profils, download, diff, analyse, traduction, recherche code)
+│       ├── TranslateModal.tsx      Traduction fichier texte : choix langues + install paquet à la volée (Argos)
+│       ├── CodeSearchModal.tsx     Recherche sémantique code (CodeIndex) : requête FR, résultats classés, clic = navigation
 │       ├── CommandPalette.tsx      Palette Ctrl+K : fuzzy actions + fichiers cwd + recherche globale + « Interpréter » (LLM)
 │       ├── GitPanel.tsx            Panneau git (zone) : statut, sélection à valider, commit, bascule branche, log
 │       ├── BrowserView.tsx         Navigateur intégré : chrome onglets + barre d'adresse + useNativeSync (mesure bounds → couche wry native)
@@ -144,7 +148,7 @@ vela/
         │                           player_open/open_audio/position/pause/resume/seek/set_volume/close
         ├── fs_ops.rs               CRUD + chunks + search + move + props + open_native + createFile
         ├── ops.rs                  trash/delete/copy/move groupés (copy retourne chemins créés),
-        │                           transfer_pause/resume/cancel, create_archive, search_content,
+        │                           transfer_pause/resume/cancel, search_content,
         │                           trash_dir/trash_count/empty_trash/restore_trash (corbeille XDG)
         ├── watcher.rs              DirWatcher (state) + watch_dir (notify → event fs-changed)
         ├── terminal.rs             TerminalManager (PTY portable-pty) : term_open/input/resize/close
@@ -156,7 +160,12 @@ vela/
         ├── archive.rs              list_archive, ExtractionManager (Tauri state), start_extraction,
         │                           extraction_pause/resume/cancel/provide_password — ZIP natif
         │                           (AtomicBool pause, by_index_decrypt password), TAR natif,
-        │                           7z/RAR process (SIGSTOP/SIGCONT, stdout -bsp1, retry password)
+        │                           7z/RAR process (SIGSTOP/SIGCONT, stdout -bsp1, retry password) ;
+        │                           start_compression (zip/targz, job de fond, statut compressing)
+        ├── translate.rs            Traduction locale Argos (venv translate-venv) : translate_text/file,
+        │                           translate_install_lang (pivot EN), translate_capabilities — 100% offline
+        ├── codeindex.rs            Pont CLI CodeIndex (venv dédié) : codeindex_search (FR→EN auto via Argos),
+        │                           codeindex_index, codeindex_available
         └── apps.rs                 get_apps_for_file, search_path_bins, set_default_app,
                                     set_custom_command (crée .desktop vela-custom/auto-*)
 ```

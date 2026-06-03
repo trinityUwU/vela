@@ -2,6 +2,10 @@
 
 ## Livré
 
+- [x] v2.1 — Fix freeze compression (job async `start_compression`, pause/reprise/annulation)
+- [x] v2.1 — Traducteur local Argos Translate (offline, sidecar, menu contextuel + modal)
+- [x] v2.1 — CodeIndex intégré (recherche sémantique FR→EN, palette + modal)
+- [ ] v2.1 — Conversion de langages de programmation (MIS DE CÔTÉ — promesse intenable en l'état)
 - [x] Preview image inline (base64 data URL, skip useFileContent)
 - [x] Viewer archive ZIP/TAR/GZ/BZ2/XZ/RAR/7Z + extraction (ici ou chemin custom)
 - [x] Drag & drop déplacement (grille, liste, crumbs, sidebar)

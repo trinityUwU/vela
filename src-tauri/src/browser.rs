@@ -72,6 +72,31 @@ mod linux {
         });
     }
 
+    // Active la capture d'événements par le calque (un webview est visible au-dessus de l'UI).
+    fn engage() {
+        LAYER.with(|l| {
+            if let Some(layer) = l.borrow().as_ref() {
+                layer.overlay.set_overlay_pass_through(&layer.fixed, false);
+            }
+        });
+    }
+
+    // Aucun onglet visible : le calque doit devenir transparent aux clics (pass-through) et
+    // se réduire à une surface nulle, sinon il continue d'avaler les clics sur l'ancienne zone.
+    fn collapse() {
+        LAYER.with(|l| {
+            if let Some(layer) = l.borrow().as_ref() {
+                layer.bounds.set((0, 0, 0, 0));
+                layer.overlay.set_overlay_pass_through(&layer.fixed, true);
+                layer.overlay.queue_resize();
+            }
+        });
+    }
+
+    fn any_visible() -> bool {
+        VIEWS.with(|v| v.borrow().values().any(|wv| widget(wv).is_visible()))
+    }
+
     fn ensure_layer(app: &tauri::AppHandle) -> Result<(), String> {
         if LAYER.with(|l| l.borrow().is_some()) {
             return Ok(());
@@ -85,7 +110,9 @@ mod linux {
         vbox.pack_start(&overlay, true, true, 0);
         let fixed = gtk::Fixed::new();
         overlay.add_overlay(&fixed);
-        let bounds: BoundsCell = Rc::new(Cell::new((0, 0, 1, 1)));
+        // Tant qu'aucun onglet n'est affiché, le calque laisse passer les clics vers l'UI.
+        overlay.set_overlay_pass_through(&fixed, true);
+        let bounds: BoundsCell = Rc::new(Cell::new((0, 0, 0, 0)));
         let b = bounds.clone();
         overlay.connect_get_child_position(move |_, _| {
             let (x, y, w, h) = b.get();
@@ -132,6 +159,7 @@ mod linux {
 
     pub fn show(id: String, x: f64, y: f64, w: f64, h: f64) -> Result<(), String> {
         place(x, y, w, h);
+        engage();
         VIEWS.with(|v| {
             for (k, wv) in v.borrow().iter() {
                 if *k == id {
@@ -151,6 +179,9 @@ mod linux {
                 widget(wv).set_visible(false);
             }
         });
+        if !any_visible() {
+            collapse();
+        }
         Ok(())
     }
 
@@ -173,9 +204,14 @@ mod linux {
     }
 
     pub fn close(id: String) -> Result<(), String> {
-        VIEWS.with(|v| {
-            let _ = v.borrow_mut().remove(&id);
+        let empty = VIEWS.with(|v| {
+            let mut b = v.borrow_mut();
+            let _ = b.remove(&id);
+            b.is_empty()
         });
+        if empty {
+            collapse();
+        }
         Ok(())
     }
 
@@ -183,6 +219,7 @@ mod linux {
     // (cookies, sessions, cache). Le contexte est recréé vierge au prochain onglet ouvert.
     pub fn reset() -> Result<(), String> {
         VIEWS.with(|v| v.borrow_mut().clear());
+        collapse();
         CONTEXT.with(|c| *c.borrow_mut() = None);
         if let Some(dir) = DATA_DIR.with(|d| d.borrow().clone()) {
             std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;

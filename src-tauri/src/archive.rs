@@ -508,10 +508,9 @@ fn run_7z_compress_job(app: AppHandle, jc: Arc<JobControl>, job_id: String,
     };
     let mut args = vec!["a".to_string(), "-bsp1".to_string(), "-y".to_string()];
     if as_zip { args.push("-tzip".to_string()); }
-    if let Some(ref p) = pwd {
-        args.push(format!("-p{p}"));
-        if !as_zip { args.push("-mhe=on".to_string()); }
-    }
+    // Chiffrement des données uniquement (pas -mhe : les noms restent lisibles, sinon le listing
+    // sans mot de passe renvoie une archive « vide » et l'extraction ne détecte pas le besoin de passe).
+    if let Some(ref p) = pwd { args.push(format!("-p{p}")); }
     args.push(dest.clone());
     args.extend(paths);
     run_cli_archiver(app, jc, base, cmd, args);
@@ -531,7 +530,8 @@ fn run_rar_compress_job(app: AppHandle, jc: Arc<JobControl>, job_id: String,
         finish(&app, base, Some("rar non trouvé — installer rar".into())); return;
     };
     let mut args = vec!["a".to_string(), "-ep1".to_string(), "-y".to_string()];
-    if let Some(ref p) = pwd { args.push(format!("-hp{p}")); }
+    // -p (données) et non -hp (en-têtes) : noms lisibles → Vela liste + détecte le mot de passe à l'extraction.
+    if let Some(ref p) = pwd { args.push(format!("-p{p}")); }
     args.push("--".to_string());
     args.push(dest.clone());
     args.extend(paths);

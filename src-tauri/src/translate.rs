@@ -38,9 +38,17 @@ fn run_py(code: &str, input: &str) -> Result<String, String> {
 const LIST_LANGS: &str = "import argostranslate.translate as t\n\
 print('\\n'.join(sorted({l.code for l in t.get_installed_languages()})))";
 
-const TRANSLATE: &str = "import sys,argostranslate.translate as t\n\
+const TRANSLATE: &str = "import sys\n\
+from argostranslate import translate as T\n\
 fr,to=sys.argv[1],sys.argv[2]\n\
-sys.stdout.write(t.translate(sys.stdin.read(),fr,to))";
+text=sys.stdin.read()\n\
+langs=T.get_installed_languages()\n\
+src=[l for l in langs if l.code==fr]\n\
+dst=[l for l in langs if l.code==to]\n\
+tr=src[0].get_translation(dst[0]) if src and dst else None\n\
+if tr is None:\n\
+ sys.stderr.write('NO_TRANSLATION'); sys.exit(2)\n\
+sys.stdout.write(tr.translate(text))";
 
 const INSTALL: &str = "import sys,argostranslate.package as p\n\
 fr,to=sys.argv[1],sys.argv[2]\n\
@@ -85,7 +93,7 @@ pub async fn translate_text(text: String, from_lang: String, to_lang: String) ->
         if out.status.success() { Ok(String::from_utf8_lossy(&out.stdout).to_string()) }
         else {
             let err = String::from_utf8_lossy(&out.stderr);
-            if err.contains("argument") || err.contains("no translation") {
+            if err.contains("NO_TRANSLATION") {
                 Err(format!("LANG_MISSING:{from_lang}:{to_lang}"))
             } else {
                 Err(err.lines().last().unwrap_or("traduction échouée").to_string())

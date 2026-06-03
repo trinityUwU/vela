@@ -8,6 +8,8 @@ import { useSearch } from "./hooks/useSearch";
 import { useSort, applySortFilter } from "./hooks/useSort";
 import { useExtractions } from "./hooks/useExtractions";
 import { useTransfers } from "./hooks/useTransfers";
+import { useOcrJobs } from "./hooks/useOcrJobs";
+import { useInstallPrompt } from "./hooks/useInstallPrompt";
 import { useTerminals } from "./hooks/useTerminals";
 import { useUndo } from "./hooks/useUndo";
 import { useEditorTabs } from "./hooks/useEditorTabs";
@@ -34,6 +36,7 @@ import { ContextMenu } from "./components/ContextMenu";
 import { BgContextMenu } from "./components/BgContextMenu";
 import { DialogHost } from "./components/DialogHost";
 import type { Dialog } from "./components/DialogHost";
+import { InstallPrompt } from "./components/InstallPrompt";
 import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { BrowserView } from "./components/BrowserView";
@@ -61,6 +64,7 @@ export default function App() {
   const { sort, toggleBy, update: updateSort } = useSort();
   const { jobs: extractionJobs } = useExtractions();
   const { jobs: transferJobs } = useTransfers();
+  const { jobs: ocrJobs } = useOcrJobs();
   const [menu, setMenu] = useState<Menu>(null);
   const [bgMenu, setBgMenu] = useState<BgMenu>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -85,6 +89,7 @@ export default function App() {
     getEntryProps(path).then((p) => setFolderSizes((m) => ({ ...m, [path]: p.size }))).catch((e) => fm.setError(String(e)));
   }, [fm]);
   const [termVisible, setTermVisible] = useState(false);
+  const install = useInstallPrompt(terminals.open, fm.cwd, () => setTermVisible(true));
   const [termHeight, setTermHeight] = useState(280);
   const [shells, setShells] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -212,7 +217,13 @@ export default function App() {
     emptyTrash: () => setDialog({ kind: "emptytrash" }),
   });
 
-  const { runSmartAction, runOcr } = useFileActions({ setError: fm.setError, refresh: fm.refresh, pushUndo: undo.push });
+  const { runSmartAction, runOcr } = useFileActions({
+    setError: fm.setError, refresh: fm.refresh, pushUndo: undo.push,
+    onMissingOcr: () => install.request({
+      label: "tesseract (OCR)",
+      cmd: "sudo pacman -S --needed tesseract tesseract-data-fra tesseract-data-eng poppler",
+    }),
+  });
   const selectedEntries = entries.filter((e) => fm.selection.has(e.path));
 
   useKeyboard({
@@ -458,7 +469,8 @@ export default function App() {
         <QuickLook entry={quickLook} onClose={() => setQuickLook(null)} onError={fm.setError} />
       )}
 
-      <ExtractionPanel jobs={extractionJobs} transfers={transferJobs} onNavigate={fm.navigate} />
+      <ExtractionPanel jobs={extractionJobs} transfers={transferJobs} ocr={ocrJobs} onNavigate={fm.navigate} />
+      <InstallPrompt prompt={install.prompt} onInstall={install.run} onDismiss={install.dismiss} />
 
       <OverlayHost
         settings={settingsOpen ? {

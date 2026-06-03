@@ -129,6 +129,16 @@ export interface TransferJob {
   error?: string;
 }
 
+export interface OcrJob {
+  id: string;
+  name: string;
+  dest: string;
+  current: number;
+  total: number;
+  status: "running" | "done" | "error";
+  error?: string;
+}
+
 export type ClipboardOp = "copy" | "cut";
 
 export interface Clipboard {

@@ -4,19 +4,21 @@ import {
   extractionPause, extractionResume, extractionCancel, extractionProvidePassword,
   transferPause, transferResume, transferCancel,
 } from "../services/fs";
-import type { ExtractionJob, TransferJob } from "../types";
+import type { ExtractionJob, TransferJob, OcrJob } from "../types";
 
 interface Props {
   jobs: Map<string, ExtractionJob>;
   transfers: Map<string, TransferJob>;
+  ocr: Map<string, OcrJob>;
   onNavigate: (path: string) => void;
 }
 
-export function ExtractionPanel({ jobs, transfers, onNavigate }: Props) {
-  if (jobs.size === 0 && transfers.size === 0) return null;
+export function ExtractionPanel({ jobs, transfers, ocr, onNavigate }: Props) {
+  if (jobs.size === 0 && transfers.size === 0 && ocr.size === 0) return null;
   const active =
     [...jobs.values()].filter((j) => !["done", "error", "cancelled"].includes(j.status)).length +
-    [...transfers.values()].filter((t) => t.status === "transferring").length;
+    [...transfers.values()].filter((t) => t.status === "transferring").length +
+    [...ocr.values()].filter((o) => o.status === "running").length;
 
   return (
     <div className="fixed bottom-3 right-3 z-50 w-80 flex flex-col gap-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl overflow-hidden">
@@ -29,6 +31,9 @@ export function ExtractionPanel({ jobs, transfers, onNavigate }: Props) {
         ))}
         {[...jobs.values()].map((job) => (
           <JobRow key={job.id} job={job} onNavigate={onNavigate} />
+        ))}
+        {[...ocr.values()].map((job) => (
+          <OcrRow key={job.id} job={job} onNavigate={onNavigate} />
         ))}
       </div>
     </div>
@@ -185,6 +190,38 @@ function JobRow({ job, onNavigate }: { job: ExtractionJob; onNavigate: (p: strin
         <div className="flex justify-end">
           <button onClick={() => onNavigate(job.dest)} className="text-[10px] text-[var(--color-accent)] hover:underline">
             Ouvrir le dossier
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OcrRow({ job, onNavigate }: { job: OcrJob; onNavigate: (p: string) => void }) {
+  const pct = job.total > 0 ? Math.round((job.current / job.total) * 100) : null;
+  const label =
+    job.status === "done" ? "Terminé" : job.status === "error" ? "Erreur" : pct !== null ? `${pct}%` : "En cours…";
+  const labelCls =
+    job.status === "done" ? "text-green-400" : job.status === "error" ? "text-[var(--color-danger)]" : "text-[var(--color-text-dim)]";
+  return (
+    <div className="px-3 py-2.5 flex flex-col gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className="flex-1 text-xs text-[var(--color-text)] truncate font-medium" title={job.name}>
+          OCR · {job.name}
+        </span>
+        <span className={`text-[10px] shrink-0 ${labelCls}`}>{label}</span>
+      </div>
+      {job.status === "running" && <ProgressBar pct={pct} paused={false} />}
+      {job.status === "error" && job.error && (
+        <p className="text-[10px] text-[var(--color-danger)] break-words">{job.error}</p>
+      )}
+      {job.status === "done" && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => onNavigate(job.dest.slice(0, job.dest.lastIndexOf("/")) || "/")}
+            className="text-[10px] text-[var(--color-accent)] hover:underline"
+          >
+            Aller au fichier
           </button>
         </div>
       )}

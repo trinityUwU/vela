@@ -75,16 +75,24 @@ else
   fi
 fi
 
-# ── Outils de conversion / OCR (optionnels, paquets système) ──────────────────
-# Détectés au runtime ; absence = dégradation gracieuse (action masquée). Jamais installés
-# automatiquement (paquets système, pas pip). On signale juste la ligne d'install.
+# ── Stack OCR (tesseract + langues + poppler) — auto-install, idempotent, non bloquant ───────
+# Paquets système : nécessite sudo. --needed = idempotent. Un échec n'interrompt pas l'install.
 echo ""
-echo "ℹ Outils optionnels (conversion documents + OCR) — installe-les si tu veux ces fonctions :"
-for tool in pandoc libreoffice tesseract; do
-  if command -v "$tool" >/dev/null 2>&1; then
-    echo "  ✓ $tool présent"
+OCR_PKGS="tesseract tesseract-data-fra tesseract-data-eng poppler"
+if command -v tesseract >/dev/null 2>&1 && command -v pdftoppm >/dev/null 2>&1; then
+  echo "✓ OCR déjà disponible (tesseract + poppler)"
+elif command -v pacman >/dev/null 2>&1; then
+  echo "→ installation de la stack OCR ($OCR_PKGS)…"
+  if sudo pacman -S --needed --noconfirm $OCR_PKGS; then
+    echo "✓ OCR installé"
   else
-    echo "  ○ $tool absent  →  sudo pacman -S $tool"
+    echo "⚠ install OCR échouée — Vela fonctionne ; relance plus tard ou via le bouton « Installer » dans l'app"
   fi
+else
+  echo "○ pacman absent — pour l'OCR : installe $OCR_PKGS avec ton gestionnaire de paquets"
+fi
+
+# ── Conversion documents (optionnel, lourd) — signalé, pas auto-installé ──────────────────────
+for tool in pandoc libreoffice; do
+  command -v "$tool" >/dev/null 2>&1 && echo "✓ $tool présent" || echo "○ $tool absent (conversion docs)  →  sudo pacman -S $tool"
 done
-echo "  (OCR : ajoute les langues, ex. sudo pacman -S tesseract-data-fra tesseract-data-eng)"

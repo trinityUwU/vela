@@ -530,7 +530,7 @@ fn run_rar_compress_job(app: AppHandle, jc: Arc<JobControl>, job_id: String,
     let Some(cmd) = find_rar() else {
         finish(&app, base, Some("rar non trouvé — installer rar".into())); return;
     };
-    let mut args = vec!["a".to_string(), "-ep1".to_string()];
+    let mut args = vec!["a".to_string(), "-ep1".to_string(), "-y".to_string()];
     if let Some(ref p) = pwd { args.push(format!("-hp{p}")); }
     args.push("--".to_string());
     args.push(dest.clone());
@@ -541,7 +541,13 @@ fn run_rar_compress_job(app: AppHandle, jc: Arc<JobControl>, job_id: String,
 // Exécute un archiveur CLI (7z/rar) avec monitoring stdout/progression, pause/cancel via signaux.
 fn run_cli_archiver(app: AppHandle, jc: Arc<JobControl>, base: ProgressPayload, cmd: &str, args: Vec<String>) {
     emit(&app, base.clone());
-    let mut child = match Command::new(cmd).args(&args).stdout(std::process::Stdio::piped()).spawn() {
+    // stdin null : sinon 7z/rar héritent du stdin du GUI et bloquent sur un prompt
+    // (confirmation de mot de passe, message d'évaluation rar…) → freeze + archive vide.
+    let mut child = match Command::new(cmd).args(&args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn() {
         Ok(c) => c, Err(e) => { finish(&app, base, Some(e.to_string())); return; }
     };
     *jc.child_pid.lock().unwrap() = Some(child.id());

@@ -35,34 +35,46 @@ fn run_py(code: &str, input: &str) -> Result<String, String> {
     }
 }
 
-const LIST_LANGS: &str = "import argostranslate.translate as t\n\
-print('\\n'.join(sorted({l.code for l in t.get_installed_languages()})))";
+const LIST_LANGS: &str = r#"
+import argostranslate.translate as t
+print("\n".join(sorted({l.code for l in t.get_installed_languages()})))
+"#;
 
-const TRANSLATE: &str = "import sys\n\
-from argostranslate import translate as T\n\
-fr,to=sys.argv[1],sys.argv[2]\n\
-text=sys.stdin.read()\n\
-langs=T.get_installed_languages()\n\
-src=[l for l in langs if l.code==fr]\n\
-dst=[l for l in langs if l.code==to]\n\
-tr=src[0].get_translation(dst[0]) if src and dst else None\n\
-if tr is None:\n\
- sys.stderr.write('NO_TRANSLATION'); sys.exit(2)\n\
-sys.stdout.write(tr.translate(text))";
+const TRANSLATE: &str = r#"
+import sys
+from argostranslate import translate as T
+fr, to = sys.argv[1], sys.argv[2]
+text = sys.stdin.read()
+langs = T.get_installed_languages()
+src = [l for l in langs if l.code == fr]
+dst = [l for l in langs if l.code == to]
+tr = src[0].get_translation(dst[0]) if src and dst else None
+if tr is None:
+    sys.stderr.write("NO_TRANSLATION")
+    sys.exit(2)
+sys.stdout.write(tr.translate(text))
+"#;
 
-const INSTALL: &str = "import sys,argostranslate.package as p\n\
-fr,to=sys.argv[1],sys.argv[2]\n\
-p.update_package_index()\n\
-av=p.get_available_packages()\n\
-def grab(a,b):\n\
- m=[x for x in av if x.from_code==a and x.to_code==b]\n\
- if not m: raise SystemExit(f'paquet {a}->{b} indisponible')\n\
- p.install_from_path(m[0].download())\n\
-try:\n\
- grab(fr,to)\n\
-except SystemExit:\n\
- grab(fr,'en'); grab('en',to)\n\
-print('ok')";
+const INSTALL: &str = r#"
+import sys
+import argostranslate.package as p
+fr, to = sys.argv[1], sys.argv[2]
+p.update_package_index()
+av = p.get_available_packages()
+
+def grab(a, b):
+    m = [x for x in av if x.from_code == a and x.to_code == b]
+    if not m:
+        raise SystemExit(f"paquet {a}->{b} indisponible")
+    p.install_from_path(m[0].download())
+
+try:
+    grab(fr, to)
+except SystemExit:
+    grab(fr, "en")
+    grab("en", to)
+print("ok")
+"#;
 
 #[tauri::command]
 pub async fn translate_capabilities() -> Result<TranslateCapabilities, String> {

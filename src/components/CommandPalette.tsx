@@ -17,12 +17,13 @@ interface Props {
   entries: DirEntry[];
   onOpenEntry: (e: DirEntry) => void;
   onGlobalSearch?: (query: string) => Promise<DirEntry[]>;
+  onResolveNl?: (query: string) => Promise<Command | null>;
   onClose: () => void;
 }
 
 const MAX = 40;
 
-export function CommandPalette({ commands, entries, onOpenEntry, onGlobalSearch, onClose }: Props) {
+export function CommandPalette({ commands, entries, onOpenEntry, onGlobalSearch, onResolveNl, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const [globals, setGlobals] = useState<DirEntry[]>([]);
@@ -59,8 +60,18 @@ export function CommandPalette({ commands, entries, onOpenEntry, onGlobalSearch,
     const globalItems: Item[] = globals
       .filter((e) => !localPaths.has(e.path))
       .map((e) => ({ key: `g:${e.path}`, title: e.name, hint: e.path, group: "Global", run: () => onOpenEntry(e) }));
-    return [...local, ...globalItems].slice(0, MAX);
-  }, [query, commands, entries, onOpenEntry, globals]);
+    const merged = [...local, ...globalItems].slice(0, MAX);
+    if (onResolveNl && query.trim().length >= 3) {
+      merged.push({
+        key: "__nl__",
+        title: `✨ Interpréter « ${query.trim()} »`,
+        hint: "LLM local",
+        group: "IA",
+        run: () => { onResolveNl(query.trim()).then((cmd) => cmd?.run()).catch((e) => console.error("[nl]", e)); },
+      });
+    }
+    return merged;
+  }, [query, commands, entries, onOpenEntry, globals, onResolveNl]);
 
   const choose = (it?: Item) => { if (it) { it.run(); onClose(); } };
   const onKey = (e: React.KeyboardEvent) => {

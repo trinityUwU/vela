@@ -19,6 +19,8 @@ import { OverlayHost } from "./components/OverlayHost";
 import { useGridNav } from "./hooks/useGridNav";
 import { useGitStatus } from "./hooks/useGitStatus";
 import { useCommandPalette } from "./hooks/useCommandPalette";
+import { useNlSettings } from "./hooks/useNlSettings";
+import { nlResolve } from "./services/nl";
 import { useCommandRegistry } from "./hooks/useCommandRegistry";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { TerminalDock } from "./components/TerminalDock";
@@ -35,13 +37,11 @@ import type { Dialog } from "./components/DialogHost";
 import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { BrowserView } from "./components/BrowserView";
-import { startExtraction, trashDir, homeDir, writeFile } from "./services/fs";
-import { convertFile, imagesToPdf } from "./services/convert";
+import { startExtraction, trashDir, homeDir } from "./services/fs";
+import { convertFile } from "./services/convert";
 import { globalSearch } from "./services/search-index";
-import { ocrCapabilities, ocrExtract } from "./services/ocr";
+import { useFileActions } from "./hooks/useFileActions";
 import { archiveStem, parentDir, baseName } from "./services/path-util";
-import { mergeCsv, organizeDir } from "./services/actions";
-import type { SmartActionId } from "./services/smart-actions";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
@@ -92,6 +92,7 @@ export default function App() {
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
   const palette = useCommandPalette();
+  const nl = useNlSettings();
   const profileEditorProps = {
     profiles: profiles.profiles, activeId: profiles.activeId, onSwitch: profiles.setActive,
     upsert: profiles.upsertProfile, remove: profiles.removeProfile };
@@ -211,25 +212,8 @@ export default function App() {
     emptyTrash: () => setDialog({ kind: "emptytrash" }),
   });
 
-  const runSmartAction = (id: SmartActionId, sel: DirEntry[]) => {
-    const paths = sel.map((e) => e.path);
-    if (id === "images-to-pdf") imagesToPdf(paths).then(() => fm.refresh()).catch((e) => fm.setError(String(e)));
-    else if (id === "merge-csv") mergeCsv(paths).then(() => fm.refresh()).catch((e) => fm.setError(String(e)));
-    else if (sel[0]?.is_dir) {
-      organizeDir(sel[0].path, id === "organize-type" ? "type" : "date")
-        .then((moves) => { undo.push({ kind: "move", moves }); fm.refresh(); }).catch((e) => fm.setError(String(e)));
-    }
-  };
+  const { runSmartAction, runOcr } = useFileActions({ setError: fm.setError, refresh: fm.refresh, pushUndo: undo.push });
   const selectedEntries = entries.filter((e) => fm.selection.has(e.path));
-
-  const runOcr = (path: string) => {
-    ocrCapabilities().then((c) => {
-      if (!c.tesseract) { fm.setError("tesseract non installé (sudo pacman -S tesseract tesseract-data-fra)"); return; }
-      const lang = ["fra", "eng"].filter((l) => c.langs.includes(l)).join("+") || c.langs[0] || "eng";
-      const out = path.replace(/\.[^.]+$/, "") + ".ocr.txt";
-      ocrExtract(path, lang).then((text) => writeFile(out, text)).then(() => fm.refresh()).catch((e) => fm.setError(String(e)));
-    }).catch((e) => fm.setError(String(e)));
-  };
 
   useKeyboard({
     onCopy: () => fm.copyToClipboard("copy", selPaths()),
@@ -481,13 +465,22 @@ export default function App() {
           onClose: () => setSettingsOpen(false),
           appearance: { accent: appearance.accent, density: appearance.density, onAccent: setAccent, onDensity: setDensity },
           onResetBrowser: browser.reset,
+          nl: {
+            enabled: nl.settings.enabled, endpoint: nl.settings.endpoint,
+            onToggle: (v: boolean) => nl.update({ enabled: v }), onEndpoint: (v: string) => nl.update({ endpoint: v }),
+          },
         } : null}
         profileEditor={profileEditorOpen ? { ...profileEditorProps, onClose: () => setProfileEditorOpen(false) } : null}
         download={downloadOpen ? { cwd: fm.cwd, onClose: () => setDownloadOpen(false), onError: fm.setError } : null}
         diff={diff ? { a: diff.a, b: diff.b, onClose: () => setDiff(null), onError: fm.setError } : null}
         dirDiff={dirDiff ? { a: dirDiff.a, b: dirDiff.b, onClose: () => setDirDiff(null), onError: fm.setError } : null}
         analyzer={analyzePath ? { path: analyzePath, onClose: () => setAnalyzePath(null), onReveal: fm.navigate, onError: fm.setError } : null}
-        palette={palette.open ? { commands, entries, onOpenEntry: fm.openEntry, onGlobalSearch: (q) => globalSearch(q, 20), onClose: palette.close } : null}
+        palette={palette.open ? {
+          commands, entries, onOpenEntry: fm.openEntry,
+          onGlobalSearch: (q) => globalSearch(q, 20),
+          onResolveNl: nl.settings.enabled ? (q) => nlResolve(nl.settings.endpoint, q, commands) : undefined,
+          onClose: palette.close,
+        } : null}
       />
     </div>
   );

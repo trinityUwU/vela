@@ -126,10 +126,18 @@ const DENSITIES: { key: Density; label: string }[] = [
   { key: "comfortable", label: "Confort" },
 ];
 
-export function SettingsPanel({ onClose, appearance, onResetBrowser }: {
+interface NlProps {
+  enabled: boolean;
+  endpoint: string;
+  onToggle: (v: boolean) => void;
+  onEndpoint: (v: string) => void;
+}
+
+export function SettingsPanel({ onClose, appearance, onResetBrowser, nl }: {
   onClose: () => void;
   appearance: AppearanceProps;
   onResetBrowser: () => void;
+  nl: NlProps;
 }) {
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -202,6 +210,28 @@ export function SettingsPanel({ onClose, appearance, onResetBrowser }: {
               >
                 Réinitialiser le navigateur
               </button>
+            </div>
+          </section>
+
+          <section className="mb-5 pb-5 border-b border-[var(--color-border)]">
+            <h3 className="text-[11px] uppercase tracking-wider text-[var(--color-accent)] font-semibold mb-2.5">
+              Palette intelligente (LLM local)
+            </h3>
+            <div className="flex flex-col gap-2.5">
+              <label className="flex items-center gap-2 text-xs text-[var(--color-text)]/85">
+                <input type="checkbox" checked={nl.enabled} onChange={(e) => nl.onToggle(e.target.checked)} />
+                Interpréter le langage naturel dans la palette (Ctrl+K) via EchoHub — 100% local, désactivé par défaut.
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[var(--color-text-dim)]">Endpoint</span>
+                <input
+                  type="text"
+                  value={nl.endpoint}
+                  onChange={(e) => nl.onEndpoint(e.target.value)}
+                  disabled={!nl.enabled}
+                  className="flex-1 px-2 py-1 text-xs rounded bg-[var(--color-bg)] border border-[var(--color-border)] text-[var(--color-text)] outline-none disabled:opacity-40"
+                />
+              </div>
             </div>
           </section>
 

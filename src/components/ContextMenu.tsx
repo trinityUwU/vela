@@ -2,6 +2,9 @@
 import { useEffect, useState } from "react";
 import { previewKind } from "../services/file-kind";
 import { convertTargets } from "../services/convert";
+import { smartActions } from "../services/smart-actions";
+import type { SmartActionId } from "../services/smart-actions";
+import type { DirEntry } from "../types";
 import { TAG_COLORS } from "../services/tags";
 
 export interface MenuState {
@@ -37,6 +40,8 @@ interface Props {
   onExtractHere?: () => void;
   onExtractTo?: () => void;
   onConvert?: (target: string) => void;
+  entries?: DirEntry[];
+  onSmartAction?: (id: SmartActionId) => void;
 }
 
 function relativePath(path: string, cwd: string): string {
@@ -59,6 +64,7 @@ export function ContextMenu(props: Props) {
 
   const multi = menu.count > 1;
   const rel = relativePath(menu.path, menu.cwd);
+  const smart = props.onSmartAction ? smartActions(props.entries ?? []) : [];
   const isArchive = !multi && !menu.isDir && previewKind(menu.extension) === "archive";
   const mediaKind = !multi && !menu.isDir ? previewKind(menu.extension) : "binary";
   const isMedia = mediaKind === "image" || mediaKind === "audio" || mediaKind === "video";
@@ -72,6 +78,14 @@ export function ContextMenu(props: Props) {
     >
       {multi && (
         <div className="px-3 py-1 text-xs text-[var(--color-text-dim)]">{menu.count} éléments</div>
+      )}
+      {smart.length > 0 && (
+        <>
+          {smart.map((a) => (
+            <Item key={a.id} label={a.label} onClick={() => { props.onSmartAction?.(a.id); onClose(); }} />
+          ))}
+          <Divider />
+        </>
       )}
       {!multi && <Item label="Ouvrir" onClick={onOpen} />}
       {isMedia && onMediaTools && (

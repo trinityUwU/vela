@@ -59,17 +59,21 @@ pub fn convert_targets(path: String) -> Vec<String> {
     vec![]
 }
 
+fn collision_free(dir: &Path, stem: &str, ext: &str) -> PathBuf {
+    let mut out = dir.join(format!("{stem}.{ext}"));
+    let mut n = 1;
+    while out.exists() {
+        out = dir.join(format!("{stem} ({n}).{ext}"));
+        n += 1;
+    }
+    out
+}
+
 fn out_path(input: &str, target: &str) -> PathBuf {
     let p = Path::new(input);
     let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("output");
     let dir = p.parent().unwrap_or_else(|| Path::new("."));
-    let mut out = dir.join(format!("{stem}.{target}"));
-    let mut n = 1;
-    while out.exists() {
-        out = dir.join(format!("{stem} ({n}).{target}"));
-        n += 1;
-    }
-    out
+    collision_free(dir, stem, target)
 }
 
 #[tauri::command]
@@ -131,14 +135,16 @@ fn convert_office(input: &str, out: &Path) -> Result<(), String> {
     moved.map_err(|e| format!("déplacement résultat: {e}"))
 }
 
-fn image_to_pdf(input: &str, out: &Path) -> Result<(), String> {
+const PDF_DPI: f32 = 72.0;
+
+fn pdf_mm(px: u32) -> printpdf::Mm {
+    printpdf::Mm(px as f32 / PDF_DPI * 25.4)
+}
+
+fn rgb_to_xobject(rgb: ::image::RgbImage) -> printpdf::ImageXObject {
     use printpdf::*;
-    let rgb = ::image::open(input).map_err(|e| format!("image: {e}"))?.to_rgb8();
     let (w, h) = (rgb.width(), rgb.height());
-    let dpi = 72.0_f32;
-    let mm = |px: u32| Mm(px as f32 / dpi * 25.4);
-    let (doc, page, layer) = PdfDocument::new("vela", mm(w), mm(h), "image");
-    let xobject = ImageXObject {
+    ImageXObject {
         width: Px(w as usize),
         height: Px(h as usize),
         color_space: ColorSpace::Rgb,
@@ -148,14 +154,45 @@ fn image_to_pdf(input: &str, out: &Path) -> Result<(), String> {
         image_filter: None,
         clipping_bbox: None,
         smask: None,
-    };
-    let img = Image::from(xobject);
-    img.add_to_layer(
+    }
+}
+
+fn image_to_pdf(input: &str, out: &Path) -> Result<(), String> {
+    use printpdf::*;
+    let rgb = ::image::open(input).map_err(|e| format!("image: {e}"))?.to_rgb8();
+    let (doc, page, layer) = PdfDocument::new("vela", pdf_mm(rgb.width()), pdf_mm(rgb.height()), "image");
+    Image::from(rgb_to_xobject(rgb)).add_to_layer(
         doc.get_page(page).get_layer(layer),
-        ImageTransform { dpi: Some(dpi), ..Default::default() },
+        ImageTransform { dpi: Some(PDF_DPI), ..Default::default() },
     );
     let file = std::fs::File::create(out).map_err(|e| format!("création pdf: {e}"))?;
     doc.save(&mut std::io::BufWriter::new(file)).map_err(|e| format!("sauvegarde pdf: {e}"))
+}
+
+/// Assemble plusieurs images en un seul PDF (une image par page). Retourne le chemin de sortie.
+#[tauri::command]
+pub fn images_to_pdf(inputs: Vec<String>) -> Result<String, String> {
+    use printpdf::*;
+    let first = inputs.first().ok_or("aucune image")?;
+    let rgb0 = ::image::open(first).map_err(|e| format!("image: {e}"))?.to_rgb8();
+    let (doc, page, layer) = PdfDocument::new("vela", pdf_mm(rgb0.width()), pdf_mm(rgb0.height()), "p");
+    Image::from(rgb_to_xobject(rgb0)).add_to_layer(
+        doc.get_page(page).get_layer(layer),
+        ImageTransform { dpi: Some(PDF_DPI), ..Default::default() },
+    );
+    for input in &inputs[1..] {
+        let rgb = ::image::open(input).map_err(|e| format!("image: {e}"))?.to_rgb8();
+        let (p, l) = doc.add_page(pdf_mm(rgb.width()), pdf_mm(rgb.height()), "p");
+        Image::from(rgb_to_xobject(rgb)).add_to_layer(
+            doc.get_page(p).get_layer(l),
+            ImageTransform { dpi: Some(PDF_DPI), ..Default::default() },
+        );
+    }
+    let dir = Path::new(first).parent().unwrap_or_else(|| Path::new("."));
+    let out = collision_free(dir, "images", "pdf");
+    let file = std::fs::File::create(&out).map_err(|e| format!("création pdf: {e}"))?;
+    doc.save(&mut std::io::BufWriter::new(file)).map_err(|e| format!("sauvegarde pdf: {e}"))?;
+    Ok(out.to_string_lossy().into_owned())
 }
 
 #[cfg(test)]

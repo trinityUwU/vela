@@ -17,3 +17,7 @@ export function convertTargets(path: string): Promise<string[]> {
 export function convertFile(input: string, target: string): Promise<string> {
   return invoke("convert_file", { input, target });
 }
+
+export function imagesToPdf(inputs: string[]): Promise<string> {
+  return invoke("images_to_pdf", { inputs });
+}

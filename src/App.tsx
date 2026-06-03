@@ -36,7 +36,9 @@ import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { BrowserView } from "./components/BrowserView";
 import { startExtraction, trashDir, homeDir } from "./services/fs";
-import { convertFile } from "./services/convert";
+import { convertFile, imagesToPdf } from "./services/convert";
+import { mergeCsv, organizeDir } from "./services/actions";
+import type { SmartActionId } from "./services/smart-actions";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
@@ -225,6 +227,17 @@ export default function App() {
     emptyTrash: () => setDialog({ kind: "emptytrash" }),
   };
   const commands = useCommandRegistry(cmdCtx);
+
+  const runSmartAction = (id: SmartActionId, sel: DirEntry[]) => {
+    const paths = sel.map((e) => e.path);
+    if (id === "images-to-pdf") imagesToPdf(paths).then(() => fm.refresh()).catch((e) => fm.setError(String(e)));
+    else if (id === "merge-csv") mergeCsv(paths).then(() => fm.refresh()).catch((e) => fm.setError(String(e)));
+    else if (sel[0]?.is_dir) {
+      organizeDir(sel[0].path, id === "organize-type" ? "type" : "date")
+        .then((moves) => { undo.push({ kind: "move", moves }); fm.refresh(); }).catch((e) => fm.setError(String(e)));
+    }
+  };
+  const selectedEntries = entries.filter((e) => fm.selection.has(e.path));
 
   useKeyboard({
     onCopy: () => fm.copyToClipboard("copy", selPaths()),
@@ -432,6 +445,8 @@ export default function App() {
             convertFile(menu.entry.path, target).then(() => fm.refresh()).catch((e) => fm.setError(String(e)));
             setMenu(null);
           }}
+          entries={selectedEntries.length ? selectedEntries : [menu.entry]}
+          onSmartAction={(id) => { runSmartAction(id, selectedEntries.length ? selectedEntries : [menu.entry]); setMenu(null); }}
         />
       )}
 

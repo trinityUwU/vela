@@ -1,4 +1,5 @@
 // Point d'entrée Tauri : enregistre les commandes filesystem exposées au front.
+mod actions;
 mod analyze;
 mod apps;
 mod archive;
@@ -134,6 +135,9 @@ pub fn run() {
             convert::convert_capabilities,
             convert::convert_targets,
             convert::convert_file,
+            convert::images_to_pdf,
+            actions::merge_csv,
+            actions::organize_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

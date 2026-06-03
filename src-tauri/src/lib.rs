@@ -4,6 +4,7 @@ mod apps;
 mod archive;
 mod browser;
 mod audio;
+mod convert;
 mod dircmp;
 mod download_job;
 mod downloader;
@@ -130,6 +131,9 @@ pub fn run() {
             stems::stems_separate,
             stems::stems_install,
             stems::stems_cancel,
+            convert::convert_capabilities,
+            convert::convert_targets,
+            convert::convert_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

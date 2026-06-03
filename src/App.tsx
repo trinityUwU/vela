@@ -36,6 +36,7 @@ import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { BrowserView } from "./components/BrowserView";
 import { startExtraction, trashDir, homeDir } from "./services/fs";
+import { convertFile } from "./services/convert";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
@@ -425,6 +426,10 @@ export default function App() {
           onExtractTo={() => {
             const defaultDest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
             setDialog({ kind: "extractto", archivePath: menu.entry.path, defaultDest });
+            setMenu(null);
+          }}
+          onConvert={(target) => {
+            convertFile(menu.entry.path, target).then(() => fm.refresh()).catch((e) => fm.setError(String(e)));
             setMenu(null);
           }}
         />

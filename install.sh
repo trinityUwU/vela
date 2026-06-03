@@ -74,3 +74,17 @@ else
     echo "⚠ install yt-dlp/spotdl échouée — Vela fonctionne ; réessaie plus tard"
   fi
 fi
+
+# ── Outils de conversion / OCR (optionnels, paquets système) ──────────────────
+# Détectés au runtime ; absence = dégradation gracieuse (action masquée). Jamais installés
+# automatiquement (paquets système, pas pip). On signale juste la ligne d'install.
+echo ""
+echo "ℹ Outils optionnels (conversion documents + OCR) — installe-les si tu veux ces fonctions :"
+for tool in pandoc libreoffice tesseract; do
+  if command -v "$tool" >/dev/null 2>&1; then
+    echo "  ✓ $tool présent"
+  else
+    echo "  ○ $tool absent  →  sudo pacman -S $tool"
+  fi
+done
+echo "  (OCR : ajoute les langues, ex. sudo pacman -S tesseract-data-fra tesseract-data-eng)"

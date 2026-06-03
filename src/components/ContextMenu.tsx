@@ -1,6 +1,7 @@
 // Menu contextuel au clic droit sur une entrée (fichier ou dossier), mono ou multi-sélection.
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { previewKind } from "../services/file-kind";
+import { convertTargets } from "../services/convert";
 import { TAG_COLORS } from "../services/tags";
 
 export interface MenuState {
@@ -35,6 +36,7 @@ interface Props {
   onMediaTools?: () => void;
   onExtractHere?: () => void;
   onExtractTo?: () => void;
+  onConvert?: (target: string) => void;
 }
 
 function relativePath(path: string, cwd: string): string {
@@ -48,7 +50,7 @@ function copyToClipboard(text: string) {
 
 export function ContextMenu(props: Props) {
   const { menu, onClose, onOpen, onRename, onTrash, onDeletePermanent, onProperties } = props;
-  const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onOpenTerminal, onComputeSize, onAnalyze, onMediaTools, onExtractHere, onExtractTo } = props;
+  const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onOpenTerminal, onComputeSize, onAnalyze, onMediaTools, onExtractHere, onExtractTo, onConvert } = props;
 
   useEffect(() => {
     window.addEventListener("click", onClose);
@@ -90,6 +92,9 @@ export function ContextMenu(props: Props) {
           <Item label="Extraire ici" onClick={() => { onExtractHere?.(); onClose(); }} />
           <Item label="Extraire vers…" onClick={() => { onExtractTo?.(); onClose(); }} />
         </>
+      )}
+      {!multi && !menu.isDir && onConvert && (
+        <ConvertSubmenu path={menu.path} onConvert={(t) => { onConvert(t); onClose(); }} />
       )}
       <Divider />
       <Item label="Copier" onClick={() => { onCopy(); onClose(); }} />
@@ -135,6 +140,34 @@ export function ContextMenu(props: Props) {
           <Divider />
           <Item label="Propriétés" onClick={onProperties} />
         </>
+      )}
+    </div>
+  );
+}
+
+function ConvertSubmenu({ path, onConvert }: { path: string; onConvert: (target: string) => void }) {
+  const [targets, setTargets] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  useEffect(() => { convertTargets(path).then(setTargets).catch(() => setTargets([])); }, [path]);
+  if (targets.length === 0) return null;
+  return (
+    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button className="w-full flex items-center justify-between px-3 py-1.5 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]">
+        <span>Convertir vers</span>
+        <span className="text-[var(--color-text-dim)]">›</span>
+      </button>
+      {open && (
+        <div className="absolute left-full top-0 min-w-28 max-h-72 overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl py-1">
+          {targets.map((t) => (
+            <button
+              key={t}
+              onClick={() => onConvert(t)}
+              className="w-full text-left px-3 py-1.5 text-sm uppercase text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+            >
+              {t}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

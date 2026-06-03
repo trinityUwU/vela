@@ -83,6 +83,7 @@ export default function App() {
   const [folderSizes, setFolderSizes] = useState<Record<string, number>>({});
   const [analyzePath, setAnalyzePath] = useState<string | null>(null);
   const [translatePath, setTranslatePath] = useState<string | null>(null);
+  const [codeSearchOpen, setCodeSearchOpen] = useState(false);
   const [editPath, setEditPath] = useState<string | null>(null);
 
   const computeSize = useCallback((path: string) => {
@@ -213,6 +214,7 @@ export default function App() {
     activeProfileId: profiles.activeId, openTerminal: () => openTerminalHere(fm.cwd),
     openSettings: () => setSettingsOpen(true), openProfileEditor: () => setProfileEditorOpen(true),
     openDownload: () => setDownloadOpen(true), openBrowser: () => setBrowserOpen(true), openSearch: () => search.setOpen(true),
+    openCodeSearch: () => setCodeSearchOpen(true),
     newFile: () => setDialog({ kind: "newfile" }), newFolder: () => setDialog({ kind: "newfolder" }),
     emptyTrash: () => setDialog({ kind: "emptytrash" }),
   });
@@ -482,6 +484,7 @@ export default function App() {
         dirDiff={dirDiff ? { a: dirDiff.a, b: dirDiff.b, onClose: () => setDirDiff(null), onError: fm.setError } : null}
         analyzer={analyzePath ? { path: analyzePath, onClose: () => setAnalyzePath(null), onReveal: fm.navigate, onError: fm.setError } : null}
         translate={translatePath ? { path: translatePath, onClose: () => setTranslatePath(null), onDone: () => { setTranslatePath(null); fm.refresh(); } } : null}
+        codeSearch={codeSearchOpen ? { project: fm.cwd, onReveal: (p: string) => fm.navigate(parentDir(p)), onClose: () => setCodeSearchOpen(false) } : null}
         palette={palette.open ? {
           commands, entries, onOpenEntry: fm.openEntry,
           onGlobalSearch: (q) => globalSearch(q, 20),

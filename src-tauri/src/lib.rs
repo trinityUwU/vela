@@ -8,6 +8,7 @@ mod audio;
 mod convert;
 mod dircmp;
 mod translate;
+mod codeindex;
 mod download_job;
 mod downloader;
 mod favorites;
@@ -73,6 +74,9 @@ pub fn run() {
             translate::translate_text,
             translate::translate_install_lang,
             translate::translate_file,
+            codeindex::codeindex_available,
+            codeindex::codeindex_search,
+            codeindex::codeindex_index,
             ops::search_content,
             ops::trash_dir,
             ops::trash_count,

@@ -29,6 +29,7 @@ export interface CommandContext {
   openDownload: () => void;
   openBrowser: () => void;
   openSearch: () => void;
+  openCodeSearch: () => void;
   newFile: () => void;
   newFolder: () => void;
   emptyTrash: () => void;
@@ -43,6 +44,7 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
       { id: "download", title: "Télécharger… (YouTube / Spotify)", group: "Actions", run: ctx.openDownload },
       { id: "browser", title: "Ouvrir le navigateur", group: "Actions", run: ctx.openBrowser },
       { id: "search", title: "Rechercher", hint: "Ctrl+F", group: "Actions", run: ctx.openSearch },
+      { id: "code-search", title: "Recherche de code (CodeIndex)", group: "Actions", run: ctx.openCodeSearch },
       { id: "settings", title: "Réglages", group: "Actions", run: ctx.openSettings },
       { id: "profiles", title: "Éditer les profils", group: "Actions", run: ctx.openProfileEditor },
       { id: "empty-trash", title: "Vider la corbeille", group: "Actions", run: ctx.emptyTrash },

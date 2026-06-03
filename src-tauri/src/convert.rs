@@ -100,17 +100,28 @@ fn convert_image(input: &str, out: &Path) -> Result<(), String> {
         .map_err(|e| format!("écriture image: {e}"))
 }
 
+// Moteurs PDF supportés par pandoc, du plus léger/souverain (typst) au plus lourd (TeX Live).
+const PDF_ENGINES: &[&str] = &["typst", "weasyprint", "xelatex", "lualatex", "pdflatex", "tectonic"];
+
+fn pdf_engine() -> Option<&'static str> {
+    PDF_ENGINES.iter().copied().find(|e| binary_exists(e, "--version"))
+}
+
 fn convert_doc(input: &str, out: &Path) -> Result<(), String> {
-    let status = Command::new("pandoc")
-        .arg(input)
-        .arg("-o")
-        .arg(out)
-        .status()
-        .map_err(|e| format!("pandoc introuvable: {e}"))?;
+    let mut cmd = Command::new("pandoc");
+    cmd.arg(input).arg("-o").arg(out);
+    if out.extension().and_then(|e| e.to_str()) == Some("pdf") {
+        // pandoc ne génère pas de PDF sans moteur : signaler clairement (sentinelle PDF_ENGINE_MISSING).
+        match pdf_engine() {
+            Some(eng) => { cmd.arg(format!("--pdf-engine={eng}")); }
+            None => return Err("PDF_ENGINE_MISSING: moteur PDF requis (typst recommandé)".into()),
+        }
+    }
+    let status = cmd.status().map_err(|e| format!("pandoc introuvable: {e}"))?;
     if status.success() {
         Ok(())
     } else {
-        Err("pandoc a échoué (un moteur PDF est peut-être requis pour cette cible)".into())
+        Err("pandoc a échoué".into())
     }
 }
 

@@ -93,7 +93,9 @@ else
   echo "○ pacman absent — pour l'OCR : installe $OCR_PKGS avec ton gestionnaire de paquets"
 fi
 
-# ── Conversion documents (optionnel, lourd) — signalé, pas auto-installé ──────────────────────
-for tool in pandoc libreoffice; do
-  command -v "$tool" >/dev/null 2>&1 && echo "✓ $tool présent" || echo "○ $tool absent (conversion docs)  →  sudo pacman -S $tool"
+# ── Conversion documents (optionnel) — signalé, pas auto-installé ─────────────────────────────
+# pandoc = md/html/docx/odt/epub ; typst = moteur PDF léger (pandoc l'utilise pour →PDF) ;
+# libreoffice = bureautique →PDF. Toujours via « sudo pacman -Syu » d'abord (sinon 404 si DB périmée).
+for tool in pandoc typst libreoffice; do
+  command -v "$tool" >/dev/null 2>&1 && echo "✓ $tool présent" || echo "○ $tool absent (conversion docs)  →  sudo pacman -Syu --needed $tool"
 done

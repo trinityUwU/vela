@@ -41,7 +41,6 @@ import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { BrowserView } from "./components/BrowserView";
 import { startExtraction, trashDir, homeDir } from "./services/fs";
-import { convertFile } from "./services/convert";
 import { globalSearch } from "./services/search-index";
 import { useFileActions } from "./hooks/useFileActions";
 import { archiveStem, parentDir, baseName } from "./services/path-util";
@@ -217,12 +216,8 @@ export default function App() {
     emptyTrash: () => setDialog({ kind: "emptytrash" }),
   });
 
-  const { runSmartAction, runOcr } = useFileActions({
-    setError: fm.setError, refresh: fm.refresh, pushUndo: undo.push,
-    onMissingOcr: () => install.request({
-      label: "tesseract (OCR)",
-      cmd: "sudo pacman -Syu --needed tesseract tesseract-data-fra tesseract-data-eng poppler",
-    }),
+  const { runSmartAction, runOcr, runConvert } = useFileActions({
+    setError: fm.setError, refresh: fm.refresh, pushUndo: undo.push, onMissingTool: install.request,
   });
   const selectedEntries = entries.filter((e) => fm.selection.has(e.path));
 
@@ -430,10 +425,7 @@ export default function App() {
             setDialog({ kind: "extractto", archivePath: menu.entry.path, defaultDest });
             setMenu(null);
           }}
-          onConvert={(target) => {
-            convertFile(menu.entry.path, target).then(() => fm.refresh()).catch((e) => fm.setError(String(e)));
-            setMenu(null);
-          }}
+          onConvert={(target) => { runConvert(menu.entry.path, target); setMenu(null); }}
           onOcr={() => { runOcr(menu.entry.path); setMenu(null); }}
           entries={selectedEntries.length ? selectedEntries : [menu.entry]}
           onSmartAction={(id) => { runSmartAction(id, selectedEntries.length ? selectedEntries : [menu.entry]); setMenu(null); }}

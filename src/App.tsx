@@ -1,5 +1,6 @@
 // Assemblage du gestionnaire : topbar, sidebar, zone centrale (grille ou éditeur), modals.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { useFileManager } from "./hooks/useFileManager";
 import { useProfiles } from "./hooks/useProfiles";
 import { useBrowser } from "./hooks/useBrowser";
@@ -16,7 +17,7 @@ import { useEditorTabs } from "./hooks/useEditorTabs";
 import { useTags } from "./hooks/useTags";
 import { useAppearance } from "./hooks/useAppearance";
 import { hexFor } from "./services/tags";
-import { getEntryProps } from "./services/fs";
+import { getEntryProps, writeFile } from "./services/fs";
 import { OverlayHost } from "./components/OverlayHost";
 import { useGridNav } from "./hooks/useGridNav";
 import { useGitStatus } from "./hooks/useGitStatus";
@@ -200,6 +201,26 @@ export default function App() {
     if (isDir) return fm.navigate(path);
     openInEditor({ name: baseName(path), path, is_dir: false, size: 0, modified: 0, extension });
   };
+
+  // Control plane : commandes émises par le MCP de Vela (Claude Code lancé dans le terminal intégré).
+  const controlRef = useRef<(action: string, args: Record<string, unknown>) => void>(() => {});
+  controlRef.current = (action, args) => {
+    if (action === "open_file") openTermPath(String(args.path ?? ""), false);
+    else if (action === "open_url") { browser.open(String(args.url ?? "")); setBrowserOpen(true); }
+    else if (action === "hide_browser") setBrowserOpen(false);
+    else if (action === "preview_content") {
+      const safe = String(args.title ?? "apercu").replace(/[^\w.-]+/g, "_").slice(0, 60);
+      const path = `/tmp/vela-preview-${safe}.txt`;
+      writeFile(path, String(args.content ?? "")).then(() => openTermPath(path, false)).catch(() => {});
+    }
+  };
+  useEffect(() => {
+    const un = listen<{ action: string; args: Record<string, unknown> }>(
+      "vela-control",
+      (e) => controlRef.current(e.payload.action, e.payload.args),
+    );
+    return () => { un.then((f) => f()); };
+  }, []);
 
   const openMediaTools = (entry: DirEntry) => {
     switchToEdition(); fm.setOpened(entry); setEditPath(entry.path);

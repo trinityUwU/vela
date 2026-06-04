@@ -80,6 +80,18 @@ pub fn available_shells() -> Vec<String> {
     out
 }
 
+// Préfixe le PATH du PTY avec le shim dir (wrapper `claude`) et expose le socket du control plane,
+// pour que `claude` lancé dans le terminal intégré soit branché au MCP de Vela. No-op si absent.
+fn inject_control_env(app: &AppHandle, cmd: &mut CommandBuilder) {
+    use tauri::Manager;
+    let Some(plane) = app.try_state::<crate::control::ControlPlane>() else { return };
+    let shim = plane.shim_dir.to_string_lossy().to_string();
+    let current = std::env::var("PATH").unwrap_or_default();
+    cmd.env("PATH", format!("{shim}:{current}"));
+    cmd.env("VELA_SOCK", plane.sock_path.to_string_lossy().to_string());
+    cmd.env("VELA_MCP_CONFIG", plane.mcp_config.to_string_lossy().to_string());
+}
+
 #[tauri::command]
 pub fn term_open(
     app: AppHandle,
@@ -99,6 +111,7 @@ pub fn term_open(
     let mut cmd = CommandBuilder::new(shell);
     cmd.cwd(cwd);
     cmd.env("TERM", "xterm-256color");
+    inject_control_env(&app, &mut cmd);
     let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
     drop(pair.slave);
 

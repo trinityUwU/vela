@@ -5,6 +5,7 @@ mod apps;
 mod archive;
 mod browser;
 mod audio;
+mod control;
 mod convert;
 mod dircmp;
 mod translate;
@@ -46,6 +47,10 @@ pub fn run() {
             use tauri::Manager;
             let idx = app.state::<index::SearchIndex>().inner().clone();
             std::thread::spawn(move || idx.rebuild_from_home());
+            match control::init(&app.handle().clone()) {
+                Ok(plane) => { app.manage(plane); }
+                Err(e) => eprintln!("[control] init impossible : {e}"),
+            }
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())

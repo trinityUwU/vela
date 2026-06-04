@@ -48,7 +48,7 @@ export function Editor({ entry, onClose, onError, active = true, editPath = null
   const isAudio = kind === "audio";
   const isMedia = isVideo || isAudio;
   const isHtml = entry.extension === "html" || entry.extension === "htm";
-  const file = useFileContent(entry.path, entry.size, onError, isImage || isArchive || isPdf || isMedia);
+  const file = useFileContent(entry.path, entry.size, onError, isImage || isArchive || isPdf || isMedia, entry.modified);
   const [dirty, setDirty] = useState(false);
   const [preview, setPreview] = useState(false);
   const [searchOn, setSearchOn] = useState(false);

@@ -5,10 +5,18 @@ import type { DirEntry } from "../types";
 export function useEditorTabs(opened: DirEntry | null, setOpened: (e: DirEntry | null) => void) {
   const [tabs, setTabs] = useState<DirEntry[]>([]);
 
-  // Tout fichier ouvert devient (ou réactive) un onglet.
+  // Tout fichier ouvert devient un onglet ; s'il existe déjà, son entrée est rafraîchie (taille/mtime)
+  // pour que le contenu se recharge après une modification ou un remplacement sur disque.
   useEffect(() => {
     if (!opened) return;
-    setTabs((prev) => (prev.some((t) => t.path === opened.path) ? prev : [...prev, opened]));
+    setTabs((prev) => {
+      const i = prev.findIndex((t) => t.path === opened.path);
+      if (i < 0) return [...prev, opened];
+      if (prev[i] === opened) return prev;
+      const next = [...prev];
+      next[i] = opened;
+      return next;
+    });
   }, [opened]);
 
   const select = useCallback((path: string) => {

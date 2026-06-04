@@ -23,7 +23,8 @@ const INIT: State = {
   loading: true,
 };
 
-export function useFileContent(path: string, size: number, onError: (m: string) => void, skip = false) {
+// `version` (ex. mtime) force le rechargement quand le fichier change sur disque à taille égale.
+export function useFileContent(path: string, size: number, onError: (m: string) => void, skip = false, version = 0) {
   const [st, setSt] = useState<State>(INIT);
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export function useFileContent(path: string, size: number, onError: (m: string) 
     return () => {
       alive = false;
     };
-  }, [path, size, onError, skip]);
+  }, [path, size, onError, skip, version]);
 
   const loadMore = useCallback(async () => {
     if (st.eof || st.loading) return;

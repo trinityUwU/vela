@@ -41,4 +41,39 @@ Suite média intégrée, modèle « fichier → paramètre → exporte » (aucun
 
 Validation : 20 tests Rust (ops réelles ffmpeg/image), `bun tauri build` OK (deb+rpm), boot binaire réel sans panic. demucs non installé sur la machine → séparation IA non testée runtime (chemin « non installé → propose install » validé).
 
-— Backlog vidé. Prochaines idées à définir avec Chris.
+— Backlog P1→P4 vidé (tout livré).
+
+## Vague 3 — 24 features à l'étude (2026-06-04)
+
+Réflexion de fond détaillée dans **[`docs/roadmap/`](docs/roadmap/README.md)** : un document par pilier
+(problème, persona, UX palette/réglages, backend Rust + crates/CLI, frontend, dépendances, effort, risques,
+definition of done) + index avec matrice impact/effort et priorisation en 4 vagues.
+
+Ordre recommandé — d'abord réparer le socle (3.0), puis quick wins (3.1), polyvalence (3.2), paris (3.3).
+
+| # | Feature | Pilier | Effort | Statut |
+|---|---------|--------|:---:|:---:|
+| F01 | Centre de transferts + gestion de conflits | Fondations | L | à faire |
+| F02 | Onglets de dossiers | Fondations | M | à faire |
+| F03 | Volet jumeau (dual-pane) opérationnel | Fondations | M | à faire |
+| F04 | Sélection avancée + barre d'état riche | Fondations | S | à faire |
+| F05 | Recherche avancée + dossiers intelligents | Recherche | M | à faire |
+| F06 | Rechercher & remplacer multi-fichiers | Recherche | M | à faire |
+| F07 | Recherche sémantique docs + « Demander à ce dossier » | Recherche | L | à faire |
+| F08 | Détection de projet + task runner | Dev | M | à faire |
+| F09 | Checksums, intégrité & type réel | Dev | S | à faire |
+| F10 | Éditeur hexadécimal | Dev | S | à faire |
+| F11 | Connexions distantes SFTP/SSH | Dev | L | à faire |
+| F12 | Boîte à outils PDF | Documents | M | à faire |
+| F13 | Markdown studio | Documents | M | à faire |
+| F14 | Galerie / lightbox + EXIF + palette | Image | M | à faire |
+| F15 | Optimisation & conversion image par lot | Image | M | à faire |
+| F16 | Annotation de captures | Image | M | à faire |
+| F17 | Studio audio (enregistreur + waveform + tags) | Audio | L | à faire |
+| F18 | Boîte à outils vidéo étendue + hover scrub | Vidéo | M | à faire |
+| F19 | Transcription locale (Whisper) | IA locale | L | à faire |
+| F20 | Actions IA sur fichiers | IA locale | M | à faire |
+| F21 | Chiffrement, coffre-fort & strip metadata | Sécurité | M | à faire |
+| F22 | Partage LAN éphémère + QR | Partage | M | à faire |
+| F23 | Règles d'automatisation (type Hazel) | Automatisation | L | à faire |
+| F24 | Templates & espaces de travail | Automatisation | S | à faire |

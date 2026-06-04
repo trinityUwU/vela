@@ -140,11 +140,11 @@ pas un multiplexeur de terminaux. On vise donc une notion simple :
   Indicateur « distant » sur l'onglet.
 - **Palette** : « Se connecter à… », chaque connexion = une entrée.
 
-**Stockage du secret — à trancher (voir question avant go).** Chris veut l'auto-login par mot de passe. Pour
-ne pas stocker un mot de passe en clair, ordre de préférence : (1) **keyring du système** (secret-service /
-libsecret) si un agent tourne ; (2) sinon **chiffré au repos** avec la brique `age` de F21 (déverrouillage par
-passphrase maître à l'ouverture) ; (3) en dernier recours, clair avec **avertissement explicite**. Le champ
-`remotes.json` ne garde que les métadonnées + une référence au secret.
+**Stockage du secret — décidé : keyring système.** Le mot de passe va dans le **keyring (secret-service /
+libsecret)** via la crate `keyring`. `remotes.json` ne garde que les métadonnées (host/port/user) + une
+référence d'entrée keyring, jamais le secret en clair. **Fallback si aucun daemon keyring ne tourne** (Hyprland
+minimal) : chiffré au repos avec la brique `age` de F21 (passphrase maître au déverrouillage). On détecte la
+présence du secret-service au runtime et on bascule proprement.
 
 **Backend.**
 - Crate **`russh`** + `russh-sftp` (SSH/SFTP **100 % Rust pur**, pas de libssh2 système → souveraineté ✅).

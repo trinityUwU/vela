@@ -89,6 +89,27 @@ if [ -x "$DL_VENV/bin/spotdl" ] && [ ! -e "$HOME/.config/spotdl/deno" ]; then
     || echo "⚠ Deno non téléchargé — les téléchargements Spotify peuvent échouer (réessaie : spotdl --download-deno)"
 fi
 
+# ── yt-dlp config : JS runtime bun ────────────────────────────────────────────────────────────────
+# Sans JS runtime, yt-dlp utilise android_vr qui retourne LOGIN_REQUIRED sur YouTube Music.
+# Avec bun activé, le player web est utilisé → le PO Token bgutil fonctionne sans compte Google.
+BUN_PATH="$([ -x "$HOME/.bun/bin/bun" ] && echo "$HOME/.bun/bin/bun" || which bun 2>/dev/null || true)"
+if [ -n "$BUN_PATH" ]; then
+  mkdir -p "$HOME/.config/yt-dlp"
+  JS_LINE="--js-runtimes bun:$BUN_PATH"
+  if [ ! -f "$HOME/.config/yt-dlp/config" ]; then
+    echo "$JS_LINE" > "$HOME/.config/yt-dlp/config"
+    echo "✓ yt-dlp config créé : JS runtime bun ($BUN_PATH)"
+  elif grep -q "^--js-runtimes" "$HOME/.config/yt-dlp/config"; then
+    sed -i "s|^--js-runtimes.*|$JS_LINE|" "$HOME/.config/yt-dlp/config"
+    echo "✓ yt-dlp config : JS runtime bun mis à jour"
+  else
+    echo "$JS_LINE" >> "$HOME/.config/yt-dlp/config"
+    echo "✓ yt-dlp config : JS runtime bun ajouté"
+  fi
+else
+  echo "○ bun absent — JS runtime yt-dlp non configuré (YouTube Music peut échouer)"
+fi
+
 # ── PO Token provider (bgutil) — contourne l'anti-bot YouTube SANS compte Google ─────────────
 # Plugin yt-dlp (pip, dans le venv DL) + provider HTTP local en container Docker sur :4416.
 # Le plugin détecte le provider automatiquement → aucun argument à passer à yt-dlp/spotdl.

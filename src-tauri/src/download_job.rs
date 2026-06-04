@@ -82,6 +82,23 @@ fn output_template(dest_dir: &str) -> String {
     format!("{dest_dir}/%(title)s.%(ext)s")
 }
 
+/// Résout le chemin de bun pour passer --js-runtimes à yt-dlp.
+/// Sans JS runtime, yt-dlp utilise android_vr qui exige LOGIN_REQUIRED sur YouTube Music.
+fn find_bun() -> Option<String> {
+    if let Ok(home) = std::env::var("HOME") {
+        let local = format!("{home}/.bun/bin/bun");
+        if std::path::Path::new(&local).is_file() {
+            return Some(local);
+        }
+    }
+    let Ok(out) = std::process::Command::new("which").arg("bun").output() else { return None; };
+    if out.status.success() {
+        let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if !s.is_empty() { return Some(s); }
+    }
+    None
+}
+
 fn build_ytdlp_args(format_id: &Option<String>, dest_dir: &str, audio_only: bool,
                     audio_format: &Option<String>, sub_langs: &Option<Vec<String>>,
                     url: &str) -> Vec<String> {
@@ -89,6 +106,16 @@ fn build_ytdlp_args(format_id: &Option<String>, dest_dir: &str, audio_only: bool
         "--newline".into(), "--no-warnings".into(),
         "-o".into(), output_template(dest_dir),
     ];
+    // JS runtime bun : active le web player. Par défaut yt-dlp utilise android_vr/web_safari
+    // (pas de POT), le web player est le seul qui utilise le PO Token bgutil.
+    if let Some(bun) = find_bun() {
+        args.push("--js-runtimes".into());
+        args.push(format!("bun:{bun}"));
+    }
+    // Forcer le web player en premier pour activer le circuit POT bgutil.
+    // Sans ça, android_vr tombe sur LOGIN_REQUIRED sans que le POT soit jamais tenté.
+    args.push("--extractor-args".into());
+    args.push("youtube:player_client=web,default".into());
     if let Some(fmt) = format_id {
         if !audio_only {
             args.push("-f".into());
@@ -124,11 +151,19 @@ fn build_spotdl_args(url: &str, dest_dir: &str, audio_format: &Option<String>) -
     let mut args: Vec<String> = vec![
         "download".into(), url.into(),
         "--output".into(), format!("{dest_dir}/{{artists}} - {{title}}.{{output-ext}}"),
+        // Regular YouTube en premier : pas de LOGIN_REQUIRED, évite l'anti-bot YouTube Music.
+        // youtube-music reste en fallback pour la qualité/métadonnées.
+        "--audio".into(), "youtube".into(), "youtube-music".into(),
     ];
     if let Some(af) = audio_format {
         args.push("--format".into());
         args.push(af.clone());
     }
+    // Passe au yt-dlp sous-jacent : web player (activer POT bgutil) + bun JS runtime.
+    // --extractor-args forcé car spotdl initialise YoutubeDL sans passer les args de config yt-dlp.
+    let bun_arg = find_bun().map(|b| format!(" --js-runtimes bun:{b}")).unwrap_or_default();
+    args.push("--yt-dlp-args".into());
+    args.push(format!("--extractor-args youtube:player_client=web,default{bun_arg}"));
     args
 }
 

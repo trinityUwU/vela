@@ -53,6 +53,7 @@ interface Props {
   onShare?: () => void;
   onPdfTools?: () => void;
   onAnnotate?: () => void;
+  onFindReplace?: () => void;
 }
 
 function relativePath(path: string, cwd: string): string {
@@ -126,6 +127,9 @@ export function ContextMenu(props: Props) {
       )}
       {!multi && menu.isDir && onAnalyze && (
         <Item label="Analyser l'espace…" onClick={() => { onAnalyze(); onClose(); }} />
+      )}
+      {!multi && menu.isDir && props.onFindReplace && (
+        <Item label="Rechercher & remplacer ici…" onClick={() => { props.onFindReplace?.(); onClose(); }} />
       )}
       {isArchive && (
         <>

@@ -27,6 +27,7 @@ import { TemplatePicker } from "./components/TemplatePicker";
 import { SharePanel } from "./components/SharePanel";
 import { PdfTools } from "./components/PdfTools";
 import { ImageAnnotate } from "./components/ImageAnnotate";
+import { FindReplace } from "./components/FindReplace";
 import type { TabSeed } from "./hooks/useFolderTabs";
 import { OverlayHost } from "./components/OverlayHost";
 import { StatusBar } from "./components/StatusBar";
@@ -116,6 +117,7 @@ export default function App() {
   const [sharePaths, setSharePaths] = useState<string[] | null>(null);
   const [pdfPaths, setPdfPaths] = useState<string[] | null>(null);
   const [annotatePath, setAnnotatePath] = useState<string | null>(null);
+  const [findReplaceRoot, setFindReplaceRoot] = useState<string | null>(null);
   const workspaces = useWorkspaces();
   const [extractConflict, setExtractConflict] = useState<{ archivePath: string; dest: string } | null>(null);
   const [conflictReq, setConflictReq] = useState<
@@ -471,6 +473,7 @@ export default function App() {
       if (p.length === 1) setAnnotatePath(p[0]);
       else fm.setError("Sélectionne une seule image à annoter.");
     },
+    findReplace: () => setFindReplaceRoot(fm.cwd),
     newFromTemplate: () => setTemplatePick(true),
     saveAsTemplate: () => {
       const p = selPaths();
@@ -751,6 +754,7 @@ export default function App() {
         onShare={(p) => { if (p.length) setSharePaths(p); }}
         onPdfTools={(p) => { if (p.length) setPdfPaths(p); }}
         onAnnotate={setAnnotatePath}
+        onFindReplace={setFindReplaceRoot}
       />
 
       <DialogHost
@@ -816,6 +820,20 @@ export default function App() {
           path={annotatePath}
           onSaved={(p) => { setAnnotatePath(null); fm.refresh(); fm.navigate(parentDir(p)); }}
           onClose={() => setAnnotatePath(null)}
+          onError={fm.setError}
+        />
+      )}
+
+      {findReplaceRoot && (
+        <FindReplace
+          root={findReplaceRoot}
+          onApplied={(originals, summary) => {
+            if (originals.length) undo.push({ kind: "bulk-edit", originals });
+            setNotice(summary);
+            setFindReplaceRoot(null);
+            fm.refresh();
+          }}
+          onClose={() => setFindReplaceRoot(null)}
           onError={fm.setError}
         />
       )}

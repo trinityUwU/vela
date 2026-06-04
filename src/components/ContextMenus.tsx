@@ -50,6 +50,7 @@ interface Props {
   onShare: (paths: string[]) => void;
   onPdfTools: (paths: string[]) => void;
   onAnnotate: (path: string) => void;
+  onFindReplace: (dir: string) => void;
 }
 
 export function ContextMenus(props: Props): React.ReactElement {
@@ -109,6 +110,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           onShare={() => { props.onShare(selPaths(menu.entry.path)); onCloseMenu(); }}
           onPdfTools={() => { props.onPdfTools(selPaths(menu.entry.path)); onCloseMenu(); }}
           onAnnotate={() => { props.onAnnotate(menu.entry.path); onCloseMenu(); }}
+          onFindReplace={() => { props.onFindReplace(menu.entry.path); onCloseMenu(); }}
         />
       )}
 

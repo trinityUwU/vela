@@ -6,7 +6,8 @@ export type UndoEntry =
   | { kind: "rename"; renames: { path: string; prevName: string }[] }
   | { kind: "move"; moves: { from: string; to: string }[] }
   | { kind: "copy"; created: string[] }
-  | { kind: "trash"; originals: string[] };
+  | { kind: "trash"; originals: string[] }
+  | { kind: "bulk-edit"; originals: { path: string; content: string }[] };
 
 const MAX_STACK = 30;
 
@@ -20,6 +21,7 @@ const LABELS: Record<UndoEntry["kind"], string> = {
   move: "le déplacement",
   copy: "la copie",
   trash: "la mise à la corbeille",
+  "bulk-edit": "le remplacement multi-fichiers",
 };
 
 // Exécute l'inverse d'une opération enregistrée.
@@ -42,6 +44,9 @@ async function revert(entry: UndoEntry): Promise<void> {
       return;
     case "trash":
       await fs.restoreTrash(entry.originals);
+      return;
+    case "bulk-edit":
+      for (const o of entry.originals) await fs.writeFile(o.path, o.content);
       return;
   }
 }

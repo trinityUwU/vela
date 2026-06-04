@@ -5770,6 +5770,7 @@ dependencies = [
  "portable-pty",
  "printpdf",
  "qrcode",
+ "regex",
  "serde",
  "serde_json",
  "sha1",

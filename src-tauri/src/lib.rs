@@ -25,6 +25,7 @@ mod ops;
 mod pdf;
 mod places;
 mod project;
+mod replace;
 mod player;
 mod profiles;
 mod share;
@@ -130,6 +131,8 @@ pub fn run() {
             pdf::pdf_extract_pages,
             pdf::pdf_rotate,
             project::project_detect,
+            replace::search_replace_preview,
+            replace::search_replace_apply,
             analyze::analyze_disk,
             dircmp::compare_dirs,
             player::player_open,

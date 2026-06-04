@@ -21,6 +21,9 @@ export interface KeyHandlers {
   onCloseTab?: () => void;
   onNextTab?: () => void;
   onPrevTab?: () => void;
+  onPaneCopy?: () => void;
+  onPaneMove?: () => void;
+  onSwitchPane?: () => void;
 }
 
 function inEditable(target: EventTarget | null): boolean {
@@ -48,6 +51,9 @@ export function useKeyboard(h: KeyHandlers): void {
       if (mod && e.key === "Tab") { e.preventDefault(); if (e.shiftKey) h.onPrevTab?.(); else h.onNextTab?.(); return; }
       if (mod && e.key === "t") { e.preventDefault(); h.onNewTab?.(); return; }
       if (mod && e.key === "w") { e.preventDefault(); h.onCloseTab?.(); return; }
+      // Volet jumeau : Tab bascule le volet actif, F6 déplace vers l'autre volet (F5 plus bas).
+      if (e.key === "Tab" && !e.shiftKey && h.onSwitchPane) { e.preventDefault(); h.onSwitchPane(); return; }
+      if (e.key === "F6" && h.onPaneMove) { e.preventDefault(); h.onPaneMove(); return; }
 
       if (mod && e.key === "c") { e.preventDefault(); h.onCopy?.(); return; }
       if (mod && e.key === "x") { e.preventDefault(); h.onCut?.(); return; }
@@ -57,7 +63,7 @@ export function useKeyboard(h: KeyHandlers): void {
       if (mod && e.key === "f") { e.preventDefault(); h.onFind?.(); return; }
       if (e.key === " ") { e.preventDefault(); h.onQuickLook?.(); return; }
       if (e.key === "F2") { e.preventDefault(); h.onRename?.(); return; }
-      if (e.key === "F5") { e.preventDefault(); h.onRefresh?.(); return; }
+      if (e.key === "F5") { e.preventDefault(); if (h.onPaneCopy) h.onPaneCopy(); else h.onRefresh?.(); return; }
       if (e.key === "Delete") {
         e.preventDefault();
         if (e.shiftKey) h.onDeletePermanent?.();

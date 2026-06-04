@@ -13,6 +13,7 @@ import { FileTree } from "./FileTree";
 import { TerminalPanel } from "./TerminalPanel";
 import { ResizeHandle } from "./ResizeHandle";
 import { GitPanel } from "./GitPanel";
+import { TwinBar } from "./TwinBar";
 import type { GitState } from "../hooks/useGitStatus";
 import type { TermTab } from "../hooks/useTerminals";
 
@@ -42,7 +43,7 @@ interface TerminalProps {
   onOpenPath: (path: string, isDir: boolean) => void;
 }
 
-interface ListingProps {
+export interface ListingProps {
   entries: DirEntry[];
   selection: Set<string>;
   active: string | null;
@@ -98,6 +99,10 @@ interface ZoneLayoutProps {
   terminal: TerminalProps;
   git: { state: GitState; cwd: string; onError: (msg: string) => void; onOpenFile: (path: string) => void; onDiff: (path: string) => void };
   centerOverride?: React.ReactNode;
+  listingB?: ListingProps; // volet jumeau (F03) : 2e listing indépendant
+  activePane?: "a" | "b";
+  onActivatePane?: (p: "a" | "b") => void;
+  twin?: { selectionCount: number; onCopy: () => void; onMove: () => void; onSync: () => void };
 }
 
 function ListingPanel({ view, editorActive, p }: {
@@ -157,14 +162,46 @@ export function ZoneLayout(props: ZoneLayoutProps): React.ReactElement {
   const [bottomH, setBottomH] = useState(256);
   const resizeBottom = (dy: number): void =>
     setBottomH((h) => Math.max(120, Math.min(window.innerHeight - 160, h - dy)));
+
+  // Mode volet jumeau : le 1er listing rencontré = volet A, le suivant = volet B (état indépendant).
+  const dual = !!props.listingB;
+  let listingSeen = 0;
+  const render = (panel: PanelId | null): React.ReactElement | null => {
+    if (!panel) return null;
+    if (panel === "listing" && dual) {
+      const which: "a" | "b" = listingSeen++ === 0 ? "a" : "b";
+      const p = which === "a" ? props.listing : props.listingB!;
+      const isActive = props.activePane === which;
+      return (
+        <div
+          key={which}
+          onMouseDownCapture={() => props.onActivatePane?.(which)}
+          className={`relative flex-1 flex min-h-0 ${isActive ? "ring-1 ring-inset ring-[var(--color-accent)]" : ""}`}
+        >
+          <ListingPanel view={props.view} editorActive={props.editorActive} p={p} />
+        </div>
+      );
+    }
+    return renderPanel(panel, props);
+  };
+
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      {dual && props.twin && (
+        <TwinBar
+          active={props.activePane ?? "a"}
+          selectionCount={props.twin.selectionCount}
+          onCopy={props.twin.onCopy}
+          onMove={props.twin.onMove}
+          onSync={props.twin.onSync}
+        />
+      )}
       <div className="flex-1 flex min-h-0">
-        {zones.left && renderPanel(zones.left, props)}
+        {render(zones.left)}
         {centerOverride
           ? <div className="relative flex-1 flex min-h-0">{centerOverride}</div>
-          : renderPanel(zones.center, props)}
-        {zones.right && renderPanel(zones.right, props)}
+          : render(zones.center)}
+        {render(zones.right)}
       </div>
       {zones.bottom && (
         <div className="shrink-0 flex flex-col" style={{ height: bottomH }}>

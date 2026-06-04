@@ -18,6 +18,8 @@ import { useTags } from "./hooks/useTags";
 import { useAppearance } from "./hooks/useAppearance";
 import { hexFor } from "./services/tags";
 import { getEntryProps, writeFile, diskFree, startExtraction, pathExists } from "./services/fs";
+import { scanConflicts, copyEntries, moveEntries } from "./services/fs";
+import { usePane } from "./hooks/usePane";
 import { OverlayHost } from "./components/OverlayHost";
 import { StatusBar } from "./components/StatusBar";
 import { InputModal } from "./components/InputModal";
@@ -40,6 +42,7 @@ import { TabStrip } from "./components/TabStrip";
 import { SearchResults } from "./components/SearchBar";
 import { SortBar } from "./components/SortBar";
 import { ZoneLayout } from "./components/ZoneLayout";
+import type { ListingProps } from "./components/ZoneLayout";
 import { ContextMenus } from "./components/ContextMenus";
 import { DialogHost } from "./components/DialogHost";
 import type { Dialog } from "./components/DialogHost";
@@ -351,6 +354,69 @@ export default function App() {
     setDiff({ a, b });
   };
 
+  // ── volet jumeau (F03) ───────────────────────────────────────────────────────
+  const twoListings = useMemo(() => {
+    const z = activeProfile.zones;
+    return [z.left, z.center, z.right, z.bottom].filter((p) => p === "listing").length >= 2;
+  }, [activeProfile.zones]);
+  const paneB = usePane("/", fm.showHidden);
+  const [activePane, setActivePane] = useState<"a" | "b">("a");
+  const paneInited = useRef(false);
+  useEffect(() => {
+    if (twoListings && !paneInited.current && fm.cwd) { paneB.navigate(fm.cwd); paneInited.current = true; }
+    if (!twoListings) { paneInited.current = false; setActivePane("a"); }
+  }, [twoListings, fm.cwd, paneB]);
+  const entriesB = useMemo(() => applySortFilter(paneB.listing?.entries ?? [], sort), [paneB.listing, sort]);
+
+  // Résolution de conflits réutilisant la modale globale (0 % perte sur les transferts inter-volets).
+  const resolveConflictsModal = useCallback(
+    async (paths: string[], destDir: string): Promise<Record<string, ConflictResolution> | null> => {
+      const conflicts = await scanConflicts(paths, destDir);
+      if (conflicts.length === 0) return {};
+      return new Promise((resolve) => setConflictReq({ conflicts, resolve }));
+    },
+    [],
+  );
+  const paneTransfer = useCallback(async (op: "copy" | "move") => {
+    const fromA = activePane === "a";
+    const src = fromA ? selPaths() : paneB.selectionPaths();
+    if (!src.length) return;
+    const destDir = fromA ? paneB.cwd : fm.cwd;
+    try {
+      const res = await resolveConflictsModal(src, destDir);
+      if (res === null) return;
+      if (op === "copy") await copyEntries(src, destDir, res);
+      else await moveEntries(src, destDir, res);
+      fm.refresh(); paneB.refresh();
+    } catch (e) { fm.setError(String(e)); }
+  }, [activePane, paneB, fm, resolveConflictsModal]); // eslint-disable-line react-hooks/exhaustive-deps
+  const paneSync = useCallback(() => {
+    setDirDiff(activePane === "a" ? { a: fm.cwd, b: paneB.cwd } : { a: paneB.cwd, b: fm.cwd });
+  }, [activePane, paneB.cwd, fm.cwd]);
+  const switchPane = useCallback(() => setActivePane((p) => (p === "a" ? "b" : "a")), []);
+  const paneBListing: ListingProps = {
+    entries: entriesB,
+    selection: paneB.selection,
+    active: paneB.selected,
+    sort,
+    onToggleBy: toggleBy,
+    onSelect: (entry, e) => {
+      if (e.shiftKey) paneB.rangeSelect(entry.path, entriesB);
+      else if (e.ctrlKey || e.metaKey) paneB.toggleSelect(entry.path);
+      else paneB.selectOne(entry.path);
+    },
+    onSelectEdit: (entry) => paneB.selectOne(entry.path),
+    onOpen: (entry) => paneB.openEntry(entry),
+    onContext: (e) => e.preventDefault(),
+    onContextBg: (e) => { e.preventDefault(); paneB.clearSelection(); },
+    onClearBg: paneB.clearSelection,
+    onMove: () => {}, // glisser-déposer intra-volet B désactivé en v1 (sécurité données)
+    folderSizes,
+    colorOf: tagHex,
+    gitOf: undefined,
+    onColumns: () => {},
+  };
+
   const commands = useCommandRegistry({
     refresh: fm.refresh, toggleHidden: fm.toggleHidden, goUp: fm.goUp, goBack: fm.goBack, goForward: fm.goForward,
     navigate: fm.navigate, switchProfile: profiles.setActive, places: fm.places, profiles: profiles.profiles,
@@ -406,6 +472,9 @@ export default function App() {
     onCloseTab: () => fm.closeTab(fm.activeTabId),
     onNextTab: () => fm.cycleTab(1),
     onPrevTab: () => fm.cycleTab(-1),
+    onPaneCopy: twoListings ? () => paneTransfer("copy") : undefined,
+    onPaneMove: twoListings ? () => paneTransfer("move") : undefined,
+    onSwitchPane: twoListings ? switchPane : undefined,
   });
 
   return (
@@ -537,6 +606,15 @@ export default function App() {
         }}
         terminal={terminalProps}
         git={{ state: git, cwd: fm.cwd, onError: fm.setError, onOpenFile: (p: string) => openTermPath(p, false), onDiff: openGitDiff }}
+        listingB={twoListings ? paneBListing : undefined}
+        activePane={activePane}
+        onActivatePane={setActivePane}
+        twin={twoListings ? {
+          selectionCount: activePane === "a" ? fm.selection.size : paneB.selection.size,
+          onCopy: () => paneTransfer("copy"),
+          onMove: () => paneTransfer("move"),
+          onSync: paneSync,
+        } : undefined}
       />
 
       {showStatusBar && (

@@ -68,7 +68,23 @@ fn default_profiles() -> ProfilesState {
                 },
                 filter_bar_hidden: false,
             },
+            jumeau_profile(),
         ],
+    }
+}
+
+// Profil volet jumeau (F03) : deux listings côte à côte (sidebar | listing | listing).
+fn jumeau_profile() -> Profile {
+    Profile {
+        id: "jumeau".into(),
+        name: "Jumeau".into(),
+        zones: Zones {
+            left: Some(PanelId::Sidebar),
+            center: PanelId::Listing,
+            right: Some(PanelId::Listing),
+            bottom: None,
+        },
+        filter_bar_hidden: false,
     }
 }
 
@@ -80,10 +96,15 @@ fn config_path() -> PathBuf {
 #[tauri::command]
 pub fn load_profiles() -> ProfilesState {
     let p = config_path();
-    fs::read_to_string(&p)
+    let mut state: ProfilesState = fs::read_to_string(&p)
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    // Injecte le profil Jumeau dans les installations existantes qui ne l'ont pas encore.
+    if !state.profiles.iter().any(|p| p.id == "jumeau") {
+        state.profiles.push(jumeau_profile());
+    }
+    state
 }
 
 fn zone_is_editor(z: &Option<PanelId>) -> bool {

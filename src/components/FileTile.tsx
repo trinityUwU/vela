@@ -4,6 +4,7 @@ import type { DirEntry } from "../types";
 import { FileIcon } from "./FileIcon";
 import { previewKind } from "../services/file-kind";
 import { useThumbnail } from "../hooks/useThumbnail";
+import { gitColor, GIT_LABEL } from "../services/git-ui";
 
 interface Props {
   entry: DirEntry;
@@ -16,14 +17,6 @@ interface Props {
   onContext: (e: React.MouseEvent) => void;
   onMove: (src: string, destDir: string) => void;
 }
-
-const GIT_COLOR: Record<string, string> = {
-  modified: "#e2b340",
-  new: "#4caf50",
-  deleted: "#e0524f",
-  renamed: "#5b9bd5",
-  ignored: "#6b7280",
-};
 
 export function FileTile({ entry, selected, active, color, git, onClick, onDouble, onContext, onMove }: Props) {
   const [dragOver, setDragOver] = useState(false);
@@ -97,8 +90,10 @@ export function FileTile({ entry, selected, active, color, git, onClick, onDoubl
         {git && (
           <span
             className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-[var(--color-bg)]"
-            style={{ backgroundColor: GIT_COLOR[git] ?? "#888" }}
-            title={`git: ${git}`}
+            style={git === "dir"
+              ? { backgroundColor: "transparent", boxShadow: `inset 0 0 0 2px ${gitColor(git)}` }
+              : { backgroundColor: gitColor(git) }}
+            title={`git : ${GIT_LABEL[git] ?? git}`}
           />
         )}
       </span>

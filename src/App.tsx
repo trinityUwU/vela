@@ -104,6 +104,24 @@ export default function App() {
     upsert: profiles.upsertProfile, remove: profiles.removeProfile };
   const [view, setView] = useState<View>(() => ((localStorage.getItem("vela-view") as View) || "grid"));
   const setViewPersist = useCallback((v: View) => { setView(v); try { localStorage.setItem("vela-view", v); } catch {} }, []);
+  // Overlay git dans l'explorateur (activé par défaut), persisté.
+  const [gitOverlay, setGitOverlay] = useState(() => localStorage.getItem("vela-git-overlay") !== "0");
+  const toggleGitOverlay = useCallback(() => setGitOverlay((v) => {
+    const next = !v; try { localStorage.setItem("vela-git-overlay", next ? "1" : "0"); } catch {} return next;
+  }), []);
+  // Dossiers ancêtres d'un fichier modifié → badge agrégé "dir" sur le dossier.
+  const gitDirs = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of git.statusMap.keys()) {
+      let d = p.slice(0, p.lastIndexOf("/"));
+      while (d.length > 1) { s.add(d); d = d.slice(0, d.lastIndexOf("/")); }
+    }
+    return s;
+  }, [git.statusMap]);
+  const gitOf = useCallback((path: string): string | undefined => {
+    if (!gitOverlay) return undefined;
+    return git.statusMap.get(path) ?? (gitDirs.has(path) ? "dir" : undefined);
+  }, [gitOverlay, git.statusMap, gitDirs]);
 
   useEffect(() => { trashDir().then(setTrashPath).catch(() => {}); homeDir().then(setHomePath).catch(() => {}); }, []);
   useEffect(() => { availableShells().then(setShells).catch(() => {}); }, []);
@@ -358,6 +376,9 @@ export default function App() {
           onToggleBy={toggleBy}
           onFilter={(f) => updateSort({ filter: f })}
           onToggleDirsFirst={() => updateSort({ dirsFirst: !sort.dirsFirst })}
+          gitOverlay={gitOverlay}
+          onToggleGit={toggleGitOverlay}
+          inRepo={!!git.repoRoot}
         />
       )}
 
@@ -381,7 +402,7 @@ export default function App() {
           onMove: fm.moveEntry,
           folderSizes,
           colorOf: tagHex,
-          gitOf: (path: string) => git.statusMap.get(path),
+          gitOf,
           onColumns: (c) => { gridCols.current = c; },
         }}
         editor={{

@@ -11,6 +11,17 @@ Tu es lancé depuis le terminal intégré de **Vela**, un gestionnaire de fichie
 
 Si `open_file` ou `preview_content` renvoie une erreur « pas de zone éditeur », c'est que le profil Vela actif n'a pas d'éditeur : demande à l'utilisateur de basculer sur un profil qui en contient un (ex. « Édition »), puis réessaie.
 
+## Mode autonome : demande d'abord comment présenter
+
+Avant de partir sur une session autonome longue (refacto, suite de features, gros chantier), pose UNE question claire à l'utilisateur et attends sa réponse :
+
+> Tu veux que je travaille en **mode présentation temps réel** (je te montre chaque étape clé dans Vela — changelog via `preview_content`, diffs, fichiers ouverts) ou en **mode silencieux** (je bosse sans toucher à l'interface, pour ne pas te déranger pendant que tu l'utilises) ?
+
+- **Présentation temps réel** : à chaque étape importante (feature finie, refacto, doc mise à jour), présente-la à l'écran (`preview_content` pour un changelog/résumé, ouverture du fichier ou du diff concerné). Aie ce réflexe systématiquement.
+- **Mode silencieux** : n'utilise PAS les tools d'affichage de `vela` pendant le travail ; livre un récap à la fin seulement.
+
+Respecte le choix sur toute la session. Si l'utilisateur dit en cours « arrête de me présenter » / « montre-moi à nouveau », bascule de mode immédiatement.
+
 ## Tes autres capacités restent entières
 
 Tous tes autres serveurs MCP, tes skills, tes agents et tes outils habituels restent disponibles et doivent être utilisés normalement, comme dans n'importe quelle session. Le MCP `vela` s'ajoute à eux — il ne les remplace pas. Choisis simplement le bon outil pour chaque tâche : `vela` pour piloter l'interface de Vela, le reste pour tout le reste.

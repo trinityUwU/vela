@@ -4,6 +4,7 @@ import type { DirEntry } from "../types";
 import type { SortBy, SortState } from "../hooks/useSort";
 import { FileIcon } from "./FileIcon";
 import { fmtSize, fmtDate } from "../services/format";
+import { gitColor, GIT_LABEL } from "../services/git-ui";
 
 interface Props {
   entries: DirEntry[];
@@ -21,14 +22,6 @@ interface Props {
   colorOf: (path: string) => string | undefined;
   gitOf?: (path: string) => string | undefined;
 }
-
-const GIT_COLOR: Record<string, string> = {
-  modified: "#e2b340",
-  new: "#4caf50",
-  deleted: "#e0524f",
-  renamed: "#5b9bd5",
-  ignored: "#6b7280",
-};
 
 const COLS: { by: SortBy; label: string; className: string }[] = [
   { by: "name", label: "Nom", className: "flex-1 min-w-0" },
@@ -128,7 +121,9 @@ function Row({ entry, selected, active, dirSize, color, git, onSelect, onOpen, o
         <span className="shrink-0"><FileIcon entry={entry} size={18} /></span>
         <span className="truncate text-sm text-[var(--color-text)]">{entry.name}</span>
         {color && <span className="shrink-0 w-2 h-2 rounded-full" style={{ backgroundColor: color }} />}
-        {git && <span className="shrink-0 w-2 h-2 rounded-full" style={{ backgroundColor: GIT_COLOR[git] ?? "#888" }} title={`git: ${git}`} />}
+        {git && <span className="shrink-0 w-2 h-2 rounded-full" style={git === "dir"
+          ? { backgroundColor: "transparent", boxShadow: `inset 0 0 0 2px ${gitColor(git)}` }
+          : { backgroundColor: gitColor(git) }} title={`git : ${GIT_LABEL[git] ?? git}`} />}
       </span>
       <span className="w-24 text-right text-xs text-[var(--color-text-dim)] tabular-nums">{entry.is_dir ? (dirSize !== undefined ? fmtSize(dirSize) : "—") : fmtSize(entry.size)}</span>
       <span className="w-36 text-xs text-[var(--color-text-dim)] tabular-nums">{fmtDate(entry.modified)}</span>

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { DirEntry } from "../types";
 import { FileIcon } from "./FileIcon";
+import { gitColor, GIT_LABEL } from "../services/git-ui";
 
 interface Props {
   entries: DirEntry[];
@@ -13,9 +14,10 @@ interface Props {
   onContextBg: (e: React.MouseEvent) => void;
   onMove: (src: string, destDir: string) => void;
   colorOf: (path: string) => string | undefined;
+  gitOf?: (path: string) => string | undefined;
 }
 
-export function FileList({ entries, selection, active, onSelect, onOpen, onContext, onContextBg, onMove, colorOf }: Props) {
+export function FileList({ entries, selection, active, onSelect, onOpen, onContext, onContextBg, onMove, colorOf, gitOf }: Props) {
   const handleBg = (e: React.MouseEvent) => {
     e.preventDefault();
     onContextBg(e);
@@ -33,13 +35,14 @@ export function FileList({ entries, selection, active, onSelect, onOpen, onConte
           onContext={onContext}
           onMove={onMove}
           color={colorOf(e.path)}
+          git={gitOf?.(e.path)}
         />
       ))}
     </div>
   );
 }
 
-function FileRow({ entry, selected, active, onSelect, onOpen, onContext, onMove, color }: {
+function FileRow({ entry, selected, active, onSelect, onOpen, onContext, onMove, color, git }: {
   entry: DirEntry;
   selected: boolean;
   active: boolean;
@@ -48,6 +51,7 @@ function FileRow({ entry, selected, active, onSelect, onOpen, onContext, onMove,
   onContext: (ev: React.MouseEvent, e: DirEntry) => void;
   onMove: (src: string, destDir: string) => void;
   color?: string;
+  git?: string;
 }) {
   const [dragOver, setDragOver] = useState(false);
 
@@ -93,6 +97,9 @@ function FileRow({ entry, selected, active, onSelect, onOpen, onContext, onMove,
     >
       <span className="shrink-0"><FileIcon entry={entry} size={18} /></span>
       <span className="truncate text-sm text-[var(--color-text)] flex-1">{entry.name}</span>
+      {git && <span className="shrink-0 w-2 h-2 rounded-full" style={git === "dir"
+        ? { backgroundColor: "transparent", boxShadow: `inset 0 0 0 2px ${gitColor(git)}` }
+        : { backgroundColor: gitColor(git) }} title={`git : ${GIT_LABEL[git] ?? git}`} />}
       {color && <span className="shrink-0 w-2 h-2 rounded-full" style={{ backgroundColor: color }} />}
     </button>
   );

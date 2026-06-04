@@ -6,6 +6,9 @@ interface Props {
   onToggleBy: (by: SortBy) => void;
   onFilter: (f: FilterKind) => void;
   onToggleDirsFirst: () => void;
+  gitOverlay: boolean;
+  onToggleGit: () => void;
+  inRepo: boolean;
 }
 
 const SORT_LABELS: { by: SortBy; label: string }[] = [
@@ -21,7 +24,7 @@ const FILTER_LABELS: { f: FilterKind; label: string }[] = [
   { f: "files", label: "Fichiers" },
 ];
 
-export function SortBar({ sort, onToggleBy, onFilter, onToggleDirsFirst }: Props) {
+export function SortBar({ sort, onToggleBy, onFilter, onToggleDirsFirst, gitOverlay, onToggleGit, inRepo }: Props) {
   return (
     <div className="flex items-center gap-3 px-3 h-8 border-b border-[var(--color-border)] bg-[var(--color-bg)] shrink-0 text-[11px]">
       {/* Tri */}
@@ -70,6 +73,26 @@ export function SortBar({ sort, onToggleBy, onFilter, onToggleDirsFirst }: Props
         </span>
         Dossiers en tête
       </button>
+
+      {inRepo && (
+        <>
+          <div className="w-px h-4 bg-[var(--color-border)] shrink-0" />
+          <button
+            onClick={onToggleGit}
+            title="Afficher l'état git sur les fichiers et dossiers"
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors ${
+              gitOverlay ? "text-[var(--color-accent)]" : "text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+            }`}
+          >
+            <span className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${
+              gitOverlay ? "border-[var(--color-accent)] bg-[var(--color-accent)]" : "border-[var(--color-border)]"
+            }`}>
+              {gitOverlay && <span className="text-white text-[8px] leading-none">✓</span>}
+            </span>
+            Git
+          </button>
+        </>
+      )}
     </div>
   );
 }

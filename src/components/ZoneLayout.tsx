@@ -106,7 +106,7 @@ function ListingPanel({ view, editorActive, p }: {
       <FileList
         entries={p.entries} selection={p.selection} active={p.active}
         onSelect={p.onSelectEdit} onOpen={p.onOpen} onContext={p.onContext}
-        onContextBg={p.onContextBg} onMove={p.onMove} colorOf={p.colorOf}
+        onContextBg={p.onContextBg} onMove={p.onMove} colorOf={p.colorOf} gitOf={p.gitOf}
       />
     );
   }

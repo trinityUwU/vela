@@ -44,6 +44,11 @@ Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1
   `useFileManager.openNative` (exposé). `ContextMenu` gagne le prop `onOpenNative`.
 - **Clic sur résultat CodeIndex** → ouvre le fichier dans l'éditeur (avant : navigation vers le dossier).
 - Contrainte 500 lignes d'`App.tsx` tenue (factorisation `openMatch`/`openInEditor`).
+- **Refacto `App.tsx` 500→470** : menus contextuels (fichier + zone vide) et leur câblage extraits dans
+  `components/ContextMenus.tsx` (logique extract-here/to absorbée). Helper `openMediaTools`.
+- **Édition image plein écran** : `ImageToolsPanel` gagne un toggle ⤢ → sous-vue `FullscreenEditor`
+  (`fixed inset-0`, image `max-h-full`, contrôles dockés en bas scrollables). Échap sort du plein écran
+  puis ferme. Contrôles factorisés en fragment `controls` partagé entre vue normale et plein écran.
 
 ## v2.1 — Traduction locale + CodeIndex + fix compression ✅ LIVRÉ
 

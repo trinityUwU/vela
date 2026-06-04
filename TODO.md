@@ -13,6 +13,9 @@
       clic résultat → ouvre le fichier dans l'éditeur
 - [x] v2.3 — Ouverture systématique dans l'éditeur interne (double-clic/Entrée/menu « Ouvrir »), quel
       que soit le profil et l'extension ; nouvelle option « Ouvrir dans l'app par défaut » (xdg-open)
+- [x] v2.3 — Refacto App.tsx 500→470 (menus contextuels → ContextMenus.tsx)
+- [x] v2.3 — Édition image plein écran (toggle ⤢ dans ImageToolsPanel, contrôles dockés)
+- [ ] CodeIndex moteur : ajouter parser AST Rust (autre repo ~/Documents/DEVS/codeindex) — à valider avec Chris
 - [ ] v2.1 — Conversion de langages de programmation (MIS DE CÔTÉ — promesse intenable en l'état)
 - [x] Preview image inline (base64 data URL, skip useFileContent)
 - [x] Viewer archive ZIP/TAR/GZ/BZ2/XZ/RAR/7Z + extraction (ici ou chemin custom)

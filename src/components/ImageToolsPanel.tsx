@@ -286,20 +286,59 @@ function useSave(input: string, ops: ImageOp[], onError: (msg: string) => void) 
   return { fmt, setFmt, quality, setQuality, busy, done, save, outName: baseName(out) };
 }
 
+function FullscreenEditor({ src, alt, ops, controls, onExit }: {
+  src: string | null; alt: string; ops: ImageOp[]; controls: React.ReactNode; onExit: () => void;
+}): React.ReactElement {
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col bg-black">
+      <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden p-4">
+        {src
+          ? <img src={src} alt={alt} style={previewStyle(ops)} className="max-w-full max-h-full object-contain transition-transform" />
+          : <span className="text-xs text-[var(--color-text-dim)]">Chargement…</span>}
+      </div>
+      <div className="shrink-0 max-h-[45vh] overflow-y-auto p-4 bg-[var(--color-surface)]/95 border-t border-[var(--color-border)] backdrop-blur">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-[var(--color-text-dim)] truncate">{alt}</p>
+          <button onClick={onExit} title="Quitter le plein écran (Échap)"
+            className="px-2 py-1 rounded text-sm text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)]">Réduire ⤡</button>
+        </div>
+        {controls}
+      </div>
+    </div>
+  );
+}
+
 export function ImageToolsPanel({ input, onError, onClose, embedded = false }: MediaPanelProps): React.ReactElement {
   const parts = useMemo(() => splitPath(input), [input]);
   const src = useImageSrc(input, parts.ext, onError);
   const [section, setSection] = useState<Section>("rotate");
   const [ops, setOps] = useState<ImageOp[]>([]);
+  const [full, setFull] = useState(false);
   const sv = useSave(input, ops, onError);
   const add = (op: ImageOp): void => setOps((prev) => [...prev, op]);
 
   useEffect(() => { setOps([]); }, [input]);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent): void => { if (e.key === "Escape") { if (full) setFull(false); else onClose(); } };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, full]);
+
+  const controls = (
+    <>
+      <SectionTabs active={section} onSelect={setSection} />
+      <SectionControls section={section} add={add} />
+      <PendingOps ops={ops} onUndo={() => setOps((p) => p.slice(0, -1))} onClear={() => setOps([])} />
+      <SaveBar fmt={sv.fmt} setFmt={sv.setFmt} quality={sv.quality} setQuality={sv.setQuality} busy={sv.busy} onSave={sv.save} />
+      <p className="mt-2 text-xs text-[var(--color-text-dim)] h-4">
+        {sv.done ? <span className="text-[var(--color-accent)]">✓ Sauvegardé : {sv.done}</span> : `Sortie : ${sv.outName}`}
+      </p>
+    </>
+  );
+
+  if (full) {
+    return <FullscreenEditor src={src} alt={baseName(input)} ops={ops} controls={controls} onExit={() => setFull(false)} />;
+  }
 
   const body = (
     <div className={embedded
@@ -310,20 +349,18 @@ export function ImageToolsPanel({ input, onError, onClose, embedded = false }: M
           <h2 className="text-sm font-medium text-[var(--color-text)]">Éditer l'image</h2>
           <p className="text-xs text-[var(--color-text-dim)] truncate">{baseName(input)}</p>
         </div>
-        <button onClick={onClose} className="px-2 py-1 rounded text-sm text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)]">✕</button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setFull(true)} title="Plein écran"
+            className="px-2 py-1 rounded text-sm text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)]">⤢</button>
+          <button onClick={onClose} className="px-2 py-1 rounded text-sm text-[var(--color-text-dim)] hover:bg-[var(--color-surface-hover)]">✕</button>
+        </div>
       </div>
       <div className="flex-1 min-h-0 flex items-center justify-center mb-3 rounded bg-[var(--color-bg)] overflow-hidden">
         {src
           ? <img src={src} alt={baseName(input)} style={previewStyle(ops)} className="max-w-full max-h-[36vh] object-contain transition-transform" />
           : <span className="text-xs text-[var(--color-text-dim)]">Chargement…</span>}
       </div>
-      <SectionTabs active={section} onSelect={setSection} />
-      <SectionControls section={section} add={add} />
-      <PendingOps ops={ops} onUndo={() => setOps((p) => p.slice(0, -1))} onClear={() => setOps([])} />
-      <SaveBar fmt={sv.fmt} setFmt={sv.setFmt} quality={sv.quality} setQuality={sv.setQuality} busy={sv.busy} onSave={sv.save} />
-      <p className="mt-2 text-xs text-[var(--color-text-dim)] h-4">
-        {sv.done ? <span className="text-[var(--color-accent)]">✓ Sauvegardé : {sv.done}</span> : `Sortie : ${sv.outName}`}
-      </p>
+      {controls}
     </div>
   );
 

@@ -65,6 +65,16 @@ Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1
 - ⚠️ Couleur du surlignage : xterm DOM renderer hérite de la couleur du texte (soulignement). Levier CSS
   dispo si bleu franc requis (non ajouté tant que non validé visuellement).
 
+### Itérations UX (validées)
+- **Liens toujours actifs** : abandon du gate Ctrl (testé : maintenir, puis premier appui togglable) au
+  profit de liens cliquables en temps réel sans modificateur. `provideLinks` renvoie tous les tokens.
+- **Noms avec espaces** : `pathTokens` capte aussi les segments entre quotes simples/doubles
+  (`'Mix - Kerchak - Saison 2 (Clip Officiel)'`, façon `ls`) comme un seul lien.
+- **Parenthèses préservées** : `term_resolve` ne rogne plus que les guillemets (`" ' \``), plus les
+  `( ) [ ] , :` — sinon les dossiers type `(Clip Officiel)` perdaient leur `)` et devenaient introuvables.
+- **Basename du prompt** : si le token est un nom simple == basename du cwd (ex. `[user@host Music]$`),
+  `term_resolve` renvoie le cwd lui-même (fallback quand `cwd.join(token)` n'existe pas).
+
 ## v2.1 — Traduction locale + CodeIndex + fix compression ✅ LIVRÉ
 
 1. **Fix freeze compression** — `create_archive` (sync, main thread GTK) → `archive::start_compression`,

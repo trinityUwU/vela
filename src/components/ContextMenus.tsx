@@ -21,6 +21,7 @@ interface Props {
   onCloseBg: () => void;
   selPaths: (fallback?: string) => string[];
   openInEditor: (e: DirEntry) => void;
+  openNewTab: (path: string) => void;
   openNative: (e: DirEntry) => void;
   copyToClipboard: (mode: "copy" | "cut", paths: string[]) => void;
   onDialog: (d: Dialog) => void;
@@ -61,6 +62,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           }}
           onClose={onCloseMenu}
           onOpen={() => { props.openInEditor(menu.entry); onCloseMenu(); }}
+          onOpenNewTab={() => { props.openNewTab(menu.entry.path); onCloseMenu(); }}
           onOpenNative={() => { props.openNative(menu.entry); onCloseMenu(); }}
           onRename={() => { props.onDialog({ kind: "rename", entry: menu.entry }); onCloseMenu(); }}
           onTrash={() => { props.askTrash(selPaths(menu.entry.path)); onCloseMenu(); }}

@@ -33,6 +33,8 @@ export interface CommandContext {
   openTranslator: () => void;
   newFile: () => void;
   newFolder: () => void;
+  newTab: () => void;
+  closeTab: () => void;
   emptyTrash: () => void;
   selectByPattern: () => void;
   invertSelection: () => void;
@@ -44,6 +46,8 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
     const actions: Command[] = [
       { id: "new-file", title: "Nouveau fichier", group: "Actions", run: ctx.newFile },
       { id: "new-folder", title: "Nouveau dossier", group: "Actions", run: ctx.newFolder },
+      { id: "new-tab", title: "Nouvel onglet", hint: "Ctrl+T", group: "Navigation", run: ctx.newTab },
+      { id: "close-tab", title: "Fermer l'onglet", hint: "Ctrl+W", group: "Navigation", run: ctx.closeTab },
       { id: "terminal", title: "Ouvrir un terminal", group: "Actions", run: ctx.openTerminal },
       { id: "download", title: "Télécharger… (YouTube / Spotify)", group: "Actions", run: ctx.openDownload },
       { id: "browser", title: "Ouvrir le navigateur", group: "Actions", run: ctx.openBrowser },

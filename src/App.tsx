@@ -36,6 +36,7 @@ import { TerminalDock } from "./components/TerminalDock";
 import { termInput, availableShells } from "./services/term";
 import { Topbar } from "./components/Topbar";
 import type { View } from "./components/Topbar";
+import { TabStrip } from "./components/TabStrip";
 import { SearchResults } from "./components/SearchBar";
 import { SortBar } from "./components/SortBar";
 import { ZoneLayout } from "./components/ZoneLayout";
@@ -358,6 +359,7 @@ export default function App() {
     openDownload: () => setDownloadOpen(true), openBrowser: () => setBrowserOpen(true), openSearch: () => search.setOpen(true),
     openCodeSearch: () => setCodeSearchOpen(true), openTranslator: () => setTranslate({ path: null }),
     newFile: () => setDialog({ kind: "newfile" }), newFolder: () => setDialog({ kind: "newfolder" }),
+    newTab: () => fm.newTab(), closeTab: () => fm.closeTab(fm.activeTabId),
     emptyTrash: () => setDialog({ kind: "emptytrash" }),
     selectByPattern: () => setDialog({ kind: "selectpattern" }),
     invertSelection: () => fm.invertSelection(entries),
@@ -400,6 +402,10 @@ export default function App() {
     onBack: fm.goBack,
     onForward: fm.goForward,
     onPalette: palette.toggle,
+    onNewTab: () => fm.newTab(),
+    onCloseTab: () => fm.closeTab(fm.activeTabId),
+    onNextTab: () => fm.cycleTab(1),
+    onPrevTab: () => fm.cycleTab(-1),
   });
 
   return (
@@ -437,6 +443,15 @@ export default function App() {
         onSearchOpen={() => search.setOpen(true)}
         onSearchQuery={search.setQuery}
         onSearchClose={search.close}
+      />
+      <TabStrip
+        tabs={fm.tabs}
+        activeId={fm.activeTabId}
+        onSelect={fm.switchTab}
+        onClose={fm.closeTab}
+        onNew={() => fm.newTab()}
+        onRename={fm.renameTab}
+        onSetColor={fm.setTabColor}
       />
       {search.open && (
         <SearchResults
@@ -569,6 +584,7 @@ export default function App() {
         onCloseBg={() => setBgMenu(null)}
         selPaths={selPaths}
         openInEditor={openInEditor}
+        openNewTab={(p) => fm.newTab(p)}
         openNative={fm.openNative}
         copyToClipboard={fm.copyToClipboard}
         onDialog={setDialog}

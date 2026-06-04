@@ -4,6 +4,9 @@ import { listen } from "@tauri-apps/api/event";
 import * as fs from "../services/fs";
 import { isEditable } from "../services/file-kind";
 import { matchPattern } from "../services/path-util";
+import { useFolderTabs } from "./useFolderTabs";
+import type { TabSeed } from "./useFolderTabs";
+export type { FolderTab } from "./useFolderTabs";
 import type { UndoEntry } from "./useUndo";
 import type { Clipboard, ClipboardOp, DirEntry, DirListing, Place } from "../types";
 import type { Conflict, ConflictResolution } from "../services/fs";
@@ -20,6 +23,8 @@ const SESSION_KEY = "vela-session";
 interface Session {
   cwd?: string;
   showHidden?: boolean;
+  tabs?: (string | TabSeed)[]; // string = format hérité (cwd seul)
+  activeTab?: number;
 }
 
 function loadSession(): Session {
@@ -110,12 +115,22 @@ export function useFileManager() {
     navigateInternal(history.current[histIdx.current], true);
   }, [navigateInternal]);
 
+  // ── onglets de dossiers ──────────────────────────────────────────────────────
+  const { tabs, activeTabId, newTab, closeTab, switchTab, cycleTab, renameTab, setTabColor, initTabs } =
+    useFolderTabs({
+      cwd, selection, selected, showHidden, history, histIdx, anchor,
+      setListing, setCwd, setSelection, setSelected, setHistState, setError,
+    });
+
   useEffect(() => {
     (async () => {
       try {
         const [home, pl] = await Promise.all([fs.homeDir(), fs.listPlaces()]);
         setPlaces(pl);
-        await navigate(session.cwd || home);
+        const raw = session.tabs?.length ? session.tabs : [session.cwd || home];
+        const seeds: TabSeed[] = raw.map((t) => (typeof t === "string" ? { cwd: t } : t));
+        const start = initTabs(seeds, session.activeTab ?? 0);
+        await navigate(start);
       } catch (e) {
         setError(String(e));
       }
@@ -124,8 +139,13 @@ export function useFileManager() {
   }, []);
 
   useEffect(() => {
-    if (cwd) saveSession({ cwd, showHidden });
-  }, [cwd, showHidden]);
+    if (!tabs.length) return;
+    saveSession({
+      cwd, showHidden,
+      tabs: tabs.map((t) => ({ cwd: t.cwd, name: t.name, color: t.color })),
+      activeTab: tabs.findIndex((t) => t.id === activeTabId),
+    });
+  }, [cwd, showHidden, tabs, activeTabId]);
 
   // ── watch live du dossier courant ───────────────────────────────────────────
   const refreshRef = useRef<() => void>(() => {});
@@ -454,6 +474,7 @@ export function useFileManager() {
     error, setError,
     navigate, openEntry, openNative, previewEntry, goUp, refresh,
     goBack, goForward, canBack: histState.canBack, canForward: histState.canForward,
+    tabs, activeTabId, newTab, closeTab, switchTab, cycleTab, renameTab, setTabColor,
     rename, renameMany, remove, newFolder, createFile, moveEntry,
     trash, deletePermanent, compress,
     trashCount, emptyTrash, openTrash,

@@ -1,5 +1,5 @@
 // Menu contextuel au clic droit sur une entrée (fichier ou dossier), mono ou multi-sélection.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMenuPosition } from "../hooks/useMenuPosition";
 import { previewKind } from "../services/file-kind";
 import { convertTargets } from "../services/convert";
@@ -23,6 +23,7 @@ interface Props {
   menu: MenuState;
   onClose: () => void;
   onOpen: () => void;
+  onOpenNewTab?: () => void;
   onOpenNative?: () => void;
   onRename: () => void;
   onTrash: () => void;
@@ -98,6 +99,9 @@ export function ContextMenu(props: Props) {
         </>
       )}
       {!multi && <Item label="Ouvrir" onClick={onOpen} />}
+      {!multi && menu.isDir && props.onOpenNewTab && (
+        <Item label="Ouvrir dans un nouvel onglet" onClick={() => { props.onOpenNewTab?.(); onClose(); }} />
+      )}
       {!multi && !menu.isDir && onOpenNative && (
         <Item label="Ouvrir dans l'app par défaut" onClick={() => { onOpenNative(); onClose(); }} />
       )}
@@ -181,19 +185,39 @@ export function ContextMenu(props: Props) {
   );
 }
 
+// Sous-menu en position fixe (hors du conteneur scrollé du menu parent, sinon clipping horizontal).
 function ConvertSubmenu({ path, onConvert }: { path: string; onConvert: (target: string) => void }) {
   const [targets, setTargets] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number; maxHeight: number }>({ left: 0, top: 0, maxHeight: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { convertTargets(path).then(setTargets).catch(() => setTargets([])); }, [path]);
   if (targets.length === 0) return null;
+
+  const SUB_W = 144;
+  const openSub = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return setOpen(true);
+    const left = r.right + SUB_W > window.innerWidth ? r.left - SUB_W : r.right;
+    const top = Math.min(r.top, window.innerHeight - 80);
+    setPos({ left, top, maxHeight: window.innerHeight - top - 8 });
+    setOpen(true);
+  };
+
   return (
-    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <button className="w-full flex items-center justify-between px-3 py-1.5 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]">
+    <div onMouseEnter={openSub} onMouseLeave={() => setOpen(false)}>
+      <button
+        ref={btnRef}
+        className="w-full flex items-center justify-between px-3 py-1.5 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+      >
         <span>Convertir vers</span>
         <span className="text-[var(--color-text-dim)]">›</span>
       </button>
       {open && (
-        <div className="absolute left-full top-0 min-w-28 max-h-72 overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl py-1">
+        <div
+          style={{ left: pos.left, top: pos.top, maxHeight: pos.maxHeight, width: SUB_W }}
+          className="fixed z-[60] overflow-y-auto rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl py-1"
+        >
           {targets.map((t) => (
             <button
               key={t}

@@ -17,6 +17,10 @@ export interface KeyHandlers {
   onBack?: () => void;
   onForward?: () => void;
   onPalette?: () => void;
+  onNewTab?: () => void;
+  onCloseTab?: () => void;
+  onNextTab?: () => void;
+  onPrevTab?: () => void;
 }
 
 function inEditable(target: EventTarget | null): boolean {
@@ -40,6 +44,10 @@ export function useKeyboard(h: KeyHandlers): void {
 
       if (e.altKey && e.key === "ArrowLeft") { e.preventDefault(); h.onBack?.(); return; }
       if (e.altKey && e.key === "ArrowRight") { e.preventDefault(); h.onForward?.(); return; }
+
+      if (mod && e.key === "Tab") { e.preventDefault(); if (e.shiftKey) h.onPrevTab?.(); else h.onNextTab?.(); return; }
+      if (mod && e.key === "t") { e.preventDefault(); h.onNewTab?.(); return; }
+      if (mod && e.key === "w") { e.preventDefault(); h.onCloseTab?.(); return; }
 
       if (mod && e.key === "c") { e.preventDefault(); h.onCopy?.(); return; }
       if (mod && e.key === "x") { e.preventDefault(); h.onCut?.(); return; }

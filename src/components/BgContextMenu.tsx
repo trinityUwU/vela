@@ -1,5 +1,6 @@
 // Menu contextuel sur zone vide (fond du dossier courant).
 import { useEffect } from "react";
+import { useMenuPosition } from "../hooks/useMenuPosition";
 
 interface Props {
   x: number;
@@ -17,6 +18,8 @@ interface Props {
 }
 
 export function BgContextMenu({ x, y, showHidden, onClose, onNewFile, onNewFolder, onRefresh, onToggleHidden, onPinCurrent, onProperties, onPaste, canPaste }: Props) {
+  const { ref, pos } = useMenuPosition(x, y);
+
   useEffect(() => {
     window.addEventListener("click", onClose);
     return () => window.removeEventListener("click", onClose);
@@ -24,8 +27,9 @@ export function BgContextMenu({ x, y, showHidden, onClose, onNewFile, onNewFolde
 
   return (
     <div
-      style={{ top: y, left: x }}
-      className="fixed z-50 min-w-52 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
+      ref={ref}
+      style={{ top: pos.top, left: pos.left, maxHeight: "calc(100vh - 16px)" }}
+      className="fixed z-50 min-w-52 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl overflow-y-auto"
     >
       <Item label="Nouveau fichier" onClick={onNewFile} />
       <Item label="Nouveau dossier" onClick={onNewFolder} />

@@ -7,6 +7,7 @@ import "@xterm/xterm/css/xterm.css";
 import { termInput, termResize, termResolve } from "../services/term";
 import type { TermTab } from "../hooks/useTerminals";
 import { TAG_COLORS, hexFor } from "../services/tags";
+import { FloatingMenu } from "./FloatingMenu";
 
 interface Props {
   tabs: TermTab[];
@@ -132,10 +133,7 @@ export function TerminalPanel(props: Props) {
       {tabMenu && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setTabMenu(null)} onContextMenu={(e) => { e.preventDefault(); setTabMenu(null); }} />
-          <div
-            style={{ top: tabMenu.y, left: tabMenu.x }}
-            className="fixed z-50 min-w-44 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
-          >
+          <FloatingMenu x={tabMenu.x} y={tabMenu.y} className="min-w-44">
             <button
               onClick={() => { setRenaming(tabMenu.id); setTabMenu(null); }}
               className="w-full text-left px-3 py-1.5 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
@@ -161,7 +159,7 @@ export function TerminalPanel(props: Props) {
                 ✕
               </button>
             </div>
-          </div>
+          </FloatingMenu>
         </>
       )}
     </div>

@@ -1,6 +1,7 @@
 // Sidebar : Favoris (pins libres + groupes) · Emplacements XDG · Montages.
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { FavPin, Place } from "../types";
+import { FloatingMenu } from "./FloatingMenu";
 import type { useFavorites } from "../hooks/useFavorites";
 import { Home, Folder, Drive, Trash, Settings, Download } from "./icons";
 
@@ -94,11 +95,7 @@ function TrashRow({ active, count, onOpen, onEmpty }: {
         )}
       </button>
       {menu && (
-        <div
-          style={{ top: Math.max(4, menu.y - 52), left: menu.x }}
-          onClick={(e) => e.stopPropagation()}
-          className="fixed z-50 min-w-48 p-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
-        >
+        <FloatingMenu x={menu.x} y={menu.y} className="min-w-48 px-1">
           <button
             onClick={() => { onEmpty(); setMenu(null); }}
             disabled={count === 0}
@@ -107,7 +104,7 @@ function TrashRow({ active, count, onOpen, onEmpty }: {
             <Trash width={15} height={15} />
             Vider la corbeille{count > 0 ? ` (${count})` : ""}
           </button>
-        </div>
+        </FloatingMenu>
       )}
     </>
   );

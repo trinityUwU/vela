@@ -1,5 +1,6 @@
 // Menu contextuel au clic droit sur une entrée (fichier ou dossier), mono ou multi-sélection.
 import { useEffect, useState } from "react";
+import { useMenuPosition } from "../hooks/useMenuPosition";
 import { previewKind } from "../services/file-kind";
 import { convertTargets } from "../services/convert";
 import { smartActions } from "../services/smart-actions";
@@ -60,6 +61,8 @@ export function ContextMenu(props: Props) {
   const { menu, onClose, onOpen, onRename, onTrash, onDeletePermanent, onProperties } = props;
   const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onOpenTerminal, onComputeSize, onAnalyze, onMediaTools, onExtractHere, onExtractTo, onConvert, onOpenNative } = props;
 
+  const { ref, pos } = useMenuPosition(menu.x, menu.y);
+
   useEffect(() => {
     window.addEventListener("click", onClose);
     return () => window.removeEventListener("click", onClose);
@@ -78,8 +81,9 @@ export function ContextMenu(props: Props) {
 
   return (
     <div
-      style={{ top: menu.y, left: menu.x }}
-      className="fixed z-50 min-w-52 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl"
+      ref={ref}
+      style={{ top: pos.top, left: pos.left, maxHeight: "calc(100vh - 16px)" }}
+      className="fixed z-50 min-w-52 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl overflow-y-auto"
     >
       {multi && (
         <div className="px-3 py-1 text-xs text-[var(--color-text-dim)]">{menu.count} éléments</div>

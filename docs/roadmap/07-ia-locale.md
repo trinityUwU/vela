@@ -17,38 +17,63 @@ tourne sur la machine.
 
 **Pour qui.** Chercheurs (interviews), créateurs (sous-titres), journalistes, étudiants.
 
+**Décisions arrêtées (retour Chris).**
+- Backend = **faster-whisper** (CTranslate2), pas whisper.cpp.
+- **Cascade de device** : CUDA (NVIDIA) si dispo → AMD (ROCm) si reconnu → **CPU en dernier recours**.
+  L'utilisateur peut **forcer CPU ou GPU** dans les Réglages (préférence, pas auto-imposée).
+- **Modèle par défaut = `medium`.**
+- **Aucun modèle installé par défaut** (poids). On télécharge à la demande seulement.
+- Tout doit être **synchronisé avec les modèles déjà installés** : Réglages et palette ne proposent que ce
+  qui est présent, et proposent l'**installation** dès qu'un paramètre choisi (modèle/device) manque un
+  requirement.
+
+> ⚠️ **Réserve technique à trancher.** CTranslate2 (le moteur de faster-whisper) supporte officiellement
+> **CUDA + CPU**, mais **pas ROCm/AMD**. Sur GPU AMD, faster-whisper retombera donc en pratique sur le CPU.
+> Un vrai chemin GPU-AMD imposerait un second backend (whisper.cpp Vulkan/ROCm). À décider : (a) AMD →
+> fallback CPU assumé et documenté, ou (b) double backend faster-whisper (NVIDIA/CPU) + whisper.cpp (AMD).
+> Sur la machine de Chris (RTX 3060) la question est théorique — CUDA est le chemin réel.
+
 **Comment ça vit dans Vela.**
-- Clic droit sur un fichier audio/vidéo → **« Transcrire… »** : choix de la langue (auto/forcée), du modèle
-  (tiny/base/small/medium selon la machine), du format de sortie (txt / srt / vtt). Job long + progression.
+- Clic droit sur un fichier audio/vidéo → **« Transcrire… »** : langue (auto/forcée), **modèle** (liste
+  synchronisée avec l'installé, `medium` par défaut), **device** (Auto/GPU/CPU selon préférence Réglages),
+  format de sortie (txt / srt / vtt). Si le modèle/requirement choisi manque → **propose l'install** avant de
+  lancer (job long + progression). Même logique depuis la **palette** « Transcrire… ».
 - Résultat écrit à côté du fichier (`entretien.srt`) et ouvert dans l'éditeur. Pour une vidéo, on peut
   enchaîner sur F18 « brûler les sous-titres ».
 - **Recherche dans le parlé** : une fois un dossier transcrit, son contenu audio devient cherchable (le .srt
   alimente la recherche contenu F05 / l'index sémantique F07). « Retrouve la vidéo où je parle de souveraineté ».
-- **Réglages** : modèle Whisper par défaut, langue par défaut, GPU on/off.
+- **Réglages** : préférence device (Auto / GPU / CPU), modèle par défaut (`medium`), langue par défaut, liste
+  des modèles installés (avec taille) + bouton installer/supprimer par modèle.
 - **Synergie control plane** : `transcribe(path)` exposé au MCP → « transcris-moi cette réunion ».
 
 **Backend.**
-- **`whisper.cpp`** (binaire ggml, CPU/GPU, léger, souverain) **ou** un venv `faster-whisper`
-  (`~/.local/share/vela/whisper-venv`) — même pattern que demucs (détection, install proposée, capabilities).
-  whisper.cpp est préférable (pas de venv Python lourd, modèles ggml quantifiés, marche sur la RTX 3060).
+- Venv dédié `~/.local/share/vela/whisper-venv` (`faster-whisper`), pattern demucs (détection, install
+  proposée, capabilities). Détection device : interroger CUDA (NVIDIA), puis ROCm (AMD), sinon CPU.
+- Modèles stockés dans `~/.local/share/vela/whisper-models/` (ou cache HF). `transcribe_models()` liste
+  l'installé → c'est la **source de vérité** pour synchroniser Réglages + palette + modale.
 - Extraction audio préalable via ffmpeg (déjà là) pour les vidéos.
-- Commandes : `transcribe_capabilities`, `transcribe_install`, `transcribe_start(path, opts) -> job`,
+- Commandes : `transcribe_capabilities` (venv + devices dispo), `transcribe_models` (installés),
+  `transcribe_install_model(name)` (job), `transcribe_start(path, {model, device, lang, format}) -> job`,
   segments → assemblage srt/vtt côté Rust.
 
 **Frontend.**
-- `useTranscribe` (capabilities + jobs, calqué sur `use-download`/stems). `TranscribeModal.tsx`.
+- `useTranscribe` (capabilities + modèles installés + jobs, calqué sur `use-download`/stems).
+  `TranscribeModal.tsx` (synchro modèles installés, propose install si manquant). Section Réglages dédiée.
 
-**Dépendances.** whisper.cpp + modèle (opt-in, install proposée) ; ffmpeg (présent). Souveraineté ◑ (local,
-mais binaire/modèle à installer). Dégradation : absent → entrée masquée + proposition d'install.
+**Dépendances.** venv faster-whisper + modèle(s) (opt-in, install à la demande, rien par défaut) ; ffmpeg
+(présent). Souveraineté ◑ (local, mais venv/modèle à installer). Dégradation : venv absent → entrée masquée +
+proposition d'install.
 
 **Effort.** L.
 
-**Risques.** Premier téléchargement de modèle (de ~75 Mo tiny à ~1,5 Go medium) → opt-in clair, choix de
-taille selon la machine. Temps de transcription long → job background, jamais bloquant. Qualité variable
-selon langue/modèle → laisser le choix du modèle.
+**Risques.** Poids des modèles (`medium` ≈ 1,5 Go) → **jamais installé d'office**, toujours à la demande avec
+taille affichée. Désync Réglages/installé → la liste vient **toujours** de `transcribe_models`, jamais en dur.
+AMD : cf. réserve technique ci-dessus. Temps de transcription long → job background, jamais bloquant.
 
-**Fini quand.** Je fais clic droit sur une interview d'une heure, je choisis « small, français, srt », et
-j'obtiens un .srt horodaté correct ; plus tard je retrouve cette vidéo en cherchant un mot que j'y ai prononcé.
+**Fini quand.** Je fais clic droit sur une interview d'une heure, le modèle `medium` est proposé par défaut
+(ou son install si absent), je lance sur GPU (CUDA), et j'obtiens un .srt horodaté correct ; plus tard je
+retrouve cette vidéo en cherchant un mot que j'y ai prononcé. Changer le device/modèle dans les Réglages se
+reflète immédiatement dans la modale et la palette.
 
 ---
 
@@ -72,8 +97,11 @@ EchoHub (texte) et un VLM local type Qwen2.5-VL (image) :
 - **Toujours une étape de validation** : l'IA *propose*, l'utilisateur *confirme*. Un renommage suggéré est
   pré-rempli dans la modale de rename habituelle ; un tri proposé est montré comme un plan avant exécution
   (annulable `Ctrl+Z`).
-- **Opt-in global** dans les Réglages (« Activer les actions IA locales ») — désactivé par défaut, comme la
-  palette NL. Indique le modèle/endpoint utilisé (EchoHub).
+- **Opt-in global** dans les Réglages (« Activer les actions IA locales ») — **désactivé par défaut** (retour
+  Chris), comme la palette NL. Indique le modèle/endpoint utilisé (EchoHub).
+- **Aucun modèle téléchargé d'office** (retour Chris) : on s'appuie sur EchoHub qui gère ses modèles à la
+  demande. Si EchoHub n'a pas de modèle chargé/installé, on **propose** le chargement/install, on ne l'impose
+  jamais. Toute la suite IA reste synchronisée avec ce qui est réellement disponible (via `echohub_status`).
 
 **Backend.**
 - Texte : réutilise le pont EchoHub (`nl.ts` montre déjà l'API Messages locale). Extraction de texte = pandoc/

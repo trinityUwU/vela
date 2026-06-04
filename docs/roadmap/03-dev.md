@@ -117,41 +117,57 @@ confirmation, toujours non-destructive.
 
 ## F11 · Connexions distantes SFTP/SSH
 
-**Le pari.** Monter un serveur distant comme un dossier dans Vela : naviguer, éditer, copier vers/depuis,
-exactement comme en local. C'est l'outil qui transforme Vela en vrai poste de travail dev/sysadmin et qui
-remplace FileZilla — en restant souverain (ce sont **tes** serveurs, pas un cloud tiers).
+**L'idée.** Monter un serveur distant comme un dossier dans Vela : naviguer en SFTP, éditer, copier vers/depuis,
+comme en local. En restant souverain (ce sont **tes** serveurs, pas un cloud tiers).
+
+**Cadrage (retour Chris) — rester léger, ne pas refaire Tabby.** Chris utilise déjà **Tabby** pour le
+terminal SSH multi-onglets ; Vela n'a pas à dupliquer ça. La valeur de Vela = **l'accès fichiers** (SFTP),
+pas un multiplexeur de terminaux. On vise donc une notion simple :
+- Des **connexions sauvegardées** : `host`, `port` (**22 par défaut**, modifiable), `user`, `password`
+  (optionnel). Auto-login si le mot de passe est configuré. Clé SSH supportée aussi (alternative au password).
+- **Pas** de gestion avancée façon Tabby (tunnels, profils complexes, terminaux multiples). On s'arrête à :
+  connecter, parcourir, éditer, transférer.
 
 **Pour qui.** Devs qui déploient, sysadmins, quiconque a un VPS (Chris a un OVH VPS).
 
 **Comment ça vit dans Vela.**
-- Sidebar → section **« Distant »** → « Ajouter une connexion » : hôte, port, user, clé/agent SSH (jamais de
-  mot de passe stocké en clair — clé ou agent uniquement). Connexions persistées (sans secret) dans
-  `~/.config/vela/remotes.json`.
-- Une fois connecté, le serveur apparaît comme un **lieu** dans la sidebar. La navigation, l'ouverture de
-  fichiers dans l'éditeur, le copier-coller local↔distant marchent de façon transparente.
-- **Édition distante** : ouvrir un fichier distant le télécharge en cache temp, l'édite, et **réuploade à la
-  sauvegarde** (`Ctrl+S`). Indicateur « distant » sur l'onglet.
-- **Palette** : « Se connecter à… », chaque remote = une entrée.
+- Sidebar → section **« Distant »** → « Ajouter une connexion » (formulaire : host, port=22, user, mot de
+  passe **ou** clé). Connexions persistées dans `~/.config/vela/remotes.json` (**sans le secret en clair** —
+  cf. décision de stockage ci-dessous).
+- Clic sur une connexion → **auto-connexion** (login auto si mot de passe/clé enregistré), le serveur apparaît
+  comme un **lieu** dans la sidebar ; navigation, ouverture dans l'éditeur, copier-coller local↔distant.
+- **Édition distante** : ouvrir un fichier distant le met en cache temp, l'édite, **réuploade à `Ctrl+S`**.
+  Indicateur « distant » sur l'onglet.
+- **Palette** : « Se connecter à… », chaque connexion = une entrée.
+
+**Stockage du secret — à trancher (voir question avant go).** Chris veut l'auto-login par mot de passe. Pour
+ne pas stocker un mot de passe en clair, ordre de préférence : (1) **keyring du système** (secret-service /
+libsecret) si un agent tourne ; (2) sinon **chiffré au repos** avec la brique `age` de F21 (déverrouillage par
+passphrase maître à l'ouverture) ; (3) en dernier recours, clair avec **avertissement explicite**. Le champ
+`remotes.json` ne garde que les métadonnées + une référence au secret.
 
 **Backend.**
 - Crate **`russh`** + `russh-sftp` (SSH/SFTP **100 % Rust pur**, pas de libssh2 système → souveraineté ✅).
-  Un `RemoteManager` (état Tauri) tient les sessions. Commandes miroir de `fs_ops` mais préfixées :
-  `remote_list`, `remote_read`, `remote_write`, `remote_stat`, `remote_transfer` (local↔remote, réutilise le
-  centre de transferts F01).
-- Auth par clé (`~/.ssh/id_*`) ou agent SSH. Known-hosts respecté (TOFU avec confirmation).
+  Un `RemoteManager` (état Tauri) tient les sessions. Commandes : `remote_connect(cfg)`, `remote_list`,
+  `remote_read`, `remote_write`, `remote_stat`, `remote_transfer` (local↔remote, réutilise le centre de
+  transferts F01), `remote_disconnect`.
+- Auth par mot de passe (auto-login) **ou** clé (`~/.ssh/id_*`)/agent. Known-hosts respecté (TOFU avec
+  confirmation au premier contact).
 
 **Frontend.**
 - `useRemotes` (CRUD connexions). Le listing/éditeur deviennent **source-agnostiques** : un chemin peut être
-  local ou `remote://id/chemin`. C'est le vrai travail — abstraire la couche fichier côté front. À cadrer :
-  soit un préfixe d'URI routé vers les bonnes commandes, soit un « provider » de système de fichiers.
+  local ou `remote://id/chemin`. C'est le vrai travail — abstraire la couche fichier côté front (préfixe
+  d'URI routé vers les bonnes commandes).
 
-**Dépendances.** `russh`/`russh-sftp` (crates pures). Souveraineté ✅.
+**Dépendances.** `russh`/`russh-sftp` (pures) ; keyring (`secret-service`) optionnel pour le secret.
+Souveraineté ✅.
 
-**Effort.** L (l'abstraction local/remote du listing est le morceau délicat).
+**Effort.** L (l'abstraction local/remote du listing est le morceau délicat ; le reste est cadré léger).
 
-**Risques.** Latence réseau → tout doit être async + indicateurs de chargement, jamais bloquer l'UI. Gestion
-des déconnexions (reconnect propre). Ne **jamais** stocker de secret en clair. Le watch fs-changed n'existe
-pas en SFTP → rafraîchissement manuel/polling léger sur le dossier distant ouvert.
+**Risques.** Latence réseau → async + indicateurs, jamais bloquer l'UI. Déconnexions → reconnect propre.
+Secret jamais en clair par défaut (cf. décision de stockage). `fs-changed` n'existe pas en SFTP →
+rafraîchissement manuel/polling léger du dossier distant ouvert.
 
-**Fini quand.** J'ajoute mon VPS OVH par clé, je navigue dans `/var/www`, j'édite un fichier de conf, `Ctrl+S`
-le réécrit sur le serveur, et je glisse un fichier local vers le distant via le centre de transferts.
+**Fini quand.** J'ajoute mon VPS OVH (host + port 22 + user + mot de passe), un clic me connecte
+automatiquement, je navigue dans `/var/www`, j'édite un fichier de conf, `Ctrl+S` le réécrit sur le serveur,
+et je glisse un fichier local vers le distant via le centre de transferts.

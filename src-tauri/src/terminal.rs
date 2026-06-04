@@ -163,8 +163,18 @@ pub fn term_resolve(
         if p.is_absolute() { p.to_path_buf() } else { base.join(p) }
     };
 
-    let canon = std::fs::canonicalize(&expanded)
-        .map_err(|e| format!("Chemin introuvable : {e}"))?;
+    let canon = match std::fs::canonicalize(&expanded) {
+        Ok(c) => c,
+        // Le prompt affiche souvent juste le basename du cwd (ex. `Music`) : il pointe alors
+        // sur le dossier courant lui-même, pas sur un sous-dossier homonyme inexistant.
+        Err(e) => {
+            if !raw.contains('/') && base.file_name().map(|n| n == raw).unwrap_or(false) {
+                base.clone()
+            } else {
+                return Err(format!("Chemin introuvable : {e}"));
+            }
+        }
+    };
     let is_dir = canon.is_dir();
     Ok(Resolved { path: canon.to_string_lossy().to_string(), is_dir })
 }

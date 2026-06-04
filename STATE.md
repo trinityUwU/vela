@@ -33,6 +33,18 @@ Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1
   depuis une modal (émettre sur event `extraction-progress`, s'enregistrer dans `ExtractionManager`).
   `ExtractionStatus` gagne `indexing`.
 
+## v2.3 — Ouverture éditeur systématique + UX recherche code ✅ LIVRÉ
+
+- **Ouverture dans l'éditeur interne par défaut** : toute activation d'un fichier (double-clic listing,
+  Entrée clavier, double-clic sur un résultat de recherche, clic droit « Ouvrir ») passe par
+  `App.openInEditor` → bascule sur le profil **Édition** (`switchToEdition`) puis `setOpened`, **quel que
+  soit le profil courant** et **peu importe l'extension** (plus de check `isEditable` ni d'app native).
+  `useFileManager.openEntry` ouvre inline dès que `editorActive`. `openMatch` factorisé via `openInEditor`.
+- **Nouvelle option clic droit « Ouvrir dans l'app par défaut »** (fichiers uniquement) → `xdg-open` via
+  `useFileManager.openNative` (exposé). `ContextMenu` gagne le prop `onOpenNative`.
+- **Clic sur résultat CodeIndex** → ouvre le fichier dans l'éditeur (avant : navigation vers le dossier).
+- Contrainte 500 lignes d'`App.tsx` tenue (factorisation `openMatch`/`openInEditor`).
+
 ## v2.1 — Traduction locale + CodeIndex + fix compression ✅ LIVRÉ
 
 1. **Fix freeze compression** — `create_archive` (sync, main thread GTK) → `archive::start_compression`,

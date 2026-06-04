@@ -9,6 +9,10 @@
 - [x] v2.2 — Indexation CodeIndex async dans panneau bas-droite (pattern jobs longs réutilisable)
 - [x] v2.2 — Robustesse chiffrement : stdin null, chiffrement données-seules (pas -hp/-mhe), détection
       mot de passe en amont (`7z l -slt`), zip AES délégué à 7z (crate `zip` = ZipCrypto only)
+- [x] v2.2 — CodeIndex : fix search (parse `top_functions` objets), indexation `--no-llm` (zéro Groq),
+      clic résultat → ouvre le fichier dans l'éditeur
+- [x] v2.3 — Ouverture systématique dans l'éditeur interne (double-clic/Entrée/menu « Ouvrir »), quel
+      que soit le profil et l'extension ; nouvelle option « Ouvrir dans l'app par défaut » (xdg-open)
 - [ ] v2.1 — Conversion de langages de programmation (MIS DE CÔTÉ — promesse intenable en l'état)
 - [x] Preview image inline (base64 data URL, skip useFileContent)
 - [x] Viewer archive ZIP/TAR/GZ/BZ2/XZ/RAR/7Z + extraction (ici ou chemin custom)

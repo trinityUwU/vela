@@ -10,6 +10,8 @@ use tauri::{AppHandle, Emitter};
 
 // Bridge MCP embarqué : écrit dans le shim dir au démarrage → app installée autonome.
 const MCP_BRIDGE_SRC: &str = include_str!("../assets/mcp-bridge.ts");
+// Contexte injecté dans le system prompt de Claude (via --append-system-prompt) quand lancé dans Vela.
+const VELA_CONTEXT: &str = include_str!("../assets/vela-context.md");
 
 #[derive(Clone)]
 pub struct ControlPlane {
@@ -74,21 +76,27 @@ fn build_shim(sock_path: &Path) -> Result<ControlPlane, String> {
     std::fs::write(&mcp_config, serde_json::to_vec_pretty(&cfg).unwrap_or_default())
         .map_err(|e| format!("mcp config : {e}"))?;
 
-    write_wrapper(&shim_dir, &real_claude, &mcp_config)?;
+    let context = shim_dir.join("vela-context.md");
+    std::fs::write(&context, VELA_CONTEXT).map_err(|e| format!("contexte : {e}"))?;
+
+    write_wrapper(&shim_dir, &real_claude, &mcp_config, &context)?;
     write_rc_files(&shim_dir)?;
 
     Ok(ControlPlane { sock_path: sock_path.to_path_buf(), shim_dir, mcp_config })
 }
 
-// Wrapper exécutable `claude` : relance le vrai binaire avec --mcp-config (env EchoHub purgé).
-fn write_wrapper(shim_dir: &Path, real_claude: &Path, mcp_config: &Path) -> Result<(), String> {
+// Wrapper exécutable `claude` : relance le vrai binaire avec --mcp-config + le contexte Vela injecté
+// dans le system prompt (env EchoHub purgé). N'altère aucune config globale de Claude.
+fn write_wrapper(shim_dir: &Path, real_claude: &Path, mcp_config: &Path, context: &Path) -> Result<(), String> {
     let wrapper = shim_dir.join("claude");
     let script = format!(
         "#!/usr/bin/env bash\n\
          exec env -u ANTHROPIC_BASE_URL -u CLAUDE_CODE_SUBAGENT_MODEL \\\n  \
-         {real} --dangerously-skip-permissions --mcp-config {cfg} \"$@\"\n",
+         {real} --dangerously-skip-permissions --mcp-config {cfg} \\\n  \
+         --append-system-prompt \"$(cat {ctx})\" \"$@\"\n",
         real = shell_quote(&real_claude.to_string_lossy()),
         cfg = shell_quote(&mcp_config.to_string_lossy()),
+        ctx = shell_quote(&context.to_string_lossy()),
     );
     std::fs::write(&wrapper, script).map_err(|e| format!("wrapper : {e}"))?;
     std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))

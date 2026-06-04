@@ -28,6 +28,9 @@ import { SharePanel } from "./components/SharePanel";
 import { PdfTools } from "./components/PdfTools";
 import { ImageAnnotate } from "./components/ImageAnnotate";
 import { FindReplace } from "./components/FindReplace";
+import { AdvancedSearch } from "./components/AdvancedSearch";
+import { useSmartSearches } from "./hooks/useSmartSearches";
+import type { SearchCriteria } from "./services/advsearch";
 import type { TabSeed } from "./hooks/useFolderTabs";
 import { OverlayHost } from "./components/OverlayHost";
 import { StatusBar } from "./components/StatusBar";
@@ -69,6 +72,10 @@ import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
 type BgMenu = { x: number; y: number } | null;
+
+function defaultCriteria(root: string): SearchCriteria {
+  return { root, recursive: true, hidden: false, name: "", content: "", extensions: [], sizeMin: null, sizeMax: null, after: null, before: null };
+}
 
 export default function App() {
   const fm = useFileManager();
@@ -118,7 +125,10 @@ export default function App() {
   const [pdfPaths, setPdfPaths] = useState<string[] | null>(null);
   const [annotatePath, setAnnotatePath] = useState<string | null>(null);
   const [findReplaceRoot, setFindReplaceRoot] = useState<string | null>(null);
+  const [advSearch, setAdvSearch] = useState<{ criteria: SearchCriteria; autoRun: boolean } | null>(null);
+  const [smartName, setSmartName] = useState<SearchCriteria | null>(null);
   const workspaces = useWorkspaces();
+  const smartSearches = useSmartSearches();
   const [extractConflict, setExtractConflict] = useState<{ archivePath: string; dest: string } | null>(null);
   const [conflictReq, setConflictReq] = useState<
     { conflicts: Conflict[]; resolve: (r: Record<string, ConflictResolution> | null) => void } | null
@@ -490,6 +500,12 @@ export default function App() {
     },
     tasks: project.tasks,
     runTask,
+    advancedSearch: () => setAdvSearch({ criteria: defaultCriteria(fm.cwd), autoRun: false }),
+    smartSearches: smartSearches.searches.map((s) => ({ id: s.id, name: s.name })),
+    openSmartSearch: (id) => {
+      const s = smartSearches.searches.find((x) => x.id === id);
+      if (s) setAdvSearch({ criteria: s.criteria, autoRun: true });
+    },
   });
 
   const tabSeeds = useCallback((): TabSeed[] => fm.tabs.map((t) => ({ cwd: t.cwd, name: t.name, color: t.color })), [fm.tabs]);
@@ -821,6 +837,27 @@ export default function App() {
           onSaved={(p) => { setAnnotatePath(null); fm.refresh(); fm.navigate(parentDir(p)); }}
           onClose={() => setAnnotatePath(null)}
           onError={fm.setError}
+        />
+      )}
+
+      {advSearch && (
+        <AdvancedSearch
+          initial={advSearch.criteria}
+          autoRun={advSearch.autoRun}
+          onReveal={(p) => { fm.navigate(parentDir(p)); fm.setSelected(p); setAdvSearch(null); }}
+          onSave={(c) => setSmartName(c)}
+          onClose={() => setAdvSearch(null)}
+          onError={fm.setError}
+        />
+      )}
+
+      {smartName && (
+        <InputModal
+          title="Enregistrer le dossier intelligent"
+          confirmLabel="Enregistrer"
+          placeholder="Nom de la recherche"
+          onSubmit={(name) => { smartSearches.save(name, smartName); setSmartName(null); }}
+          onCancel={() => setSmartName(null)}
         />
       )}
 

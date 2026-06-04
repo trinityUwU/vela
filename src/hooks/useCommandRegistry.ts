@@ -51,6 +51,9 @@ export interface CommandContext {
   openWorkspace: (id: string) => void;
   tasks: { label: string; command: string }[];
   runTask: (command: string) => void;
+  advancedSearch: () => void;
+  smartSearches: { id: string; name: string }[];
+  openSmartSearch: (id: string) => void;
 }
 
 export function useCommandRegistry(ctx: CommandContext): Command[] {
@@ -84,6 +87,7 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
       { id: "pdf-tools", title: "Outils PDF (fusion, extraction, rotation)…", group: "Actions", run: ctx.pdfTools },
       { id: "annotate", title: "Annoter une image…", group: "Actions", run: ctx.annotateSelected },
       { id: "find-replace", title: "Rechercher & remplacer (multi-fichiers)…", group: "Actions", run: ctx.findReplace },
+      { id: "adv-search", title: "Recherche avancée…", group: "Recherches", run: ctx.advancedSearch },
       { id: "save-workspace", title: "Enregistrer l'espace de travail…", group: "Espaces", run: ctx.saveWorkspace },
     ];
     const taskCmds: Command[] = ctx.tasks.map((t) => ({
@@ -92,6 +96,12 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
       hint: "terminal",
       group: "Tâches",
       run: () => ctx.runTask(t.command),
+    }));
+    const smart: Command[] = ctx.smartSearches.map((s) => ({
+      id: `smart:${s.id}`,
+      title: `Recherche : ${s.name}`,
+      group: "Recherches",
+      run: () => ctx.openSmartSearch(s.id),
     }));
     const spaces: Command[] = ctx.workspaces.map((w) => ({
       id: `ws:${w.id}`,
@@ -114,6 +124,6 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
         group: "Profils",
         run: () => ctx.switchProfile(p.id),
       }));
-    return [...actions, ...taskCmds, ...spaces, ...places, ...profiles];
+    return [...actions, ...taskCmds, ...smart, ...spaces, ...places, ...profiles];
   }, [ctx]);
 }

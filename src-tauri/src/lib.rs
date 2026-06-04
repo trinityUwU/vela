@@ -1,5 +1,6 @@
 // Point d'entrée Tauri : enregistre les 124 commandes natives exposées au front + le control plane MCP.
 mod actions;
+mod advsearch;
 mod analyze;
 mod apps;
 mod archive;
@@ -133,6 +134,7 @@ pub fn run() {
             project::project_detect,
             replace::search_replace_preview,
             replace::search_replace_apply,
+            advsearch::search_advanced,
             analyze::analyze_disk,
             dircmp::compare_dirs,
             player::player_open,

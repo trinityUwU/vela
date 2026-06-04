@@ -24,6 +24,7 @@ mod ocr;
 mod ops;
 mod pdf;
 mod places;
+mod project;
 mod player;
 mod profiles;
 mod share;
@@ -128,6 +129,7 @@ pub fn run() {
             pdf::pdf_merge,
             pdf::pdf_extract_pages,
             pdf::pdf_rotate,
+            project::project_detect,
             analyze::analyze_disk,
             dircmp::compare_dirs,
             player::player_open,

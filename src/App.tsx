@@ -20,6 +20,7 @@ import { hexFor } from "./services/tags";
 import { getEntryProps, writeFile, diskFree, startExtraction, pathExists } from "./services/fs";
 import { scanConflicts, copyEntries, moveEntries } from "./services/fs";
 import { usePane } from "./hooks/usePane";
+import { useProject } from "./hooks/useProject";
 import { useWorkspaces } from "./hooks/useWorkspaces";
 import { templateInstantiate, saveAsTemplate } from "./services/templates";
 import { TemplatePicker } from "./components/TemplatePicker";
@@ -175,6 +176,12 @@ export default function App() {
     });
   }, [terminalInZone, terminals, fm.cwd]);
 
+  const project = useProject(fm.cwd);
+  const runTask = useCallback(async (command: string) => {
+    const id = await terminals.open(fm.cwd);
+    setTermVisible(true);
+    if (id) termInput(id, `${command}\n`).catch(() => {});
+  }, [terminals, fm.cwd]);
   const newTerm = useCallback(() => { terminals.open(fm.cwd); }, [terminals, fm.cwd]);
   const openTerminalHere = useCallback((p: string) => { terminals.open(p); setTermVisible(true); }, [terminals]);
   const followTerm = useCallback(() => {
@@ -478,6 +485,8 @@ export default function App() {
       profiles.setActive(ws.profileId);
       fm.openTabs(ws.tabs);
     },
+    tasks: project.tasks,
+    runTask,
   });
 
   const tabSeeds = useCallback((): TabSeed[] => fm.tabs.map((t) => ({ cwd: t.cwd, name: t.name, color: t.color })), [fm.tabs]);
@@ -596,6 +605,8 @@ export default function App() {
           gitOverlay={gitOverlay}
           onToggleGit={toggleGitOverlay}
           inRepo={!!git.repoRoot}
+          project={project}
+          onRunTask={runTask}
         />
       )}
 

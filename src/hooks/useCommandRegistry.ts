@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import type { Place, Profile } from "../types";
 
-export type CommandGroup = "Actions" | "Navigation" | "Lieux" | "Profils" | "Espaces";
+export type CommandGroup = "Actions" | "Navigation" | "Lieux" | "Profils" | "Espaces" | "Tâches" | "Recherches";
 
 export interface Command {
   id: string;
@@ -48,6 +48,8 @@ export interface CommandContext {
   saveWorkspace: () => void;
   workspaces: { id: string; name: string }[];
   openWorkspace: (id: string) => void;
+  tasks: { label: string; command: string }[];
+  runTask: (command: string) => void;
 }
 
 export function useCommandRegistry(ctx: CommandContext): Command[] {
@@ -82,6 +84,13 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
       { id: "annotate", title: "Annoter une image…", group: "Actions", run: ctx.annotateSelected },
       { id: "save-workspace", title: "Enregistrer l'espace de travail…", group: "Espaces", run: ctx.saveWorkspace },
     ];
+    const taskCmds: Command[] = ctx.tasks.map((t) => ({
+      id: `task:${t.command}`,
+      title: t.label,
+      hint: "terminal",
+      group: "Tâches",
+      run: () => ctx.runTask(t.command),
+    }));
     const spaces: Command[] = ctx.workspaces.map((w) => ({
       id: `ws:${w.id}`,
       title: `Espace : ${w.name}`,
@@ -103,6 +112,6 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
         group: "Profils",
         run: () => ctx.switchProfile(p.id),
       }));
-    return [...actions, ...spaces, ...places, ...profiles];
+    return [...actions, ...taskCmds, ...spaces, ...places, ...profiles];
   }, [ctx]);
 }

@@ -1,5 +1,7 @@
 // Barre de tri et filtre — compacte, toujours visible sous la topbar.
+import { useState } from "react";
 import type { SortBy, SortState, FilterKind } from "../hooks/useSort";
+import type { ProjectInfo } from "../hooks/useProject";
 
 interface Props {
   sort: SortState;
@@ -9,6 +11,8 @@ interface Props {
   gitOverlay: boolean;
   onToggleGit: () => void;
   inRepo: boolean;
+  project?: ProjectInfo;
+  onRunTask?: (command: string) => void;
 }
 
 const SORT_LABELS: { by: SortBy; label: string }[] = [
@@ -24,7 +28,7 @@ const FILTER_LABELS: { f: FilterKind; label: string }[] = [
   { f: "files", label: "Fichiers" },
 ];
 
-export function SortBar({ sort, onToggleBy, onFilter, onToggleDirsFirst, gitOverlay, onToggleGit, inRepo }: Props) {
+export function SortBar({ sort, onToggleBy, onFilter, onToggleDirsFirst, gitOverlay, onToggleGit, inRepo, project, onRunTask }: Props) {
   return (
     <div className="flex items-center gap-3 px-3 h-8 border-b border-[var(--color-border)] bg-[var(--color-bg)] shrink-0 text-[11px]">
       {/* Tri */}
@@ -91,6 +95,44 @@ export function SortBar({ sort, onToggleBy, onFilter, onToggleDirsFirst, gitOver
             </span>
             Git
           </button>
+        </>
+      )}
+
+      {project && project.kind && project.tasks.length > 0 && onRunTask && (
+        <>
+          <div className="flex-1" />
+          <ProjectBadge project={project} onRunTask={onRunTask} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function ProjectBadge({ project, onRunTask }: { project: ProjectInfo; onRunTask: (c: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[var(--color-accent)] hover:bg-[var(--color-surface-hover)]"
+        title="Tâches du projet"
+      >
+        ⬡ {project.kind} · {project.tasks.length}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute z-50 top-6 right-0 min-w-44 max-h-72 overflow-auto p-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+            {project.tasks.map((t) => (
+              <button
+                key={t.command}
+                onClick={() => { onRunTask(t.command); setOpen(false); }}
+                className="w-full text-left px-2 py-1 text-xs rounded text-[var(--color-text)] hover:bg-[var(--color-surface-hover)] font-mono truncate"
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </>
       )}
     </div>

@@ -60,10 +60,16 @@ fi
 # yt-dlp = moteur de téléchargement core (non optionnel). spotdl = couche Spotify.
 # Venv Vela dédié. Non bloquant : un échec n'interrompt pas l'install.
 DL_VENV="$HOME/.local/share/vela/dl-venv"
-if [ -x "$DL_VENV/bin/yt-dlp" ]; then
-  echo "✓ yt-dlp déjà présent : $DL_VENV"
-elif ! command -v python3 >/dev/null; then
+if ! command -v python3 >/dev/null; then
   echo "⚠ python3 absent — yt-dlp/spotdl non installés (à faire plus tard)"
+elif [ -x "$DL_VENV/bin/yt-dlp" ]; then
+  # yt-dlp casse vite face à YouTube : on met TOUJOURS à jour à chaque install (rapide, idempotent).
+  echo "→ mise à jour de yt-dlp + spotdl (yt-dlp périme vite)…"
+  if "$DL_VENV/bin/pip" install -q --upgrade yt-dlp spotdl; then
+    echo "✓ yt-dlp + spotdl à jour ($("$DL_VENV/bin/yt-dlp" --version 2>/dev/null))"
+  else
+    echo "⚠ mise à jour yt-dlp/spotdl échouée (réseau ?) — Vela fonctionne avec la version actuelle"
+  fi
 else
   echo "→ installation de yt-dlp + spotdl (outils de téléchargement)…"
   if python3 -m venv "$DL_VENV" \

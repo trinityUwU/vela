@@ -13,6 +13,7 @@ export interface DownloadJob {
   status: string;
   speed: string;
   eta: string;
+  error?: string;
 }
 
 export interface DownloadOptions {
@@ -58,7 +59,7 @@ function useJobEvents(setJobs: React.Dispatch<React.SetStateAction<DownloadJob[]
       setJobs((prev) =>
         prev.map((j) =>
           j.jobId === p.job_id
-            ? { ...j, percent: p.percent, status: p.status, speed: p.speed, eta: p.eta }
+            ? { ...j, percent: p.percent, status: p.status, speed: p.speed, eta: p.eta, error: p.error }
             : j,
         ),
       );

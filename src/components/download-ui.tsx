@@ -259,6 +259,11 @@ function JobRow(
           <button onClick={() => void onCancel(job.jobId)} className={cancelBtn}>Annuler</button>
         )}
       </div>
+      {job.status === "error" && job.error && (
+        <p className="text-[10px] text-[var(--color-danger)] break-words" title={job.error}>
+          {job.error}
+        </p>
+      )}
     </div>
   );
 }

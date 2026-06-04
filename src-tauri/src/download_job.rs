@@ -39,18 +39,20 @@ pub struct DownloadProgress {
     pub speed: String,
     pub eta: String,
     pub title: String,
+    pub error: String,
 }
 
 #[allow(clippy::too_many_arguments)]
 fn emit_dl(app: &AppHandle, job_id: &str, percent: f32, status: &str,
-           speed: &str, eta: &str, title: &str) {
+           speed: &str, eta: &str, error: &str) {
     let _ = app.emit("download-progress", DownloadProgress {
         job_id: job_id.to_string(),
         percent,
         status: status.to_string(),
         speed: speed.to_string(),
         eta: eta.to_string(),
-        title: title.to_string(),
+        title: String::new(),
+        error: error.to_string(),
     });
 }
 
@@ -134,12 +136,41 @@ fn spawn_job(bin: &str, args: &[String]) -> Result<Child, String> {
     Command::new(bin)
         .args(args)
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| {
             eprintln!("[downloader] job spawn failed: {e}");
             format!("lancement échoué: {e}")
         })
+}
+
+/// Draine stderr dans un thread, conserve les dernières lignes non vides (diagnostic d'échec).
+/// Retourne le buffer partagé et le handle du thread (à joindre avant de lire pour éviter une race).
+fn capture_stderr(child: &mut Child) -> (Arc<Mutex<Vec<String>>>, Option<std::thread::JoinHandle<()>>) {
+    let buf = Arc::new(Mutex::new(Vec::<String>::new()));
+    let handle = child.stderr.take().map(|stderr| {
+        let buf = buf.clone();
+        std::thread::spawn(move || {
+            use std::io::BufRead;
+            for line in std::io::BufReader::new(stderr).lines().map_while(Result::ok) {
+                let t = line.trim().to_string();
+                if t.is_empty() { continue; }
+                let mut g = buf.lock().unwrap();
+                g.push(t);
+                if g.len() > 20 { g.remove(0); }
+            }
+        })
+    });
+    (buf, handle)
+}
+
+/// Message d'erreur lisible : dernière ligne `ERROR` de yt-dlp/spotdl, sinon dernière ligne.
+fn last_error(buf: &Arc<Mutex<Vec<String>>>) -> String {
+    let g = buf.lock().unwrap();
+    g.iter().rev().find(|l| l.contains("ERROR") || l.contains("error"))
+        .or_else(|| g.last())
+        .cloned()
+        .unwrap_or_else(|| "échec sans message (voir logs)".into())
 }
 
 /// Lit le stdout ligne par ligne, émet la progression yt-dlp, gère l'annulation.
@@ -169,16 +200,23 @@ fn run_download_job(app: AppHandle, cancelled: Arc<AtomicBool>, job_id: String, 
     emit_dl(&app, &job_id, 0.0, "running", "", "", "");
     let mut child = match spawn_job(&spec.bin, &spec.args) {
         Ok(c) => c,
-        Err(e) => { eprintln!("[downloader] job {job_id} err: {e}"); emit_dl(&app, &job_id, 0.0, "error", "", "", ""); return; }
+        Err(e) => { eprintln!("[downloader] job {job_id} err: {e}"); emit_dl(&app, &job_id, 0.0, "error", "", "", &e); return; }
     };
+    let (stderr, stderr_handle) = capture_stderr(&mut child);
     if pump_download(&app, &mut child, &job_id, &cancelled) {
         emit_dl(&app, &job_id, 0.0, "cancelled", "", "", "");
         return;
     }
-    match child.wait() {
+    let result = child.wait();
+    if let Some(h) = stderr_handle { let _ = h.join(); }
+    match result {
         Ok(s) if s.success() => emit_dl(&app, &job_id, 100.0, "done", "", "", ""),
-        Ok(s) => { eprintln!("[downloader] job {job_id} exit {s}"); emit_dl(&app, &job_id, 0.0, "error", "", "", ""); }
-        Err(e) => { eprintln!("[downloader] job {job_id} wait err: {e}"); emit_dl(&app, &job_id, 0.0, "error", "", "", ""); }
+        Ok(s) => {
+            let msg = last_error(&stderr);
+            eprintln!("[downloader] job {job_id} exit {s} — {msg}");
+            emit_dl(&app, &job_id, 0.0, "error", "", "", &msg);
+        }
+        Err(e) => { eprintln!("[downloader] job {job_id} wait err: {e}"); emit_dl(&app, &job_id, 0.0, "error", "", "", &e.to_string()); }
     }
 }
 

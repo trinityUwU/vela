@@ -277,4 +277,5 @@ export interface DownloadProgress {
   speed: string;
   eta: string;
   title: string;
+  error: string;
 }

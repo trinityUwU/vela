@@ -440,7 +440,17 @@ export default function App() {
     if (twoListings && activePane === "b") paneB.navigate(path);
     else fm.navigate(path);
   }, [twoListings, activePane, paneB, fm]);
-  const activeCwd = twoListings && activePane === "b" ? paneB.cwd : fm.cwd;
+  // Top bar : chemin + contrôles de navigation suivent le volet actif en mode jumeau.
+  const isPaneB = twoListings && activePane === "b";
+  const activeCwd = isPaneB ? paneB.cwd : fm.cwd;
+  const activeNav = {
+    back: isPaneB ? paneB.goBack : fm.goBack,
+    forward: isPaneB ? paneB.goForward : fm.goForward,
+    up: isPaneB ? paneB.goUp : fm.goUp,
+    refresh: isPaneB ? paneB.refresh : fm.refresh,
+    canBack: isPaneB ? paneB.canBack : fm.canBack,
+    canForward: isPaneB ? paneB.canForward : fm.canForward,
+  };
   const paneBListing: ListingProps = {
     entries: entriesB,
     selection: paneB.selection,
@@ -587,18 +597,18 @@ export default function App() {
         onSwitchProfile={profiles.setActive}
         onEditProfiles={() => setProfileEditorOpen(true)}
         showViewToggle={!editorActive}
-        path={fm.cwd}
+        path={activeCwd}
         showHidden={fm.showHidden}
         view={view}
         onView={setViewPersist}
-        onBack={fm.goBack}
-        onForward={fm.goForward}
-        canBack={fm.canBack}
-        canForward={fm.canForward}
-        onUp={fm.goUp}
-        onRefresh={fm.refresh}
+        onBack={activeNav.back}
+        onForward={activeNav.forward}
+        canBack={activeNav.canBack}
+        canForward={activeNav.canForward}
+        onUp={activeNav.up}
+        onRefresh={activeNav.refresh}
         onToggleHidden={fm.toggleHidden}
-        onCrumb={fm.navigate}
+        onCrumb={navigateActive}
         onMove={fm.moveEntry}
         inTrash={!!trashPath && fm.cwd === trashPath}
         trashCount={fm.trashCount}
@@ -902,7 +912,7 @@ export default function App() {
           display: { statusBar: showStatusBar, onToggleStatusBar: toggleStatusBar },
         } : null}
         profileEditor={profileEditorOpen ? { ...profileEditorProps, onClose: () => setProfileEditorOpen(false) } : null}
-        download={downloadOpen ? { cwd: fm.cwd, onClose: () => setDownloadOpen(false), onError: fm.setError } : null}
+        download={downloadOpen ? { cwd: activeCwd, onClose: () => setDownloadOpen(false), onError: fm.setError } : null}
         diff={diff ? { a: diff.a, b: diff.b, docs: diff.docs, onClose: () => setDiff(null), onError: fm.setError } : null}
         dirDiff={dirDiff ? { a: dirDiff.a, b: dirDiff.b, onClose: () => setDirDiff(null), onError: fm.setError } : null}
         analyzer={analyzePath ? { path: analyzePath, onClose: () => setAnalyzePath(null), onReveal: fm.navigate, onError: fm.setError } : null}

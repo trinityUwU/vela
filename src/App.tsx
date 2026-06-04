@@ -23,15 +23,6 @@ import { usePane } from "./hooks/usePane";
 import { useProject } from "./hooks/useProject";
 import { useWorkspaces } from "./hooks/useWorkspaces";
 import { templateInstantiate, saveAsTemplate } from "./services/templates";
-import { TemplatePicker } from "./components/TemplatePicker";
-import { SharePanel } from "./components/SharePanel";
-import { PdfTools } from "./components/PdfTools";
-import { ImageAnnotate } from "./components/ImageAnnotate";
-import { FindReplace } from "./components/FindReplace";
-import { AdvancedSearch } from "./components/AdvancedSearch";
-import { Lightbox } from "./components/Lightbox";
-import { ImageBatch } from "./components/ImageBatch";
-import { VideoTools } from "./components/VideoTools";
 import { previewKind } from "./services/file-kind";
 import { useSmartSearches } from "./hooks/useSmartSearches";
 import type { SearchCriteria } from "./services/advsearch";
@@ -39,10 +30,7 @@ import type { TabSeed } from "./hooks/useFolderTabs";
 import { OverlayHost } from "./components/OverlayHost";
 import { StatusBar } from "./components/StatusBar";
 import { InputModal } from "./components/InputModal";
-import { HashModal } from "./components/HashModal";
-import { HexViewer } from "./components/HexViewer";
-import { ConflictModal } from "./components/ConflictModal";
-import { ExtractConflictModal } from "./components/ExtractConflictModal";
+import { FeatureOverlays } from "./components/FeatureOverlays";
 import type { Conflict, ConflictResolution } from "./services/fs";
 import { useGridNav } from "./hooks/useGridNav";
 import { useGitStatus } from "./hooks/useGitStatus";
@@ -64,7 +52,6 @@ import { ContextMenus } from "./components/ContextMenus";
 import { DialogHost } from "./components/DialogHost";
 import type { Dialog } from "./components/DialogHost";
 import { InstallPrompt } from "./components/InstallPrompt";
-import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { BrowserView } from "./components/BrowserView";
 import { trashDir, homeDir } from "./services/fs";
@@ -843,122 +830,50 @@ export default function App() {
         />
       )}
 
-      {templatePick && (
-        <TemplatePicker onPick={instantiateTemplate} onClose={() => setTemplatePick(false)} />
-      )}
-
-      {sharePaths && (
-        <SharePanel paths={sharePaths} onClose={() => setSharePaths(null)} onError={fm.setError} />
-      )}
-
-      {pdfPaths && (
-        <PdfTools
-          paths={pdfPaths}
-          onDone={(p) => { setPdfPaths(null); fm.refresh(); fm.navigate(parentDir(p)); }}
-          onClose={() => setPdfPaths(null)}
-          onError={fm.setError}
-        />
-      )}
-
-      {annotatePath && (
-        <ImageAnnotate
-          path={annotatePath}
-          onSaved={(p) => { setAnnotatePath(null); fm.refresh(); fm.navigate(parentDir(p)); }}
-          onClose={() => setAnnotatePath(null)}
-          onError={fm.setError}
-        />
-      )}
-
-      {videoToolsPath && (
-        <VideoTools
-          path={videoToolsPath}
-          onDone={(out) => { setVideoToolsPath(null); setNotice("Vidéo traitée."); fm.navigate(parentDir(out)); }}
-          onClose={() => setVideoToolsPath(null)}
-          onError={fm.setError}
-        />
-      )}
-
-      {batchImages && (
-        <ImageBatch
-          paths={batchImages}
-          onDone={(dir) => { setBatchImages(null); setNotice("Images traitées."); fm.navigate(dir); }}
-          onClose={() => setBatchImages(null)}
-          onError={fm.setError}
-        />
-      )}
-
-      {galleryIndex !== null && imageEntries.length > 0 && (
-        <Lightbox
-          images={imageEntries}
-          index={galleryIndex}
-          onClose={() => setGalleryIndex(null)}
-          onError={fm.setError}
-        />
-      )}
-
-      {advSearch && (
-        <AdvancedSearch
-          initial={advSearch.criteria}
-          autoRun={advSearch.autoRun}
-          onReveal={(p) => { fm.navigate(parentDir(p)); fm.setSelected(p); setAdvSearch(null); }}
-          onSave={(c) => setSmartName(c)}
-          onClose={() => setAdvSearch(null)}
-          onError={fm.setError}
-        />
-      )}
-
-      {smartName && (
-        <InputModal
-          title="Enregistrer le dossier intelligent"
-          confirmLabel="Enregistrer"
-          placeholder="Nom de la recherche"
-          onSubmit={(name) => { smartSearches.save(name, smartName); setSmartName(null); }}
-          onCancel={() => setSmartName(null)}
-        />
-      )}
-
-      {findReplaceRoot && (
-        <FindReplace
-          root={findReplaceRoot}
-          onApplied={(originals, summary) => {
-            if (originals.length) undo.push({ kind: "bulk-edit", originals });
-            setNotice(summary);
-            setFindReplaceRoot(null);
-            fm.refresh();
-          }}
-          onClose={() => setFindReplaceRoot(null)}
-          onError={fm.setError}
-        />
-      )}
-
-      {quickLook && (
-        <QuickLook entry={quickLook} onClose={() => setQuickLook(null)} onError={fm.setError} />
-      )}
-
-      {hashPath && (
-        <HashModal path={hashPath} onClose={() => setHashPath(null)} onError={fm.setError} />
-      )}
-
-      {hexPath && (
-        <HexViewer path={hexPath} onClose={() => setHexPath(null)} onError={fm.setError} />
-      )}
-
-      {conflictReq && (
-        <ConflictModal
-          conflicts={conflictReq.conflicts}
-          onResolve={(r) => { conflictReq.resolve(r); setConflictReq(null); }}
-          onCancel={() => { conflictReq.resolve(null); setConflictReq(null); }}
-        />
-      )}
-
-      {extractConflict && (
-        <ExtractConflictModal
-          dest={extractConflict.dest}
-          onReplace={() => { startExtraction(extractConflict.archivePath, extractConflict.dest, "replace").catch((e) => fm.setError(String(e))); setExtractConflict(null); }}
-          onKeepBoth={() => { startExtraction(extractConflict.archivePath, extractConflict.dest, "keep").catch((e) => fm.setError(String(e))); setExtractConflict(null); }}
-          onCancel={() => setExtractConflict(null)}
-        />
-      )}
+      <FeatureOverlays
+        templatePick={templatePick}
+        onTemplatePick={instantiateTemplate}
+        closeTemplatePick={() => setTemplatePick(false)}
+        sharePaths={sharePaths}
+        closeShare={() => setSharePaths(null)}
+        pdfPaths={pdfPaths}
+        closePdf={(r) => { setPdfPaths(null); if (r) { fm.refresh(); fm.navigate(parentDir(r)); } }}
+        annotatePath={annotatePath}
+        closeAnnotate={(s) => { setAnnotatePath(null); if (s) { fm.refresh(); fm.navigate(parentDir(s)); } }}
+        videoToolsPath={videoToolsPath}
+        closeVideoTools={(o) => { setVideoToolsPath(null); if (o) { setNotice("Vidéo traitée."); fm.navigate(parentDir(o)); } }}
+        batchImages={batchImages}
+        closeBatch={(d) => { setBatchImages(null); if (d) { setNotice("Images traitées."); fm.navigate(d); } }}
+        galleryImages={imageEntries}
+        galleryIndex={galleryIndex}
+        closeGallery={() => setGalleryIndex(null)}
+        advSearch={advSearch}
+        onReveal={(p) => { fm.navigate(parentDir(p)); fm.setSelected(p); setAdvSearch(null); }}
+        onSaveSmart={(c) => setSmartName(c)}
+        closeAdvSearch={() => setAdvSearch(null)}
+        smartName={smartName}
+        onSaveSmartName={(name, c) => { smartSearches.save(name, c); setSmartName(null); }}
+        closeSmartName={() => setSmartName(null)}
+        findReplaceRoot={findReplaceRoot}
+        onApplied={(originals, summary) => {
+          if (originals.length) undo.push({ kind: "bulk-edit", originals });
+          setNotice(summary); setFindReplaceRoot(null); fm.refresh();
+        }}
+        closeFindReplace={() => setFindReplaceRoot(null)}
+        quickLook={quickLook}
+        closeQuickLook={() => setQuickLook(null)}
+        hashPath={hashPath}
+        closeHash={() => setHashPath(null)}
+        hexPath={hexPath}
+        closeHex={() => setHexPath(null)}
+        conflictReq={conflictReq}
+        resolveConflict={(r) => { conflictReq?.resolve(r); setConflictReq(null); }}
+        extractConflict={extractConflict}
+        onExtractReplace={() => { if (extractConflict) startExtraction(extractConflict.archivePath, extractConflict.dest, "replace").catch((e) => fm.setError(String(e))); setExtractConflict(null); }}
+        onExtractKeepBoth={() => { if (extractConflict) startExtraction(extractConflict.archivePath, extractConflict.dest, "keep").catch((e) => fm.setError(String(e))); setExtractConflict(null); }}
+        closeExtractConflict={() => setExtractConflict(null)}
+        onError={fm.setError}
+      />
 
       <ExtractionPanel jobs={extractionJobs} transfers={transferJobs} ocr={ocrJobs} onNavigate={fm.navigate} />
       <InstallPrompt prompt={install.prompt} onInstall={install.run} onDismiss={install.dismiss} />

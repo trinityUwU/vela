@@ -38,6 +38,7 @@ interface Props {
   onOpenTerminal?: () => void;
   onComputeSize?: () => void;
   onAnalyze?: () => void;
+  onHash?: () => void;
   onMediaTools?: () => void;
   onExtractHere?: () => void;
   onExtractTo?: () => void;
@@ -127,6 +128,9 @@ export function ContextMenu(props: Props) {
       )}
       {!multi && !menu.isDir && onConvert && (
         <ConvertSubmenu path={menu.path} onConvert={(t) => { onConvert(t); onClose(); }} />
+      )}
+      {!multi && !menu.isDir && props.onHash && (
+        <Item label="Empreinte (hash)…" onClick={() => { props.onHash?.(); onClose(); }} />
       )}
       <Divider />
       <Item label="Copier" onClick={() => { onCopy(); onClose(); }} />

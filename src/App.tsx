@@ -21,6 +21,7 @@ import { getEntryProps, writeFile, diskFree } from "./services/fs";
 import { OverlayHost } from "./components/OverlayHost";
 import { StatusBar } from "./components/StatusBar";
 import { InputModal } from "./components/InputModal";
+import { HashModal } from "./components/HashModal";
 import { useGridNav } from "./hooks/useGridNav";
 import { useGitStatus } from "./hooks/useGitStatus";
 import { useCommandPalette } from "./hooks/useCommandPalette";
@@ -93,6 +94,7 @@ export default function App() {
   const tagHex = useCallback((path: string) => hexFor(tags.colorOf(path)), [tags]);
   const [folderSizes, setFolderSizes] = useState<Record<string, number>>({});
   const [analyzePath, setAnalyzePath] = useState<string | null>(null);
+  const [hashPath, setHashPath] = useState<string | null>(null);
   const [translate, setTranslate] = useState<{ path: string | null } | null>(null);
   const [codeSearchOpen, setCodeSearchOpen] = useState(false);
   const [editPath, setEditPath] = useState<string | null>(null);
@@ -337,6 +339,11 @@ export default function App() {
     emptyTrash: () => setDialog({ kind: "emptytrash" }),
     selectByPattern: () => setDialog({ kind: "selectpattern" }),
     invertSelection: () => fm.invertSelection(entries),
+    hashSelected: () => {
+      const p = selPaths();
+      if (p.length === 1) setHashPath(p[0]);
+      else fm.setError("Sélectionne un seul fichier pour calculer son empreinte.");
+    },
   });
 
   const { runSmartAction, runOcr, runConvert } = useFileActions({
@@ -550,6 +557,7 @@ export default function App() {
         openTerminalHere={openTerminalHere}
         computeSize={computeSize}
         onAnalyze={setAnalyzePath}
+        onHash={setHashPath}
         onMediaTools={openMediaTools}
         onTranslate={(p) => setTranslate({ path: p })}
         runConvert={runConvert}
@@ -582,6 +590,10 @@ export default function App() {
 
       {quickLook && (
         <QuickLook entry={quickLook} onClose={() => setQuickLook(null)} onError={fm.setError} />
+      )}
+
+      {hashPath && (
+        <HashModal path={hashPath} onClose={() => setHashPath(null)} onError={fm.setError} />
       )}
 
       <ExtractionPanel jobs={extractionJobs} transfers={transferJobs} ocr={ocrJobs} onNavigate={fm.navigate} />

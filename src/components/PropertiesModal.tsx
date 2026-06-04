@@ -1,6 +1,7 @@
 // Modal de propriétés : métadonnées, contenu dossier, app par défaut modifiable.
 import { useEffect, useRef, useState } from "react";
 import { getEntryProps, getAppsForFile, setDefaultApp, searchPathBins, setCustomCommand } from "../services/fs";
+import { fileKind, type FileKind } from "../services/integrity";
 import type { AppInfo, DirEntry, EntryProps, FileApps } from "../types";
 
 interface Props {
@@ -28,6 +29,7 @@ function fmtOctal(n: number): string {
 
 export function PropertiesModal({ entry, onClose }: Props) {
   const [props, setProps] = useState<EntryProps | null>(null);
+  const [kind, setKind] = useState<FileKind | null>(null);
   const [fileApps, setFileApps] = useState<FileApps | null>(null);
   const [appsLoading, setAppsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +49,18 @@ export function PropertiesModal({ entry, onClose }: Props) {
     if (!entry.is_dir) {
       setAppsLoading(true);
       getAppsForFile(entry.path).then(setFileApps).catch(() => {}).finally(() => setAppsLoading(false));
+      fileKind(entry.path).then(setKind).catch(() => setKind(null));
     }
   }, [entry.path, entry.is_dir]);
+
+  // Type détecté par magic bytes ; signale une incohérence si l'extension ne correspond pas.
+  const realType = kind?.mime
+    ? `${kind.mime}${kind.ext ? ` (.${kind.ext})` : ""}${
+        kind.ext && entry.extension && kind.ext.toLowerCase() !== entry.extension.toLowerCase()
+          ? `  ⚠ extension .${entry.extension}`
+          : ""
+      }`
+    : null;
 
   useEffect(() => {
     if (pickingApp) setTimeout(() => filterRef.current?.focus(), 50);
@@ -152,6 +164,7 @@ export function PropertiesModal({ entry, onClose }: Props) {
             <>
               <Section title="Informations">
                 {!props.is_dir && props.extension && <Row label="Extension" value={`.${props.extension}`} mono />}
+                {!props.is_dir && realType && <Row label="Type réel" value={realType} mono />}
                 <Row label="Emplacement" value={parent} mono copyable />
                 <Row label="Chemin complet" value={props.path} mono copyable />
                 <Row label="Modifié" value={fmtDate(props.modified)} />

@@ -32,6 +32,7 @@ interface Props {
   openTerminalHere: (p: string) => void;
   computeSize: (p: string) => void;
   onAnalyze: (p: string) => void;
+  onHash: (p: string) => void;
   onMediaTools: (e: DirEntry) => void;
   onTranslate: (p: string) => void;
   runConvert: (path: string, target: string) => void;
@@ -78,6 +79,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           onOpenTerminal={() => { props.openTerminalHere(menu.entry.path); onCloseMenu(); }}
           onComputeSize={() => { props.computeSize(menu.entry.path); onCloseMenu(); }}
           onAnalyze={() => { props.onAnalyze(menu.entry.path); onCloseMenu(); }}
+          onHash={() => { props.onHash(menu.entry.path); onCloseMenu(); }}
           onMediaTools={() => { props.onMediaTools(menu.entry); onCloseMenu(); }}
           onExtractHere={() => {
             const dest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;

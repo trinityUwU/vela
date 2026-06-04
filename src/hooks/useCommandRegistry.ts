@@ -36,6 +36,7 @@ export interface CommandContext {
   emptyTrash: () => void;
   selectByPattern: () => void;
   invertSelection: () => void;
+  hashSelected: () => void;
 }
 
 export function useCommandRegistry(ctx: CommandContext): Command[] {
@@ -59,6 +60,7 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
       { id: "toggle-hidden", title: "Afficher / masquer les fichiers cachés", group: "Navigation", run: ctx.toggleHidden },
       { id: "select-pattern", title: "Sélectionner par motif…", hint: "*.png  /regex/", group: "Actions", run: ctx.selectByPattern },
       { id: "invert-selection", title: "Inverser la sélection", group: "Actions", run: ctx.invertSelection },
+      { id: "hash", title: "Calculer une empreinte (hash)…", group: "Actions", run: ctx.hashSelected },
     ];
     const places: Command[] = ctx.places.map((p) => ({
       id: `place:${p.path}`,

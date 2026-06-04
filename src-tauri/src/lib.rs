@@ -16,6 +16,7 @@ mod downloader;
 mod favorites;
 mod fs_ops;
 mod git;
+mod integrity;
 mod index;
 mod imaging;
 mod media_probe;
@@ -176,6 +177,8 @@ pub fn run() {
             git::git_checkout_branch,
             git::git_diff_file,
             disk::disk_free,
+            integrity::file_hash,
+            integrity::file_kind,
             index::index_refresh,
             index::global_search,
             ocr::ocr_capabilities,

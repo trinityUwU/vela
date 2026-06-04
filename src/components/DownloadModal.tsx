@@ -1,5 +1,6 @@
 // Modal global de téléchargement (yt-dlp/spotdl) : URL, sondage, sélection, options, jobs.
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useDownload } from "../hooks/use-download";
 import type { DownloadInfo } from "../types";
 import {
@@ -10,6 +11,7 @@ interface DownloadModalProps {
   cwd: string;
   onClose: () => void;
   onError: (msg: string) => void;
+  onOpenUrl: (url: string) => void;
 }
 
 const overlayCls = "fixed inset-0 z-50 flex items-center justify-center bg-black/50";
@@ -23,6 +25,33 @@ function useEscapeClose(onClose: () => void): void {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+}
+
+function YoutubeAuthBanner(
+  { onOpenUrl }: { onOpenUrl: (url: string) => void },
+): React.ReactElement | null {
+  const [hasAuth, setHasAuth] = useState<boolean | null>(null);
+  const check = useCallback((): void => {
+    invoke<boolean>("youtube_auth_status")
+      .then((v) => setHasAuth(v))
+      .catch(() => setHasAuth(null));
+  }, []);
+  useEffect(() => { check(); }, [check]);
+  if (hasAuth !== false) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded text-[11px]
+      text-[var(--color-text-dim)] border border-[var(--color-border)]/60 bg-[var(--color-bg)]">
+      <span>YouTube non connecté —</span>
+      <button
+        onClick={() => onOpenUrl("https://www.youtube.com/")}
+        className="text-[var(--color-accent)] hover:underline"
+      >
+        Se connecter dans le navigateur Vela
+      </button>
+      <span>puis</span>
+      <button onClick={check} className="text-[var(--color-accent)] hover:underline">actualiser</button>
+    </div>
+  );
 }
 
 function Header({ onClose }: { onClose: () => void }): React.ReactElement {
@@ -101,7 +130,7 @@ function ResultSection({ d }: { d: ReturnType<typeof useDownload> }): React.Reac
   );
 }
 
-export function DownloadModal({ cwd, onClose, onError }: DownloadModalProps): React.ReactElement {
+export function DownloadModal({ cwd, onClose, onError, onOpenUrl }: DownloadModalProps): React.ReactElement {
   const d = useDownload(cwd, onError);
   useEscapeClose(onClose);
   return (
@@ -115,6 +144,7 @@ export function DownloadModal({ cwd, onClose, onError }: DownloadModalProps): Re
               yt-dlp requis — relance install.sh
             </div>
           )}
+          <YoutubeAuthBanner onOpenUrl={onOpenUrl} />
           <UrlBar url={d.url} setUrl={d.setUrl} probing={d.probing} onProbe={d.doProbe} />
           <ResultSection d={d} />
           <JobList jobs={d.jobs} onCancel={d.cancelJob} />

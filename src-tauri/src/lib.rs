@@ -170,6 +170,7 @@ pub fn run() {
             downloader::download_probe,
             download_job::download_start,
             download_job::download_cancel,
+            download_job::youtube_auth_status,
             audio::audio_trim,
             audio::audio_fade,
             audio::audio_normalize,

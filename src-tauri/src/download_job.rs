@@ -99,6 +99,60 @@ fn find_bun() -> Option<String> {
     None
 }
 
+// ── Cookies YouTube via le navigateur intégré Vela ──────────────────────────────────────────────
+// Le WebKit de Vela stocke ses cookies à ce chemin en format Netscape (lisible par yt-dlp).
+// L'utilisateur se connecte à YouTube dans le navigateur Vela → cookies injectés automatiquement.
+
+const VELA_WEBKIT_COOKIES: &str = ".local/share/com.echo.vela/cookies";
+
+fn vela_cookie_file() -> Option<String> {
+    let home = std::env::var("HOME").ok()?;
+    let path = format!("{home}/{VELA_WEBKIT_COOKIES}");
+    std::path::Path::new(&path).exists().then_some(path)
+}
+
+/// True si des cookies youtube.com sont présents dans le store WebKit de Vela.
+/// False → l'utilisateur doit ouvrir YouTube dans le navigateur Vela et s'y connecter.
+#[tauri::command]
+pub fn youtube_auth_status() -> bool {
+    vela_cookie_file()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .map(|c| c.contains(".youtube.com"))
+        .unwrap_or(false)
+}
+
+/// Fallback Chrome : extrait les cookies si le store Vela n'est pas disponible.
+fn extract_chrome_cookies(ytdlp: &str) -> Option<String> {
+    let home = std::env::var("HOME").ok()?;
+    let dir = std::path::Path::new(&home).join(".local/share/vela");
+    std::fs::create_dir_all(&dir).ok()?;
+    let dest = dir.join("yt-cookies.txt").to_string_lossy().into_owned();
+    for browser in ["chrome", "chromium"] {
+        let ok = std::process::Command::new(ytdlp)
+            .args(["--cookies-from-browser", browser, "--cookies", &dest,
+                   "--skip-download", "https://www.youtube.com/"])
+            .stderr(Stdio::null()).stdout(Stdio::null())
+            .status().map(|s| s.success()).unwrap_or(false)
+            && std::fs::metadata(&dest).map(|m| m.len() > 100).unwrap_or(false);
+        if ok { return Some(dest); }
+    }
+    None
+}
+
+/// Injecte le fichier cookies dans les args (WebKit Vela en priorité, Chrome en fallback).
+fn inject_yt_cookies(spec: &mut JobSpec) {
+    let cookie_file = vela_cookie_file()
+        .or_else(|| ytdlp_executable().and_then(|y| extract_chrome_cookies(&y)));
+    let Some(path) = cookie_file else { return; };
+    let flag = if spec.args.first().map(|a| a == "download").unwrap_or(false) {
+        "--cookie-file"
+    } else {
+        "--cookies"
+    };
+    spec.args.push(flag.into());
+    spec.args.push(path);
+}
+
 fn build_ytdlp_args(format_id: &Option<String>, dest_dir: &str, audio_only: bool,
                     audio_format: &Option<String>, sub_langs: &Option<Vec<String>>,
                     url: &str) -> Vec<String> {
@@ -272,8 +326,9 @@ fn log_download(spec: &JobSpec, outcome: &str, out: &Arc<Mutex<Vec<String>>>, er
     }
 }
 
-fn run_download_job(app: AppHandle, cancelled: Arc<AtomicBool>, job_id: String, spec: JobSpec) {
+fn run_download_job(app: AppHandle, cancelled: Arc<AtomicBool>, job_id: String, mut spec: JobSpec) {
     emit_dl(&app, &job_id, 0.0, "running", "", "", "");
+    inject_yt_cookies(&mut spec);
     let mut child = match spawn_job(&spec.bin, &spec.args) {
         Ok(c) => c,
         Err(e) => { eprintln!("[downloader] job {job_id} err: {e}"); emit_dl(&app, &job_id, 0.0, "error", "", "", &e); return; }

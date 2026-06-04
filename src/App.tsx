@@ -915,7 +915,7 @@ export default function App() {
           display: { statusBar: showStatusBar, onToggleStatusBar: toggleStatusBar },
         } : null}
         profileEditor={profileEditorOpen ? { ...profileEditorProps, onClose: () => setProfileEditorOpen(false) } : null}
-        download={downloadOpen ? { cwd: activeCwd, onClose: () => setDownloadOpen(false), onError: fm.setError } : null}
+        download={downloadOpen ? { cwd: activeCwd, onClose: () => setDownloadOpen(false), onError: fm.setError, onOpenUrl: (url: string) => { browser.open(url); setBrowserOpen(true); } } : null}
         diff={diff ? { a: diff.a, b: diff.b, docs: diff.docs, onClose: () => setDiff(null), onError: fm.setError } : null}
         dirDiff={dirDiff ? { a: dirDiff.a, b: dirDiff.b, onClose: () => setDirDiff(null), onError: fm.setError } : null}
         analyzer={analyzePath ? { path: analyzePath, onClose: () => setAnalyzePath(null), onReveal: fm.navigate, onError: fm.setError } : null}

@@ -37,7 +37,14 @@ export function MarkdownStudio({ path, content, onChange, onError }: Props): Rea
   }, []);
 
   const exportAs = useCallback((target: "pdf" | "html") => {
-    convertFile(path, target).then(() => onError(`Exporté en ${target.toUpperCase()}.`)).catch((e) => onError(String(e)));
+    convertFile(path, target)
+      .then(() => onError(`Exporté en ${target.toUpperCase()}.`))
+      .catch((e) => {
+        const msg = String(e);
+        onError(msg.includes("PDF_ENGINE_MISSING") || msg.includes("pandoc introuvable")
+          ? "Export PDF : pandoc + typst requis. Relance ./install.sh (auto-installés)."
+          : msg);
+      });
   }, [path, onError]);
 
   const editor = (

@@ -200,6 +200,7 @@ export default function App() {
     onNewShell: (s: string) => terminals.open(fm.cwd, s), shells, onClose: terminals.close, onExit: terminals.exit,
     onFollow: followTerm, onHide: () => setTermVisible(false), onRename: terminals.rename, onSetColor: terminals.setColor,
     onOpenPath: (p: string, d: boolean) => openTermPath(p, d),
+    onOpenUrl: (url: string) => { browser.open(url); setBrowserOpen(true); },
   };
 
   useEffect(() => {
@@ -309,6 +310,12 @@ export default function App() {
     const z = activeProfile.zones;
     return z.center === "editor" || z.left === "editor" || z.right === "editor" || z.bottom === "editor";
   };
+  // Révèle un fichier : éditeur si le profil en a un, sinon navigue dans son dossier et le sélectionne
+  // (après chargement du listing, sinon la nav réinitialise la sélection).
+  const revealOrOpen = (path: string): void => {
+    if (activeHasEditorZone()) { showFileInEditor(path); return; }
+    fm.navigate(parentDir(path)).then(() => fm.selectOne(path));
+  };
 
   // Clic sur un chemin dans le terminal : dossier → on entre ; fichier → affiché dans la zone éditeur
   // du profil courant si elle existe, sinon bascule sur le profil Édition (fallback du clic).
@@ -341,8 +348,7 @@ export default function App() {
     else if (action === "hide_browser") setBrowserOpen(false);
     else if (action === "navigate") fm.navigate(String(args.path ?? ""));
     else if (action === "reveal_file") {
-      const path = String(args.path ?? "");
-      fm.navigate(parentDir(path)); fm.setSelected(path);
+      revealOrOpen(String(args.path ?? ""));
     }
     else if (action === "compare_files") {
       setDiff({ a: fileEntry(String(args.a ?? "")), b: fileEntry(String(args.b ?? "")) });
@@ -429,6 +435,12 @@ export default function App() {
     setDirDiff(activePane === "a" ? { a: fm.cwd, b: paneB.cwd } : { a: paneB.cwd, b: fm.cwd });
   }, [activePane, paneB.cwd, fm.cwd]);
   const switchPane = useCallback(() => setActivePane((p) => (p === "a" ? "b" : "a")), []);
+  // En mode jumeau, la navigation (favoris, arbre) cible le volet actif, pas systématiquement le volet A.
+  const navigateActive = useCallback((path: string) => {
+    if (twoListings && activePane === "b") paneB.navigate(path);
+    else fm.navigate(path);
+  }, [twoListings, activePane, paneB, fm]);
+  const activeCwd = twoListings && activePane === "b" ? paneB.cwd : fm.cwd;
   const paneBListing: ListingProps = {
     entries: entriesB,
     selection: paneB.selection,
@@ -678,10 +690,10 @@ export default function App() {
         sidebar={{
           favs,
           places: fm.places,
-          cwd: fm.cwd,
+          cwd: activeCwd,
           trashDir: trashPath,
           trashCount: fm.trashCount,
-          onSelect: fm.navigate,
+          onSelect: navigateActive,
           onPinCurrent: pinCurrent,
           onMove: fm.moveEntry,
           onOpenTrash: fm.openTrash,
@@ -691,8 +703,8 @@ export default function App() {
         }}
         filetree={{
           rootPath: homePath,
-          cwd: fm.cwd,
-          onNavigate: fm.navigate,
+          cwd: activeCwd,
+          onNavigate: navigateActive,
           showHidden: fm.showHidden,
           onError: fm.setError,
         }}
@@ -848,7 +860,7 @@ export default function App() {
         galleryIndex={galleryIndex}
         closeGallery={() => setGalleryIndex(null)}
         advSearch={advSearch}
-        onReveal={(p) => { fm.navigate(parentDir(p)); fm.setSelected(p); setAdvSearch(null); }}
+        onReveal={(p) => { revealOrOpen(p); setAdvSearch(null); }}
         onSaveSmart={(c) => setSmartName(c)}
         closeAdvSearch={() => setAdvSearch(null)}
         smartName={smartName}

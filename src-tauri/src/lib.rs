@@ -138,6 +138,7 @@ pub fn run() {
             advsearch::search_advanced,
             gallery::image_exif,
             gallery::image_palette,
+            gallery::media_dimensions,
             imaging::images_batch,
             video::video_to_gif,
             video::video_subtitles,

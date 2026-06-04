@@ -23,6 +23,7 @@ interface Props {
   onRename: (id: string, title: string) => void;
   onSetColor: (id: string, color: string) => void;
   onOpenPath: (path: string, isDir: boolean) => void;
+  onOpenUrl: (url: string) => void;
 }
 
 type TabMenu = { id: string; x: number; y: number } | null;
@@ -121,7 +122,7 @@ export function TerminalPanel(props: Props) {
 
       <div className="flex-1 min-h-0 relative">
         {tabs.map((t) => (
-          <TerminalView key={t.id} id={t.id} cwd={t.cwd} active={t.id === activeId} onExit={props.onExit} onOpenPath={props.onOpenPath} />
+          <TerminalView key={t.id} id={t.id} cwd={t.cwd} active={t.id === activeId} onExit={props.onExit} onOpenPath={props.onOpenPath} onOpenUrl={props.onOpenUrl} />
         ))}
         {tabs.length === 0 && (
           <div className="flex items-center justify-center h-full text-xs text-[var(--color-text-dim)]">
@@ -177,6 +178,21 @@ function banner(cwd: string): string {
   return `${accent}▌${reset} ${dim}${cwd}${reset}\r\n${accent}▌${reset} ${dim}${date}${reset}\r\n\r\n`;
 }
 
+// URLs http(s) complètes d'une ligne (un seul token, ponctuation finale retirée). Colonnes 1-based.
+const URL_TOKEN = /\bhttps?:\/\/[^\s'"()<>]+/g;
+function urlTokens(line: string): { text: string; start: number; end: number }[] {
+  const out: { text: string; start: number; end: number }[] = [];
+  let m: RegExpExecArray | null;
+  URL_TOKEN.lastIndex = 0;
+  while ((m = URL_TOKEN.exec(line))) {
+    let text = m[0];
+    const trimmed = text.replace(/[.,;:!?]+$/, "");
+    text = trimmed;
+    out.push({ text, start: m.index + 1, end: m.index + text.length });
+  }
+  return out;
+}
+
 // Tokens « chemin-like » d'une ligne : segments entre quotes (noms avec espaces, façon `ls`)
 // OU runs de caractères de chemin. Colonnes 1-based ; validation d'existence côté Rust au clic.
 const PATH_TOKEN = /'([^']+)'|"([^"]+)"|([A-Za-z0-9._~/+@%-]{2,})/g;
@@ -198,14 +214,17 @@ function pathTokens(line: string): { text: string; start: number; end: number }[
   return out;
 }
 
-function TerminalView({ id, cwd, active, onExit, onOpenPath }: {
+function TerminalView({ id, cwd, active, onExit, onOpenPath, onOpenUrl }: {
   id: string; cwd: string; active: boolean; onExit: (id: string) => void;
   onOpenPath: (path: string, isDir: boolean) => void;
+  onOpenUrl: (url: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const inst = useRef<{ term: Terminal; fit: FitAddon } | null>(null);
   const onOpenRef = useRef(onOpenPath);
   onOpenRef.current = onOpenPath;
+  const onUrlRef = useRef(onOpenUrl);
+  onUrlRef.current = onOpenUrl;
 
   useEffect(() => {
     const term = new Terminal({
@@ -232,17 +251,30 @@ function TerminalView({ id, cwd, active, onExit, onOpenPath }: {
         const buf = term.buffer.active;
         const line = buf.getLine(lineNo - 1)?.translateToString(true);
         if (!line) return cb(undefined);
-        const links = pathTokens(line).map((t) => ({
+        // URLs d'abord : un seul lien par URL complète → ouvre le navigateur intégré.
+        const urls = urlTokens(line);
+        const urlLinks = urls.map((t) => ({
           text: t.text,
           range: { start: { x: t.start, y: lineNo }, end: { x: t.end, y: lineNo } },
           decorations: { pointerCursor: true, underline: true },
-          activate: (_e: MouseEvent, text: string) => {
-            termResolve(id, text)
-              .then((r) => onOpenRef.current(r.path, r.isDir))
-              .catch(() => {});
-          },
+          activate: (_e: MouseEvent, text: string) => onUrlRef.current(text),
         }));
-        cb(links);
+        // Chemins ensuite, en ignorant ceux qui chevauchent une URL déjà liée.
+        const overlapsUrl = (s: number, e: number): boolean =>
+          urls.some((u) => s <= u.end && e >= u.start);
+        const pathLinks = pathTokens(line)
+          .filter((t) => !overlapsUrl(t.start, t.end))
+          .map((t) => ({
+            text: t.text,
+            range: { start: { x: t.start, y: lineNo }, end: { x: t.end, y: lineNo } },
+            decorations: { pointerCursor: true, underline: true },
+            activate: (_e: MouseEvent, text: string) => {
+              termResolve(id, text)
+                .then((r) => onOpenRef.current(r.path, r.isDir))
+                .catch(() => {});
+            },
+          }));
+        cb([...urlLinks, ...pathLinks]);
       },
     });
 

@@ -107,13 +107,32 @@ fn pdf_engine() -> Option<&'static str> {
     PDF_ENGINES.iter().copied().find(|e| binary_exists(e, "--version"))
 }
 
+// Police sans-serif disponible sur le système (pour le moteur typst). fc-match si présent,
+// sinon DejaVu Sans (quasi universelle sous Linux). Évite l'erreur typst « font fallback empty ».
+fn system_sans_font() -> String {
+    Command::new("fc-match")
+        .args(["-f", "%{family}", "sans"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "DejaVu Sans".into())
+}
+
 fn convert_doc(input: &str, out: &Path) -> Result<(), String> {
     let mut cmd = Command::new("pandoc");
     cmd.arg(input).arg("-o").arg(out);
     if out.extension().and_then(|e| e.to_str()) == Some("pdf") {
         // pandoc ne génère pas de PDF sans moteur : signaler clairement (sentinelle PDF_ENGINE_MISSING).
         match pdf_engine() {
-            Some(eng) => { cmd.arg(format!("--pdf-engine={eng}")); }
+            Some(eng) => {
+                cmd.arg(format!("--pdf-engine={eng}"));
+                // typst exige une police explicite (son template échoue sur une liste de fallback vide).
+                if eng == "typst" {
+                    cmd.arg("-V").arg(format!("mainfont={}", system_sans_font()));
+                }
+            }
             None => return Err("PDF_ENGINE_MISSING: moteur PDF requis (typst recommandé)".into()),
         }
     }

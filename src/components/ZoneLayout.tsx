@@ -1,5 +1,5 @@
 // Rendu de la zone centrale piloté par le profil actif : place chaque panneau selon les zones.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { DirEntry, PanelId, Zones } from "../types";
 import type { SortBy, SortState } from "../hooks/useSort";
 import type { useFavorites } from "../hooks/useFavorites";
@@ -41,6 +41,7 @@ interface TerminalProps {
   onRename: (id: string, title: string) => void;
   onSetColor: (id: string, color: string) => void;
   onOpenPath: (path: string, isDir: boolean) => void;
+  onOpenUrl: (url: string) => void;
 }
 
 export interface ListingProps {
@@ -163,27 +164,33 @@ export function ZoneLayout(props: ZoneLayoutProps): React.ReactElement {
   const resizeBottom = (dy: number): void =>
     setBottomH((h) => Math.max(120, Math.min(window.innerHeight - 160, h - dy)));
 
-  // Mode volet jumeau : le 1er listing rencontré = volet A, le suivant = volet B (état indépendant).
-  const dual = !!props.listingB;
-  let listingSeen = 0;
-  const render = (panel: PanelId | null): React.ReactElement | null => {
-    if (!panel) return null;
-    if (panel === "listing" && dual) {
-      const which: "a" | "b" = listingSeen++ === 0 ? "a" : "b";
-      const p = which === "a" ? props.listing : props.listingB!;
-      const isActive = props.activePane === which;
-      return (
-        <div
-          key={which}
-          onMouseDownCapture={() => props.onActivatePane?.(which)}
-          className={`relative flex-1 flex min-h-0 ${isActive ? "ring-1 ring-inset ring-[var(--color-accent)]" : ""}`}
-        >
-          <ListingPanel view={props.view} editorActive={props.editorActive} p={p} />
-        </div>
-      );
-    }
-    return renderPanel(panel, props);
+  // Mode volet jumeau : center = volet A, right = volet B, séparés par un splitter draggable.
+  const dual = !!props.listingB && !centerOverride;
+  const [splitPct, setSplitPct] = useState(50);
+  const dualRef = useRef<HTMLDivElement>(null);
+  const resizeSplit = (dx: number): void =>
+    setSplitPct((pct) => {
+      const w = dualRef.current?.clientWidth ?? 1;
+      return Math.max(20, Math.min(80, pct + (dx / w) * 100));
+    });
+
+  const paneBox = (which: "a" | "b", style: React.CSSProperties): React.ReactElement => {
+    const p = which === "a" ? props.listing : props.listingB!;
+    const isActive = props.activePane === which;
+    return (
+      <div
+        key={which}
+        style={style}
+        onMouseDownCapture={() => props.onActivatePane?.(which)}
+        className={`relative flex min-h-0 min-w-0 overflow-hidden ${isActive ? "ring-1 ring-inset ring-[var(--color-accent)]" : ""}`}
+      >
+        <ListingPanel view={props.view} editorActive={props.editorActive} p={p} />
+      </div>
+    );
   };
+
+  const render = (panel: PanelId | null): React.ReactElement | null =>
+    panel ? renderPanel(panel, props) : null;
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -197,11 +204,24 @@ export function ZoneLayout(props: ZoneLayoutProps): React.ReactElement {
         />
       )}
       <div className="flex-1 flex min-h-0">
-        {render(zones.left)}
-        {centerOverride
-          ? <div className="relative flex-1 flex min-h-0">{centerOverride}</div>
-          : render(zones.center)}
-        {render(zones.right)}
+        {dual ? (
+          <>
+            {render(zones.left)}
+            <div ref={dualRef} className="flex-1 flex min-h-0 min-w-0">
+              {paneBox("a", { flexBasis: `${splitPct}%`, flexGrow: 0, flexShrink: 0 })}
+              <ResizeHandle orientation="vertical" onResize={resizeSplit} />
+              {paneBox("b", { flexGrow: 1, flexShrink: 1, flexBasis: 0 })}
+            </div>
+          </>
+        ) : (
+          <>
+            {render(zones.left)}
+            {centerOverride
+              ? <div className="relative flex-1 flex min-h-0">{centerOverride}</div>
+              : render(zones.center)}
+            {render(zones.right)}
+          </>
+        )}
       </div>
       {zones.bottom && (
         <div className="shrink-0 flex flex-col" style={{ height: bottomH }}>

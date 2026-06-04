@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getEntryProps, getAppsForFile, setDefaultApp, searchPathBins, setCustomCommand } from "../services/fs";
 import { fileKind, type FileKind } from "../services/integrity";
+import { mediaDimensions, type MediaInfo } from "../services/gallery";
 import type { AppInfo, DirEntry, EntryProps, FileApps } from "../types";
 
 interface Props {
@@ -27,9 +28,18 @@ function fmtOctal(n: number): string {
   return n.toString(8).padStart(3, "0");
 }
 
+function fmtDuration(secs: number): string {
+  const s = Math.round(secs);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}` : `${m}:${String(r).padStart(2, "0")}`;
+}
+
 export function PropertiesModal({ entry, onClose }: Props) {
   const [props, setProps] = useState<EntryProps | null>(null);
   const [kind, setKind] = useState<FileKind | null>(null);
+  const [dims, setDims] = useState<MediaInfo | null>(null);
   const [fileApps, setFileApps] = useState<FileApps | null>(null);
   const [appsLoading, setAppsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +62,16 @@ export function PropertiesModal({ entry, onClose }: Props) {
       fileKind(entry.path).then(setKind).catch(() => setKind(null));
     }
   }, [entry.path, entry.is_dir]);
+
+  // Dimensions réelles pour image/vidéo (utile pour confirmer un redimensionnement par lot).
+  useEffect(() => {
+    const mime = kind?.mime ?? "";
+    if (mime.startsWith("image/") || mime.startsWith("video/")) {
+      mediaDimensions(entry.path).then(setDims).catch(() => setDims(null));
+    } else {
+      setDims(null);
+    }
+  }, [kind, entry.path]);
 
   // Type détecté par magic bytes ; signale une incohérence si l'extension ne correspond pas.
   const realType = kind?.mime
@@ -183,6 +203,8 @@ export function PropertiesModal({ entry, onClose }: Props) {
               {!props.is_dir && (
                 <Section title="Taille">
                   <Row label="Taille" value={`${fmtSize(props.size)} (${props.size.toLocaleString("fr-FR")} octets)`} />
+                  {dims && <Row label="Dimensions" value={`${dims.width} × ${dims.height} px`} mono />}
+                  {dims?.durationSecs != null && <Row label="Durée" value={fmtDuration(dims.durationSecs)} mono />}
                 </Section>
               )}
 

@@ -371,6 +371,7 @@ pub fn write_file_base64(path: String, data_b64: String) -> Result<(), String> {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ByteRange {
     pub data_b64: String,
     pub total: u64,

@@ -13,3 +13,13 @@ export function imageExif(path: string): Promise<ExifField[]> {
 export function imagePalette(path: string, count = 6): Promise<string[]> {
   return invoke<string[]>("image_palette", { path, count });
 }
+
+export interface MediaInfo {
+  width: number;
+  height: number;
+  durationSecs: number | null;
+}
+
+export function mediaDimensions(path: string): Promise<MediaInfo> {
+  return invoke<MediaInfo>("media_dimensions", { path });
+}

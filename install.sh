@@ -115,12 +115,27 @@ else
   echo "○ pacman absent — pour l'OCR : installe $OCR_PKGS avec ton gestionnaire de paquets"
 fi
 
-# ── Conversion documents (optionnel) — signalé, pas auto-installé ─────────────────────────────
-# pandoc = md/html/docx/odt/epub ; typst = moteur PDF léger (pandoc l'utilise pour →PDF) ;
-# libreoffice = bureautique →PDF. Toujours via « sudo pacman -Syu » d'abord (sinon 404 si DB périmée).
-for tool in pandoc typst libreoffice; do
-  command -v "$tool" >/dev/null 2>&1 && echo "✓ $tool présent" || echo "○ $tool absent (conversion docs)  →  sudo pacman -Syu --needed $tool"
-done
+# ── Conversion documents (pandoc + typst) — auto-install, idempotent, non bloquant ────────────
+# pandoc = md/html/docx/odt/epub ; typst = moteur PDF léger et souverain (pandoc l'utilise pour →PDF).
+# Tous deux légers et en dépôt officiel → installés d'office pour que l'export markdown→PDF marche
+# dès une clean install (stabilité Vela). libreoffice (bureautique →PDF, ~1 Go) reste optionnel.
+echo ""
+DOC_PKGS="pandoc typst"
+if command -v pandoc >/dev/null 2>&1 && command -v typst >/dev/null 2>&1; then
+  echo "✓ conversion docs déjà disponible (pandoc + typst)"
+elif command -v pacman >/dev/null 2>&1; then
+  echo "→ installation de la conversion docs ($DOC_PKGS)…"
+  if sudo pacman -Sy --needed --noconfirm $DOC_PKGS; then
+    echo "✓ pandoc + typst installés (export markdown→PDF opérationnel)"
+  else
+    echo "⚠ install pandoc/typst échouée — lance « sudo pacman -Syu » puis relance ./install.sh"
+  fi
+else
+  echo "○ pacman absent — pour l'export PDF : installe $DOC_PKGS avec ton gestionnaire de paquets"
+fi
+command -v libreoffice >/dev/null 2>&1 || command -v soffice >/dev/null 2>&1 \
+  && echo "✓ libreoffice présent (bureautique →PDF)" \
+  || echo "○ libreoffice absent (docx/odt →PDF, ~1 Go, optionnel)  →  sudo pacman -Syu --needed libreoffice-fresh"
 
 # ── Compression (7z, rar) — signalé, pas auto-installé ────────────────────────────────────────
 # p7zip = formats 7z/zip chiffrés (compression + extraction) ; rar = format RAR (non libre, AUR).

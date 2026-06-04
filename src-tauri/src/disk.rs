@@ -1,5 +1,12 @@
 // Espace disque d'un volume : statvfs(2) → (octets libres, octets totaux) pour la barre d'état.
 use std::ffi::CString;
+use std::path::Path;
+
+// Vrai si un fichier ou dossier existe déjà à ce chemin (détection de conflit avant extraction).
+#[tauri::command]
+pub fn path_exists(path: String) -> bool {
+    Path::new(&path).exists()
+}
 
 #[tauri::command]
 pub fn disk_free(path: String) -> Result<(u64, u64), String> {

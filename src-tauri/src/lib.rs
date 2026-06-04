@@ -178,6 +178,7 @@ pub fn run() {
             git::git_checkout_branch,
             git::git_diff_file,
             disk::disk_free,
+            disk::path_exists,
             integrity::file_hash,
             integrity::file_kind,
             index::index_refresh,

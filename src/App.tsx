@@ -17,12 +17,13 @@ import { useEditorTabs } from "./hooks/useEditorTabs";
 import { useTags } from "./hooks/useTags";
 import { useAppearance } from "./hooks/useAppearance";
 import { hexFor } from "./services/tags";
-import { getEntryProps, writeFile, diskFree } from "./services/fs";
+import { getEntryProps, writeFile, diskFree, startExtraction, pathExists } from "./services/fs";
 import { OverlayHost } from "./components/OverlayHost";
 import { StatusBar } from "./components/StatusBar";
 import { InputModal } from "./components/InputModal";
 import { HashModal } from "./components/HashModal";
 import { ConflictModal } from "./components/ConflictModal";
+import { ExtractConflictModal } from "./components/ExtractConflictModal";
 import type { Conflict, ConflictResolution } from "./services/fs";
 import { useGridNav } from "./hooks/useGridNav";
 import { useGitStatus } from "./hooks/useGitStatus";
@@ -97,6 +98,7 @@ export default function App() {
   const [folderSizes, setFolderSizes] = useState<Record<string, number>>({});
   const [analyzePath, setAnalyzePath] = useState<string | null>(null);
   const [hashPath, setHashPath] = useState<string | null>(null);
+  const [extractConflict, setExtractConflict] = useState<{ archivePath: string; dest: string } | null>(null);
   const [conflictReq, setConflictReq] = useState<
     { conflicts: Conflict[]; resolve: (r: Record<string, ConflictResolution> | null) => void } | null
   >(null);
@@ -191,6 +193,16 @@ export default function App() {
   useEffect(() => {
     fm.setConflictResolver((conflicts) => new Promise((resolve) => setConflictReq({ conflicts, resolve })));
   }, [fm.setConflictResolver]);
+
+  // Extraction : si le dossier de destination existe déjà, demander avant d'écraser (zéro perte silencieuse).
+  const extractArchive = useCallback((archivePath: string, dest: string) => {
+    pathExists(dest)
+      .then((exists) => {
+        if (exists) setExtractConflict({ archivePath, dest });
+        else startExtraction(archivePath, dest).catch((e) => fm.setError(String(e)));
+      })
+      .catch((e) => fm.setError(String(e)));
+  }, [fm]);
 
   const selectedSize = useMemo(
     () => entries.reduce((sum, e) => {
@@ -568,6 +580,7 @@ export default function App() {
         computeSize={computeSize}
         onAnalyze={setAnalyzePath}
         onHash={setHashPath}
+        onExtract={extractArchive}
         onMediaTools={openMediaTools}
         onTranslate={(p) => setTranslate({ path: p })}
         runConvert={runConvert}
@@ -583,7 +596,7 @@ export default function App() {
       <DialogHost
         dialog={dialog}
         onClose={() => setDialog(null)}
-        fm={fm}
+        fm={{ ...fm, extract: extractArchive }}
         archiveStem={archiveStem}
         baseName={baseName}
       />
@@ -611,6 +624,15 @@ export default function App() {
           conflicts={conflictReq.conflicts}
           onResolve={(r) => { conflictReq.resolve(r); setConflictReq(null); }}
           onCancel={() => { conflictReq.resolve(null); setConflictReq(null); }}
+        />
+      )}
+
+      {extractConflict && (
+        <ExtractConflictModal
+          dest={extractConflict.dest}
+          onReplace={() => { startExtraction(extractConflict.archivePath, extractConflict.dest, "replace").catch((e) => fm.setError(String(e))); setExtractConflict(null); }}
+          onKeepBoth={() => { startExtraction(extractConflict.archivePath, extractConflict.dest, "keep").catch((e) => fm.setError(String(e))); setExtractConflict(null); }}
+          onCancel={() => setExtractConflict(null)}
         />
       )}
 

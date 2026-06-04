@@ -638,12 +638,35 @@ pub async fn list_archive(path: String) -> Result<Vec<ArchiveEntry>, String> {
 }
 
 #[tauri::command]
+// Dossier d'extraction non colliding : dest, puis « dest (1) », « dest (2) »… (option « garder les deux »).
+fn unique_extract_dir(dest: &str) -> String {
+    if !Path::new(dest).exists() {
+        return dest.to_string();
+    }
+    let mut i = 1;
+    loop {
+        let candidate = format!("{dest} ({i})");
+        if !Path::new(&candidate).exists() {
+            return candidate;
+        }
+        i += 1;
+    }
+}
+
+#[tauri::command]
 pub async fn start_extraction(
     app: AppHandle,
     state: tauri::State<'_, ExtractionManager>,
     path: String,
     dest: String,
+    conflict: Option<String>,
 ) -> Result<String, String> {
+    // « keep » = extraire dans un dossier non colliding (jamais d'écrasement) ; « replace »/none =
+    // extraction directe dans dest (écrase par-dessus, ZÉRO copie temporaire → pas de doublement disque).
+    let dest = match conflict.as_deref() {
+        Some("keep") => unique_extract_dir(&dest),
+        _ => dest,
+    };
     let job_id = new_job_id();
     let jc = state.add(&job_id);
     let fmt = detect_format(&path);

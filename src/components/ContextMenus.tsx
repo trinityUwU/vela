@@ -5,7 +5,6 @@ import type { Dialog } from "./DialogHost";
 import type { SmartActionId } from "../services/smart-actions";
 import { ContextMenu } from "./ContextMenu";
 import { BgContextMenu } from "./BgContextMenu";
-import { startExtraction } from "../services/fs";
 import { archiveStem, parentDir, baseName } from "../services/path-util";
 
 interface Props {
@@ -33,6 +32,7 @@ interface Props {
   computeSize: (p: string) => void;
   onAnalyze: (p: string) => void;
   onHash: (p: string) => void;
+  onExtract: (archivePath: string, dest: string) => void;
   onMediaTools: (e: DirEntry) => void;
   onTranslate: (p: string) => void;
   runConvert: (path: string, target: string) => void;
@@ -83,7 +83,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           onMediaTools={() => { props.onMediaTools(menu.entry); onCloseMenu(); }}
           onExtractHere={() => {
             const dest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
-            startExtraction(menu.entry.path, dest).catch((e) => props.onError(String(e)));
+            props.onExtract(menu.entry.path, dest);
             onCloseMenu();
           }}
           onExtractTo={() => {

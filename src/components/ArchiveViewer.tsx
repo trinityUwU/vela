@@ -1,8 +1,9 @@
 // Visualiseur d'archives : liste le contenu, propose extraction ici ou vers un chemin choisi.
 import { useEffect, useRef, useState } from "react";
-import { listArchive, startExtraction } from "../services/fs";
+import { listArchive, startExtraction, pathExists } from "../services/fs";
 import type { ArchiveEntry, DirEntry } from "../types";
 import { FolderGlyph, DocGlyph } from "./FileIcon";
+import { ExtractConflictModal } from "./ExtractConflictModal";
 
 interface Props {
   entry: DirEntry;
@@ -37,6 +38,7 @@ export function ArchiveViewer({ entry, onError }: Props) {
   const [filter, setFilter] = useState("");
   const [showPathInput, setShowPathInput] = useState(false);
   const [customPath, setCustomPath] = useState("");
+  const [conflictDest, setConflictDest] = useState<string | null>(null);
   const pathRef = useRef<HTMLInputElement>(null);
 
   const extractHereDest = `${parentDir(entry.path)}/${archiveStem(entry.path)}`;
@@ -60,10 +62,17 @@ export function ArchiveViewer({ entry, onError }: Props) {
     }
   }, [showPathInput, extractHereDest]);
 
+  // Si la destination existe déjà → demander (remplacer / garder les deux), sinon extraire directement.
   const extract = (dest: string) => {
-    if (!dest.trim()) return;
-    startExtraction(entry.path, dest.trim()).catch((e) => onError(String(e)));
+    const target = dest.trim();
+    if (!target) return;
     setShowPathInput(false);
+    pathExists(target)
+      .then((exists) => {
+        if (exists) setConflictDest(target);
+        else startExtraction(entry.path, target).catch((e) => onError(String(e)));
+      })
+      .catch((e) => onError(String(e)));
   };
 
   const q = filter.toLowerCase();
@@ -156,6 +165,15 @@ export function ArchiveViewer({ entry, onError }: Props) {
           </table>
         )}
       </div>
+
+      {conflictDest && (
+        <ExtractConflictModal
+          dest={conflictDest}
+          onReplace={() => { startExtraction(entry.path, conflictDest, "replace").catch((e) => onError(String(e))); setConflictDest(null); }}
+          onKeepBoth={() => { startExtraction(entry.path, conflictDest, "keep").catch((e) => onError(String(e))); setConflictDest(null); }}
+          onCancel={() => setConflictDest(null)}
+        />
+      )}
     </div>
   );
 }

@@ -115,8 +115,13 @@ export function listArchive(path: string): Promise<import("../types").ArchiveEnt
   return invoke("list_archive", { path });
 }
 
-export function startExtraction(path: string, dest: string): Promise<string> {
-  return invoke("start_extraction", { path, dest });
+// conflict : "replace" (écrase dans dest) | "keep" (dossier « dest (n) ») | undefined (pas de conflit).
+export function startExtraction(path: string, dest: string, conflict?: "replace" | "keep"): Promise<string> {
+  return invoke("start_extraction", { path, dest, conflict: conflict ?? null });
+}
+
+export function pathExists(path: string): Promise<boolean> {
+  return invoke("path_exists", { path });
 }
 
 export function extractionPause(jobId: string): Promise<void> {

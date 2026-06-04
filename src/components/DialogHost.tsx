@@ -5,7 +5,7 @@ import { ConfirmModal } from "./ConfirmModal";
 import { PropertiesModal } from "./PropertiesModal";
 import { CompressModal } from "./CompressModal";
 import { BatchRenameModal } from "./BatchRenameModal";
-import { startExtraction, type ArchiveFormat } from "../services/fs";
+import type { ArchiveFormat } from "../services/fs";
 
 export type Dialog =
   | { kind: "rename"; entry: DirEntry }
@@ -32,6 +32,7 @@ interface FmActions {
   renameMany: (dir: string, renames: { from: string; to: string }[]) => void;
   emptyTrash: () => void;
   setError: (msg: string | null) => void;
+  extract: (archivePath: string, dest: string) => void;
 }
 
 interface Props {
@@ -111,7 +112,7 @@ export function DialogHost({ dialog, onClose, fm, archiveStem, baseName }: Props
         <InputModal
           title="Extraire vers…" confirmLabel="Extraire" initial={dialog.defaultDest}
           onSubmit={(dest) => {
-            if (dest.trim()) startExtraction(dialog.archivePath, dest.trim()).catch((e) => fm.setError(String(e)));
+            if (dest.trim()) fm.extract(dialog.archivePath, dest.trim());
             onClose();
           }}
           onCancel={onClose}

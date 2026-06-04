@@ -338,6 +338,15 @@ fn run_single_job(app: AppHandle, jc: Arc<JobControl>, job_id: String, path: Str
     finish(&app, base, err);
 }
 
+// Détecte un contenu chiffré (7z/rar/zip via 7z) en lisant les en-têtes — sans mot de passe.
+fn archive_is_encrypted_7z(cmd: &str, path: &str) -> bool {
+    Command::new(cmd).args(["l", "-slt", path])
+        .stdin(std::process::Stdio::null())
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).contains("Encrypted = +"))
+        .unwrap_or(false)
+}
+
 fn run_7z_job(app: AppHandle, jc: Arc<JobControl>, job_id: String, path: String, dest: String, password: Option<String>) {
     let archive_name = Path::new(&path).file_name().unwrap_or_default().to_string_lossy().to_string();
     let base = base_payload(&job_id, &archive_name, &dest);
@@ -347,10 +356,24 @@ fn run_7z_job(app: AppHandle, jc: Arc<JobControl>, job_id: String, path: String,
     };
     if let Err(e) = fs::create_dir_all(&dest) { finish(&app, base, Some(e.to_string())); return; }
 
+    // Mot de passe requis détecté en amont : sinon 7z x bloque sur le prompt stdin (0% figé).
+    let password = if password.is_none() && archive_is_encrypted_7z(cmd, &path) {
+        emit(&app, ProgressPayload { status: "password_required".into(), ..base.clone() });
+        let pwd = wait_password(&jc);
+        if pwd.is_none() { finish(&app, base, Some("Annulé".into())); return; }
+        *jc.password.lock().unwrap() = None;
+        pwd
+    } else {
+        password
+    };
+
     let mut args = vec!["x".to_string(), path.clone(), format!("-o{dest}"), "-y".to_string(), "-bsp1".to_string()];
     if let Some(ref pwd) = password { args.push(format!("-p{pwd}")); }
 
-    let mut child = match Command::new(cmd).args(&args).stdout(std::process::Stdio::piped()).spawn() {
+    let mut child = match Command::new(cmd).args(&args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .spawn() {
         Ok(c) => c, Err(e) => { finish(&app, base, Some(e.to_string())); return; }
     };
     *jc.child_pid.lock().unwrap() = Some(child.id());
@@ -385,7 +408,7 @@ fn run_7z_job(app: AppHandle, jc: Arc<JobControl>, job_id: String, path: String,
     if ok { finish(&app, base, None); return; }
 
     // Vérifie si erreur de mot de passe
-    let test_output = Command::new(cmd).args(["t", &path]).output().ok();
+    let test_output = Command::new(cmd).args(["t", &path]).stdin(std::process::Stdio::null()).output().ok();
     let stderr = test_output.as_ref().map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
     let needs_pwd = stderr.to_lowercase().contains("wrong password") || stderr.to_lowercase().contains("enter password") || stderr.contains("ERROR");
 

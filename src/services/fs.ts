@@ -22,6 +22,11 @@ export function compareDirs(a: string, b: string): Promise<import("../types").Di
   return invoke("compare_dirs", { a, b });
 }
 
+// Espace disque du volume contenant `path` : [octets libres, octets totaux].
+export function diskFree(path: string): Promise<[number, number]> {
+  return invoke("disk_free", { path });
+}
+
 // ── Lecteur vidéo natif (GStreamer → frames JPEG via Channel) ────────────────
 export interface MediaInfo { duration: number; width: number; height: number; }
 

@@ -34,6 +34,8 @@ export interface CommandContext {
   newFile: () => void;
   newFolder: () => void;
   emptyTrash: () => void;
+  selectByPattern: () => void;
+  invertSelection: () => void;
 }
 
 export function useCommandRegistry(ctx: CommandContext): Command[] {
@@ -55,6 +57,8 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
       { id: "nav-forward", title: "Suivant", hint: "Alt+→", group: "Navigation", run: ctx.goForward },
       { id: "refresh", title: "Actualiser", hint: "F5", group: "Navigation", run: ctx.refresh },
       { id: "toggle-hidden", title: "Afficher / masquer les fichiers cachés", group: "Navigation", run: ctx.toggleHidden },
+      { id: "select-pattern", title: "Sélectionner par motif…", hint: "*.png  /regex/", group: "Actions", run: ctx.selectByPattern },
+      { id: "invert-selection", title: "Inverser la sélection", group: "Actions", run: ctx.invertSelection },
     ];
     const places: Command[] = ctx.places.map((p) => ({
       id: `place:${p.path}`,

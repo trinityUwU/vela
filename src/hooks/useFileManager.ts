@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import * as fs from "../services/fs";
 import { isEditable } from "../services/file-kind";
+import { matchPattern } from "../services/path-util";
 import type { UndoEntry } from "./useUndo";
 import type { Clipboard, ClipboardOp, DirEntry, DirListing, Place } from "../types";
 
@@ -171,6 +172,18 @@ export function useFileManager() {
     setSelection(new Set());
     setSelected(null);
     anchor.current = null;
+  }, []);
+
+  // Sélectionne, parmi les entrées visibles (déjà triées/filtrées), celles dont le nom matche le motif.
+  const selectByPattern = useCallback((pattern: string, ordered: DirEntry[]) => {
+    const matched = ordered.filter((e) => matchPattern(e.name, pattern)).map((e) => e.path);
+    setSelection(new Set(matched));
+    setSelected(matched.length ? matched[matched.length - 1] : null);
+    anchor.current = matched.length ? matched[matched.length - 1] : null;
+  }, []);
+
+  const invertSelection = useCallback((ordered: DirEntry[]) => {
+    setSelection((prev) => new Set(ordered.filter((e) => !prev.has(e.path)).map((e) => e.path)));
   }, []);
 
   const selectionPaths = useCallback(
@@ -408,6 +421,7 @@ export function useFileManager() {
     cwd, listing, places,
     selected, setSelected,
     selection, selectOne, toggleSelect, rangeSelect, selectAll, clearSelection, selectionPaths,
+    selectByPattern, invertSelection,
     clipboard, copyToClipboard, paste,
     opened, setOpened,
     showHidden, toggleHidden,

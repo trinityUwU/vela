@@ -8,6 +8,7 @@ mod audio;
 mod control;
 mod convert;
 mod dircmp;
+mod disk;
 mod translate;
 mod codeindex;
 mod download_job;
@@ -174,6 +175,7 @@ pub fn run() {
             git::git_commit,
             git::git_checkout_branch,
             git::git_diff_file,
+            disk::disk_free,
             index::index_refresh,
             index::global_search,
             ocr::ocr_capabilities,

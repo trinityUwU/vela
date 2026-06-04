@@ -133,11 +133,17 @@ interface NlProps {
   onEndpoint: (v: string) => void;
 }
 
-export function SettingsPanel({ onClose, appearance, onResetBrowser, nl }: {
+interface DisplayProps {
+  statusBar: boolean;
+  onToggleStatusBar: (v: boolean) => void;
+}
+
+export function SettingsPanel({ onClose, appearance, onResetBrowser, nl, display }: {
   onClose: () => void;
   appearance: AppearanceProps;
   onResetBrowser: () => void;
   nl: NlProps;
+  display: DisplayProps;
 }) {
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -196,6 +202,14 @@ export function SettingsPanel({ onClose, appearance, onResetBrowser, nl }: {
                 </div>
               </div>
             </div>
+          </section>
+
+          <section className="mb-5 pb-5 border-b border-[var(--color-border)]">
+            <h3 className="text-[11px] uppercase tracking-wider text-[var(--color-accent)] font-semibold mb-2.5">Affichage</h3>
+            <label className="flex items-center gap-2 text-xs text-[var(--color-text)]/85">
+              <input type="checkbox" checked={display.statusBar} onChange={(e) => display.onToggleStatusBar(e.target.checked)} />
+              Barre d'état en bas du listing (nombre d'éléments, sélection, espace disque).
+            </label>
           </section>
 
           <section className="mb-5 pb-5 border-b border-[var(--color-border)]">

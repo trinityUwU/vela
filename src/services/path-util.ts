@@ -17,3 +17,24 @@ export function parentDir(path: string): string {
 export function baseName(path: string): string {
   return path.split("/").filter(Boolean).pop() ?? path;
 }
+
+// Teste un nom de fichier contre un motif : `/corps/flags` = regex, sinon glob (`*` et `?`, casse ignorée).
+// Motif invalide ou vide → false (jamais d'exception propagée).
+export function matchPattern(name: string, pattern: string): boolean {
+  const p = pattern.trim();
+  if (!p) return false;
+  const re = /^\/(.+)\/([a-z]*)$/.exec(p);
+  if (re) {
+    try {
+      return new RegExp(re[1], re[2]).test(name);
+    } catch {
+      return false;
+    }
+  }
+  const glob = p.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".");
+  try {
+    return new RegExp(`^${glob}$`, "i").test(name);
+  } catch {
+    return false;
+  }
+}

@@ -17,8 +17,10 @@ import { useEditorTabs } from "./hooks/useEditorTabs";
 import { useTags } from "./hooks/useTags";
 import { useAppearance } from "./hooks/useAppearance";
 import { hexFor } from "./services/tags";
-import { getEntryProps, writeFile } from "./services/fs";
+import { getEntryProps, writeFile, diskFree } from "./services/fs";
 import { OverlayHost } from "./components/OverlayHost";
+import { StatusBar } from "./components/StatusBar";
+import { InputModal } from "./components/InputModal";
 import { useGridNav } from "./hooks/useGridNav";
 import { useGitStatus } from "./hooks/useGitStatus";
 import { useCommandPalette } from "./hooks/useCommandPalette";
@@ -71,6 +73,13 @@ export default function App() {
   const [quickLook, setQuickLook] = useState<DirEntry | null>(null);
   const [diff, setDiff] = useState<{ a: DirEntry; b: DirEntry; docs?: { a: string; b: string } } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [disk, setDisk] = useState<[number, number] | null>(null);
+  const [showStatusBar, setShowStatusBar] = useState(() => localStorage.getItem("vela-statusbar") !== "0");
+  const toggleStatusBar = useCallback(() => setShowStatusBar((v) => {
+    const next = !v;
+    localStorage.setItem("vela-statusbar", next ? "1" : "0");
+    return next;
+  }), []);
   const [dirDiff, setDirDiff] = useState<{ a: string; b: string } | null>(null);
   const [trashPath, setTrashPath] = useState("");
   const [homePath, setHomePath] = useState("/");
@@ -164,6 +173,19 @@ export default function App() {
   const entries = useMemo(
     () => applySortFilter(fm.listing?.entries ?? [], sort),
     [fm.listing, sort],
+  );
+
+  useEffect(() => {
+    if (!fm.cwd) { setDisk(null); return; }
+    diskFree(fm.cwd).then(setDisk).catch(() => setDisk(null));
+  }, [fm.cwd]);
+
+  const selectedSize = useMemo(
+    () => entries.reduce((sum, e) => {
+      if (!fm.selection.has(e.path)) return sum;
+      return sum + (e.is_dir ? (folderSizes[e.path] ?? 0) : e.size);
+    }, 0),
+    [entries, fm.selection, folderSizes],
   );
 
   const gridCols = useGridNav({
@@ -313,6 +335,8 @@ export default function App() {
     openCodeSearch: () => setCodeSearchOpen(true), openTranslator: () => setTranslate({ path: null }),
     newFile: () => setDialog({ kind: "newfile" }), newFolder: () => setDialog({ kind: "newfolder" }),
     emptyTrash: () => setDialog({ kind: "emptytrash" }),
+    selectByPattern: () => setDialog({ kind: "selectpattern" }),
+    invertSelection: () => fm.invertSelection(entries),
   });
 
   const { runSmartAction, runOcr, runConvert } = useFileActions({
@@ -471,6 +495,16 @@ export default function App() {
         git={{ state: git, cwd: fm.cwd, onError: fm.setError, onOpenFile: (p: string) => openTermPath(p, false), onDiff: openGitDiff }}
       />
 
+      {showStatusBar && (
+        <StatusBar
+          total={entries.length}
+          selectedCount={fm.selection.size}
+          selectedSize={selectedSize}
+          free={disk?.[0] ?? null}
+          totalDisk={disk?.[1] ?? null}
+        />
+      )}
+
       {!terminalInZone && (termVisible || terminals.tabs.length > 0) && (
         <TerminalDock
           visible={termVisible}
@@ -536,6 +570,16 @@ export default function App() {
         baseName={baseName}
       />
 
+      {dialog?.kind === "selectpattern" && (
+        <InputModal
+          title="Sélectionner par motif"
+          confirmLabel="Sélectionner"
+          placeholder="*.png  ou  /^IMG/i"
+          onSubmit={(p) => { fm.selectByPattern(p, entries); setDialog(null); }}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+
       {quickLook && (
         <QuickLook entry={quickLook} onClose={() => setQuickLook(null)} onError={fm.setError} />
       )}
@@ -552,6 +596,7 @@ export default function App() {
             enabled: nl.settings.enabled, endpoint: nl.settings.endpoint,
             onToggle: (v: boolean) => nl.update({ enabled: v }), onEndpoint: (v: string) => nl.update({ endpoint: v }),
           },
+          display: { statusBar: showStatusBar, onToggleStatusBar: toggleStatusBar },
         } : null}
         profileEditor={profileEditorOpen ? { ...profileEditorProps, onClose: () => setProfileEditorOpen(false) } : null}
         download={downloadOpen ? { cwd: fm.cwd, onClose: () => setDownloadOpen(false), onError: fm.setError } : null}

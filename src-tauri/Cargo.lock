@@ -5483,6 +5483,7 @@ dependencies = [
  "gstreamer-video",
  "gtk",
  "image",
+ "libc",
  "mime_guess",
  "notify",
  "portable-pty",

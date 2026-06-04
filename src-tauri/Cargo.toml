@@ -40,6 +40,7 @@ gstreamer-video = "0.23"
 spectrum-analyzer = "1.5"
 printpdf = "0.7"
 git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
+libc = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 wry = "0.55"

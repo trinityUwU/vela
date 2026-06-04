@@ -18,6 +18,7 @@ export type Dialog =
   | { kind: "batchrename"; names: string[] }
   | { kind: "emptytrash" }
   | { kind: "extractto"; archivePath: string; defaultDest: string }
+  | { kind: "selectpattern" }
   | null;
 
 interface FmActions {

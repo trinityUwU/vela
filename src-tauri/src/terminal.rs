@@ -146,7 +146,7 @@ pub fn term_resolve(
         s.child.process_id().ok_or("PID indisponible")?
     };
 
-    let raw = token.trim().trim_matches(|c| matches!(c, '"' | '\'' | '`' | '(' | ')' | '[' | ']' | ',' | ':'));
+    let raw = token.trim().trim_matches(|c| matches!(c, '"' | '\'' | '`'));
     if raw.is_empty() {
         return Err("Token vide".into());
     }

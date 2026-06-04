@@ -89,6 +89,31 @@ if [ -x "$DL_VENV/bin/spotdl" ] && [ ! -e "$HOME/.config/spotdl/deno" ]; then
     || echo "⚠ Deno non téléchargé — les téléchargements Spotify peuvent échouer (réessaie : spotdl --download-deno)"
 fi
 
+# ── PO Token provider (bgutil) — contourne l'anti-bot YouTube SANS compte Google ─────────────
+# Plugin yt-dlp (pip, dans le venv DL) + provider HTTP local en container Docker sur :4416.
+# Le plugin détecte le provider automatiquement → aucun argument à passer à yt-dlp/spotdl.
+# Choix souverain : zéro login Google ; le provider tourne 100% en local.
+if [ -x "$DL_VENV/bin/pip" ]; then
+  "$DL_VENV/bin/pip" install -q --upgrade bgutil-ytdlp-pot-provider >/dev/null 2>&1 \
+    && echo "✓ plugin POT bgutil installé (yt-dlp + spotdl)" \
+    || echo "⚠ plugin POT bgutil non installé"
+fi
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  if [ "$(docker inspect -f '{{.State.Running}}' bgutil-pot 2>/dev/null)" = "true" ]; then
+    echo "✓ provider POT déjà actif (container bgutil-pot :4416)"
+  else
+    docker rm -f bgutil-pot >/dev/null 2>&1 || true
+    if docker run --name bgutil-pot -d --restart unless-stopped -p 4416:4416 \
+         brainicism/bgutil-ytdlp-pot-provider:latest >/dev/null 2>&1; then
+      echo "✓ provider POT lancé (container bgutil-pot :4416)"
+    else
+      echo "⚠ provider POT non lancé — téléchargements YouTube/Spotify peuvent échouer (anti-bot)"
+    fi
+  fi
+else
+  echo "○ docker absent/arrêté — provider POT inactif. Démarre Docker puis relance ./install.sh"
+fi
+
 # ── Traduction locale (Argos Translate) — automatique, idempotent, non bloquant ──────────────
 # Venv Vela dédié. Traduction 100% offline après téléchargement des paquets de langue (à la demande
 # depuis l'app). Installe en plus les paires fr<->en par défaut pour un usage immédiat.

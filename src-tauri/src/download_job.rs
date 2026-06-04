@@ -220,6 +220,23 @@ struct JobSpec {
     args: Vec<String>,
 }
 
+// Journalise une session de téléchargement dans ~/.local/share/vela/logs/downloads.log (diagnostic).
+fn log_download(spec: &JobSpec, outcome: &str, out: &Arc<Mutex<Vec<String>>>, err: &Arc<Mutex<Vec<String>>>) {
+    use std::io::Write;
+    let Ok(home) = std::env::var("HOME") else { return; };
+    let dir = std::path::Path::new(&home).join(".local/share/vela/logs");
+    if std::fs::create_dir_all(&dir).is_err() { return; }
+    let mut body = format!("\n=== {outcome} — {} {}\n", spec.bin, spec.args.join(" "));
+    for (tag, buf) in [("OUT", out), ("ERR", err)] {
+        if let Ok(g) = buf.lock() {
+            for l in g.iter() { body.push_str(&format!("[{tag}] {l}\n")); }
+        }
+    }
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(dir.join("downloads.log")) {
+        let _ = f.write_all(body.as_bytes());
+    }
+}
+
 fn run_download_job(app: AppHandle, cancelled: Arc<AtomicBool>, job_id: String, spec: JobSpec) {
     emit_dl(&app, &job_id, 0.0, "running", "", "", "");
     let mut child = match spawn_job(&spec.bin, &spec.args) {
@@ -237,13 +254,21 @@ fn run_download_job(app: AppHandle, cancelled: Arc<AtomicBool>, job_id: String, 
     // spotdl sort en 0 même en échec : on vérifie aussi les marqueurs d'erreur dans la sortie.
     let failure = detect_failure(&out_buf, &stderr);
     match result {
-        Ok(s) if s.success() && failure.is_none() => emit_dl(&app, &job_id, 100.0, "done", "", "", ""),
+        Ok(s) if s.success() && failure.is_none() => {
+            log_download(&spec, "OK", &out_buf, &stderr);
+            emit_dl(&app, &job_id, 100.0, "done", "", "", "");
+        }
         Ok(s) => {
             let msg = failure.unwrap_or_else(|| last_error(&stderr));
             eprintln!("[downloader] job {job_id} exit {s} — {msg}");
+            log_download(&spec, &format!("ÉCHEC (exit {s})"), &out_buf, &stderr);
             emit_dl(&app, &job_id, 0.0, "error", "", "", &msg);
         }
-        Err(e) => { eprintln!("[downloader] job {job_id} wait err: {e}"); emit_dl(&app, &job_id, 0.0, "error", "", "", &e.to_string()); }
+        Err(e) => {
+            eprintln!("[downloader] job {job_id} wait err: {e}");
+            log_download(&spec, "ÉCHEC (wait)", &out_buf, &stderr);
+            emit_dl(&app, &job_id, 0.0, "error", "", "", &e.to_string());
+        }
     }
 }
 

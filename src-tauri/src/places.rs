@@ -21,23 +21,30 @@ pub fn home_dir() -> Result<String, String> {
 #[tauri::command]
 pub fn list_places() -> Result<Vec<Place>, String> {
     let home = std::env::var("HOME").map_err(|e| e.to_string())?;
+    let home_name = Path::new(&home).file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "Home".into());
     let mut places = vec![Place {
-        name: "Accueil".into(),
+        name: home_name,
         path: home.clone(),
         kind: "home".into(),
     }];
     let xdg = read_user_dirs(&home);
-    // (label FR, clé user-dirs.dirs, noms de dossier candidats EN/FR) — on prend le 1er existant.
-    for (label, xdg_key, candidates) in [
-        ("Bureau", "XDG_DESKTOP_DIR", &["Desktop", "Bureau"][..]),
-        ("Documents", "XDG_DOCUMENTS_DIR", &["Documents"][..]),
-        ("Téléchargements", "XDG_DOWNLOAD_DIR", &["Downloads", "Téléchargements"][..]),
-        ("Images", "XDG_PICTURES_DIR", &["Pictures", "Images"][..]),
-        ("Musique", "XDG_MUSIC_DIR", &["Music", "Musique", "Musiques"][..]),
-        ("Vidéos", "XDG_VIDEOS_DIR", &["Videos", "Vidéos"][..]),
+    // (clé user-dirs.dirs, noms de dossier candidats EN/FR). Le label affiché = vrai nom du dossier
+    // résolu (basename), jamais une traduction hardcodée — il doit matcher ce que voit le terminal.
+    for (xdg_key, candidates) in [
+        ("XDG_DESKTOP_DIR", &["Desktop", "Bureau"][..]),
+        ("XDG_DOCUMENTS_DIR", &["Documents"][..]),
+        ("XDG_DOWNLOAD_DIR", &["Downloads", "Téléchargements"][..]),
+        ("XDG_PICTURES_DIR", &["Pictures", "Images"][..]),
+        ("XDG_MUSIC_DIR", &["Music", "Musique", "Musiques"][..]),
+        ("XDG_VIDEOS_DIR", &["Videos", "Vidéos"][..]),
     ] {
         if let Some(path) = resolve_user_dir(&home, &xdg, xdg_key, candidates) {
-            places.push(Place { name: label.into(), path, kind: "dir".into() });
+            let name = Path::new(&path).file_name()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| path.clone());
+            places.push(Place { name, path, kind: "dir".into() });
         }
     }
     places.extend(read_mounts());

@@ -228,6 +228,109 @@ fn copy_recursive(
     }
 }
 
+// ── résolution de conflits (sûre : 0 % de perte de données) ──────────────────
+
+// Chemin frère temporaire/caché à côté de la cible (même volume → rename atomique possible).
+fn sibling_tmp(target: &Path) -> PathBuf {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let ts = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos();
+    let name = target.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    target.with_file_name(format!(".{name}.vela-tmp-{ts}"))
+}
+
+// Remplace un FICHIER sans jamais détruire l'ancien avant la fin : écrit un temporaire complet,
+// puis bascule par rename atomique (qui écrase). Échec en cours → tmp supprimé, ancien intact.
+fn replace_file_safe(src: &Path, target: &Path, ctrl: &TransferControl, on_bytes: &mut dyn FnMut(u64)) -> std::io::Result<()> {
+    let tmp = sibling_tmp(target);
+    if let Err(e) = copy_file_progress(src, &tmp, ctrl, on_bytes) {
+        let _ = fs::remove_file(&tmp);
+        return Err(e);
+    }
+    fs::rename(&tmp, target)
+}
+
+// Remplace un DOSSIER : met l'ancien de côté (rename), copie le neuf, puis supprime le backup.
+// Échec en cours → on supprime le partiel et on restaure le backup. L'ancien n'est jamais perdu.
+fn replace_dir_safe(src: &Path, target: &Path, ctrl: &TransferControl, on_bytes: &mut dyn FnMut(u64)) -> std::io::Result<()> {
+    let backup = sibling_tmp(target);
+    fs::rename(target, &backup)?;
+    match copy_recursive(src, target, ctrl, on_bytes) {
+        Ok(()) => {
+            let _ = fs::remove_dir_all(&backup);
+            Ok(())
+        }
+        Err(e) => {
+            let _ = fs::remove_dir_all(target);
+            let _ = fs::rename(&backup, target);
+            Err(e)
+        }
+    }
+}
+
+// Fusionne `src` dans le dossier `target` existant. Les fichiers en collision sont CONSERVÉS
+// (suffixe « copie N »), jamais écrasés → fusion sans aucune perte.
+fn merge_dir(src: &Path, target: &Path, ctrl: &TransferControl, on_bytes: &mut dyn FnMut(u64)) -> std::io::Result<()> {
+    if ctrl.cancelled.load(Ordering::Relaxed) {
+        return Err(std::io::Error::new(ErrorKind::Interrupted, "annulé"));
+    }
+    fs::create_dir_all(target)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let from = entry.path();
+        let to = target.join(entry.file_name());
+        if from.is_dir() {
+            merge_dir(&from, &to, ctrl, on_bytes)?;
+        } else if to.exists() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            let unique = unique_dest(target, &name);
+            copy_file_progress(&from, &unique, ctrl, on_bytes)?;
+        } else {
+            copy_file_progress(&from, &to, ctrl, on_bytes)?;
+        }
+    }
+    Ok(())
+}
+
+// Conflit détecté avant transfert : un nom existe déjà dans la destination.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Conflict {
+    name: String,
+    src_path: String,
+    dest_path: String,
+    src_size: u64,
+    dest_size: u64,
+    src_is_dir: bool,
+    dest_is_dir: bool,
+}
+
+// Liste les collisions de noms au niveau racine entre `paths` et `dest_dir` (pour résolution upfront).
+#[tauri::command]
+pub fn scan_conflicts(paths: Vec<String>, dest_dir: String) -> Vec<Conflict> {
+    let dest = Path::new(&dest_dir);
+    let mut out = Vec::new();
+    for p in &paths {
+        let src = Path::new(p);
+        let Some(name) = src.file_name().map(|n| n.to_string_lossy().to_string()) else { continue };
+        let target = dest.join(&name);
+        if !target.exists() {
+            continue;
+        }
+        let sm = src.metadata().ok();
+        let dm = target.metadata().ok();
+        out.push(Conflict {
+            name,
+            src_path: p.clone(),
+            dest_path: target.to_string_lossy().to_string(),
+            src_size: sm.as_ref().map(|m| m.len()).unwrap_or(0),
+            dest_size: dm.as_ref().map(|m| m.len()).unwrap_or(0),
+            src_is_dir: src.is_dir(),
+            dest_is_dir: target.is_dir(),
+        });
+    }
+    out
+}
+
 // ── progression des transferts ───────────────────────────────────────────────
 
 #[derive(Clone, Serialize)]
@@ -291,9 +394,13 @@ fn job_label(paths: &[String]) -> String {
     }
 }
 
-// Copie plusieurs entrées dans dest_dir, en évitant l'écrasement (suffixe « copie N »).
+// Copie plusieurs entrées dans dest_dir. `resolutions` (nom → replace|skip|keep|merge) décide des
+// collisions ; sans entrée pour un nom en collision, défaut = keep (garder les deux). Aucune source
+// n'est jamais détruite : un « replace » écrit un temporaire puis bascule par rename atomique.
 #[tauri::command]
-pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) -> Result<Vec<String>, String> {
+pub async fn copy_entries(
+    app: AppHandle, paths: Vec<String>, dest_dir: String, resolutions: HashMap<String, String>,
+) -> Result<Vec<String>, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let dest = Path::new(&dest_dir);
         let (files, total) = count_files_bytes(&paths);
@@ -305,41 +412,59 @@ pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
         if notify { emit_transfer(&app, &job_id, "copy", &label, 0, total, "transferring", None); }
 
         let mut created: Vec<String> = Vec::new();
-        let mut current = 0u64;
-        let mut last = Instant::now();
-        let mut last_paused = false;
+        let current = std::cell::Cell::new(0u64);
+        let last = std::cell::Cell::new(Instant::now());
+        let last_paused = std::cell::Cell::new(false);
+        let progress = |n: u64| {
+            current.set(current.get() + n);
+            let paused = ctrl.paused.load(Ordering::Relaxed);
+            let status = if paused { "paused" } else { "transferring" };
+            if notify && (paused != last_paused.get() || last.get().elapsed().as_millis() >= EMIT_THROTTLE_MS) {
+                emit_transfer(&app, &job_id, "copy", &label, current.get(), total, status, None);
+                last.set(Instant::now());
+                last_paused.set(paused);
+            }
+        };
+
         for path in &paths {
             let src = Path::new(path);
             let name = match src.file_name() {
                 Some(n) => n.to_string_lossy().to_string(),
                 None => {
                     let e = format!("nom invalide: {path}");
-                    if notify { emit_transfer(&app, &job_id, "copy", &label, current, total, "error", Some(e.clone())); }
+                    if notify { emit_transfer(&app, &job_id, "copy", &label, current.get(), total, "error", Some(e.clone())); }
                     mgr.remove(&job_id);
                     return Err(e);
                 }
             };
-            let target = unique_dest(dest, &name);
-            let res = copy_recursive(src, &target, &ctrl, &mut |n| {
-                current += n;
-                let paused = ctrl.paused.load(Ordering::Relaxed);
-                let status = if paused { "paused" } else { "transferring" };
-                if notify && (paused != last_paused || last.elapsed().as_millis() >= EMIT_THROTTLE_MS) {
-                    emit_transfer(&app, &job_id, "copy", &label, current, total, status, None);
-                    last = Instant::now();
-                    last_paused = paused;
-                }
-            });
+            let raw = dest.join(&name);
+            let resolution = if raw.exists() {
+                resolutions.get(&name).map(String::as_str).unwrap_or("keep")
+            } else {
+                "none"
+            };
+            if resolution == "skip" { continue; }
+            let target = if resolution == "keep" { unique_dest(dest, &name) } else { raw.clone() };
+
+            let mut cb = |n: u64| progress(n);
+            let res = match resolution {
+                "replace" if src.is_dir() => replace_dir_safe(src, &target, &ctrl, &mut cb),
+                "replace" => replace_file_safe(src, &target, &ctrl, &mut cb),
+                "merge" if src.is_dir() => merge_dir(src, &target, &ctrl, &mut cb),
+                _ => copy_recursive(src, &target, &ctrl, &mut cb),
+            };
             if let Err(e) = res {
-                // nettoyage du partiel copié pour cette entrée
-                let _ = if target.is_dir() { fs::remove_dir_all(&target) } else { fs::remove_file(&target) };
+                // Les helpers « replace » se restaurent seuls ; sinon on enlève le partiel (cible neuve).
+                if resolution != "replace" {
+                    let _ = if target.is_dir() { fs::remove_dir_all(&target) } else { fs::remove_file(&target) };
+                }
                 if e.kind() == ErrorKind::Interrupted {
-                    if notify { emit_transfer(&app, &job_id, "copy", &label, current, total, "cancelled", None); }
+                    if notify { emit_transfer(&app, &job_id, "copy", &label, current.get(), total, "cancelled", None); }
                     mgr.remove(&job_id);
                     return Ok(created);
                 }
                 eprintln!("[copy_entries] {path}: {e}");
-                if notify { emit_transfer(&app, &job_id, "copy", &label, current, total, "error", Some(e.to_string())); }
+                if notify { emit_transfer(&app, &job_id, "copy", &label, current.get(), total, "error", Some(e.to_string())); }
                 mgr.remove(&job_id);
                 return Err(e.to_string());
             }
@@ -353,44 +478,17 @@ pub async fn copy_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
     .map_err(|e| e.to_string())?
 }
 
-// État d'un déplacement, pour annuler proprement. Les sources cross-device sont supprimées
-// seulement à la fin → l'annulation ne perd jamais de données.
-#[derive(Default)]
-struct MoveState {
-    renamed: Vec<(PathBuf, PathBuf)>, // même FS : annuler = rename inverse
-    copied: Vec<(PathBuf, PathBuf)>,  // cross-device : source intacte, target à supprimer si annulé
-}
-
 fn is_cross_device(e: &std::io::Error) -> bool {
     e.raw_os_error() == Some(18) // EXDEV
 }
 
-// Restaure l'état initial : remet les renommés en place, supprime les copies cross-device.
-fn undo_move(st: &MoveState) {
-    for (src, target) in st.renamed.iter().rev() {
-        let _ = fs::rename(target, src);
-    }
-    for (_, target) in &st.copied {
-        let _ = if target.is_dir() { fs::remove_dir_all(target) } else { fs::remove_file(target) };
-    }
-}
-
-fn validate_move_target(src: &Path, dest: &Path) -> Result<PathBuf, String> {
-    if dest.starts_with(src) {
-        return Err("Impossible de déplacer un dossier dans lui-même".to_string());
-    }
-    let name = src.file_name().ok_or_else(|| format!("nom invalide: {}", src.display()))?;
-    let target = dest.join(name);
-    if target.exists() {
-        return Err(format!("«{}» existe déjà dans ce dossier", name.to_string_lossy()));
-    }
-    Ok(target)
-}
-
-// Déplace plusieurs entrées dans dest_dir. Même FS = rename instantané ; cross-device = copie
-// par chunks (pausable/annulable) + suppression différée de la source.
+// Déplace plusieurs entrées dans dest_dir. `resolutions` gère les collisions (replace|skip|keep|merge).
+// 0 % de perte : les sources copiées (cross-device / replace / merge) ne sont supprimées qu'après la
+// réussite complète du job ; un « replace » bascule par temporaire/backup. Même volume = rename instantané.
 #[tauri::command]
-pub async fn move_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) -> Result<(), String> {
+pub async fn move_entries(
+    app: AppHandle, paths: Vec<String>, dest_dir: String, resolutions: HashMap<String, String>,
+) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         let dest = Path::new(&dest_dir);
         let (files, total) = count_files_bytes(&paths);
@@ -401,72 +499,84 @@ pub async fn move_entries(app: AppHandle, paths: Vec<String>, dest_dir: String) 
         let ctrl = mgr.add(&job_id);
         if notify { emit_transfer(&app, &job_id, "move", &label, 0, total, "transferring", None); }
 
-        let mut current = 0u64;
-        let mut last = Instant::now();
-        let mut last_paused = false;
-        let mut st = MoveState::default();
+        let current = std::cell::Cell::new(0u64);
+        let last = std::cell::Cell::new(Instant::now());
+        let last_paused = std::cell::Cell::new(false);
+        let progress = |n: u64| {
+            current.set(current.get() + n);
+            let paused = ctrl.paused.load(Ordering::Relaxed);
+            let status = if paused { "paused" } else { "transferring" };
+            if notify && (paused != last_paused.get() || last.get().elapsed().as_millis() >= EMIT_THROTTLE_MS) {
+                emit_transfer(&app, &job_id, "move", &label, current.get(), total, status, None);
+                last.set(Instant::now());
+                last_paused.set(paused);
+            }
+        };
+        let fail = |msg: String| -> Result<(), String> {
+            if notify { emit_transfer(&app, &job_id, "move", &label, current.get(), total, "error", Some(msg.clone())); }
+            mgr.remove(&job_id);
+            Err(msg)
+        };
+
+        let mut to_delete: Vec<PathBuf> = Vec::new(); // sources copiées → suppression différée à la fin
 
         for path in &paths {
             if ctrl.cancelled.load(Ordering::Relaxed) {
-                undo_move(&st);
-                if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "cancelled", None); }
+                if notify { emit_transfer(&app, &job_id, "move", &label, current.get(), total, "cancelled", None); }
                 mgr.remove(&job_id);
-                return Ok(());
+                return Ok(()); // sources copiées non supprimées → zéro perte
             }
             let src = Path::new(path);
-            let target = match validate_move_target(src, dest) {
-                Ok(t) => t,
-                Err(e) => {
-                    if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.clone())); }
-                    mgr.remove(&job_id);
-                    return Err(e);
-                }
+            let name = match src.file_name() {
+                Some(n) => n.to_string_lossy().to_string(),
+                None => return fail(format!("nom invalide: {path}")),
             };
+            if dest.starts_with(src) {
+                return fail("Impossible de déplacer un dossier dans lui-même".into());
+            }
+            let raw = dest.join(&name);
+            let resolution = if raw.exists() {
+                resolutions.get(&name).map(String::as_str).unwrap_or("keep")
+            } else {
+                "none"
+            };
+            if resolution == "skip" { continue; }
+            let target = if resolution == "keep" { unique_dest(dest, &name) } else { raw.clone() };
             let entry_bytes = count_files_bytes(std::slice::from_ref(path)).1;
 
-            match fs::rename(src, &target) {
-                Ok(()) => {
-                    st.renamed.push((src.to_path_buf(), target));
-                    current += entry_bytes;
-                    if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "transferring", None); }
-                }
-                Err(e) if is_cross_device(&e) => {
-                    let res = copy_recursive(src, &target, &ctrl, &mut |n| {
-                        current += n;
-                        let paused = ctrl.paused.load(Ordering::Relaxed);
-                        let status = if paused { "paused" } else { "transferring" };
-                        if notify && (paused != last_paused || last.elapsed().as_millis() >= EMIT_THROTTLE_MS) {
-                            emit_transfer(&app, &job_id, "move", &label, current, total, status, None);
-                            last = Instant::now();
-                            last_paused = paused;
-                        }
-                    });
-                    if let Err(e) = res {
-                        let _ = if target.is_dir() { fs::remove_dir_all(&target) } else { fs::remove_file(&target) };
-                        undo_move(&st);
-                        if e.kind() == ErrorKind::Interrupted {
-                            if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "cancelled", None); }
-                            mgr.remove(&job_id);
-                            return Ok(());
-                        }
-                        if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.to_string())); }
-                        mgr.remove(&job_id);
-                        return Err(e.to_string());
-                    }
-                    st.copied.push((src.to_path_buf(), target));
-                }
+            let mut cb = |n: u64| progress(n);
+            // Ok(true) = la source a été copiée → à supprimer en fin de job ; Ok(false) = rename instantané.
+            let result: std::io::Result<bool> = match resolution {
+                "replace" if src.is_dir() => replace_dir_safe(src, &target, &ctrl, &mut cb).map(|_| true),
+                "replace" => replace_file_safe(src, &target, &ctrl, &mut cb).map(|_| true),
+                "merge" if src.is_dir() => merge_dir(src, &target, &ctrl, &mut cb).map(|_| true),
+                _ => match fs::rename(src, &target) {
+                    Ok(()) => { current.set(current.get() + entry_bytes); Ok(false) }
+                    Err(e) if is_cross_device(&e) => copy_recursive(src, &target, &ctrl, &mut cb).map(|_| true),
+                    Err(e) => Err(e),
+                },
+            };
+
+            match result {
+                Ok(true) => to_delete.push(src.to_path_buf()),
+                Ok(false) => {}
                 Err(e) => {
-                    undo_move(&st);
+                    if resolution != "replace" {
+                        let _ = if target.is_dir() { fs::remove_dir_all(&target) } else { fs::remove_file(&target) };
+                    }
+                    if e.kind() == ErrorKind::Interrupted {
+                        if notify { emit_transfer(&app, &job_id, "move", &label, current.get(), total, "cancelled", None); }
+                        mgr.remove(&job_id);
+                        return Ok(());
+                    }
                     eprintln!("[move_entries] {path}: {e}");
-                    if notify { emit_transfer(&app, &job_id, "move", &label, current, total, "error", Some(e.to_string())); }
-                    mgr.remove(&job_id);
-                    return Err(e.to_string());
+                    return fail(e.to_string());
                 }
             }
         }
 
-        // Succès : suppression différée des sources cross-device (jamais avant la fin).
-        for (src, _) in &st.copied {
+        // Succès complet : suppression des sources copiées (jamais avant la fin → zéro perte).
+        for src in &to_delete {
             let _ = if src.is_dir() { fs::remove_dir_all(src) } else { fs::remove_file(src) };
         }
         if notify { emit_transfer(&app, &job_id, "move", &label, total, total, "done", None); }
@@ -555,4 +665,83 @@ pub async fn search_content(root: String, query: String) -> Vec<ContentMatch> {
     })
     .await
     .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn tmp_dir(tag: &str) -> PathBuf {
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let d = std::env::temp_dir().join(format!("vela-ops-{tag}-{ts}"));
+        fs::create_dir_all(&d).unwrap();
+        d
+    }
+    fn ctrl() -> TransferControl {
+        TransferControl { paused: AtomicBool::new(false), cancelled: AtomicBool::new(false) }
+    }
+    fn noop() -> impl FnMut(u64) { |_| {} }
+
+    #[test]
+    fn replace_file_remplace_sans_perte() {
+        let d = tmp_dir("replf");
+        let src = d.join("src.txt");
+        let target = d.join("t.txt");
+        fs::write(&src, b"NEW").unwrap();
+        fs::write(&target, b"OLD").unwrap();
+        let mut cb = noop();
+        replace_file_safe(&src, &target, &ctrl(), &mut cb).unwrap();
+        assert_eq!(fs::read_to_string(&target).unwrap(), "NEW");
+        // aucun temporaire résiduel
+        let leftovers: Vec<_> = fs::read_dir(&d).unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().contains("vela-tmp"))
+            .collect();
+        assert!(leftovers.is_empty(), "temporaire non nettoyé");
+        fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn merge_garde_les_deux_jamais_ecraser() {
+        let d = tmp_dir("merge");
+        let src = d.join("src");
+        let target = d.join("dst");
+        fs::create_dir_all(&src).unwrap();
+        fs::create_dir_all(&target).unwrap();
+        fs::write(src.join("a.txt"), b"A_NEW").unwrap();
+        fs::write(src.join("b.txt"), b"B").unwrap();
+        fs::write(target.join("a.txt"), b"A_OLD").unwrap();
+        let mut cb = noop();
+        merge_dir(&src, &target, &ctrl(), &mut cb).unwrap();
+        // l'ancien a.txt est intact, le nouveau est conservé sous un autre nom, b.txt est ajouté
+        assert_eq!(fs::read_to_string(target.join("a.txt")).unwrap(), "A_OLD");
+        assert_eq!(fs::read_to_string(target.join("b.txt")).unwrap(), "B");
+        let copie = fs::read_dir(&target).unwrap()
+            .filter_map(|e| e.ok())
+            .any(|e| e.file_name().to_string_lossy().contains("copie"));
+        assert!(copie, "le fichier en collision n'a pas été conservé en double");
+        fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn replace_dir_remplace_et_nettoie_backup() {
+        let d = tmp_dir("repld");
+        let src = d.join("src");
+        let target = d.join("dst");
+        fs::create_dir_all(&src).unwrap();
+        fs::create_dir_all(&target).unwrap();
+        fs::write(src.join("new.txt"), b"NEW").unwrap();
+        fs::write(target.join("old.txt"), b"OLD").unwrap();
+        let mut cb = noop();
+        replace_dir_safe(&src, &target, &ctrl(), &mut cb).unwrap();
+        assert!(target.join("new.txt").exists());
+        assert!(!target.join("old.txt").exists());
+        let backups: Vec<_> = fs::read_dir(&d).unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().contains("vela-tmp"))
+            .collect();
+        assert!(backups.is_empty(), "backup non nettoyé");
+        fs::remove_dir_all(&d).ok();
+    }
 }

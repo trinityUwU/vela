@@ -6,6 +6,10 @@ import { isEditable } from "../services/file-kind";
 import { matchPattern } from "../services/path-util";
 import type { UndoEntry } from "./useUndo";
 import type { Clipboard, ClipboardOp, DirEntry, DirListing, Place } from "../types";
+import type { Conflict, ConflictResolution } from "../services/fs";
+
+type Resolutions = Record<string, ConflictResolution>;
+type ConflictResolver = (conflicts: Conflict[]) => Promise<Resolutions | null>;
 
 function baseName(path: string): string {
   return path.split("/").filter(Boolean).pop() ?? path;
@@ -50,6 +54,16 @@ export function useFileManager() {
   const anchor = useRef<string | null>(null);
   const recordRef = useRef<(e: UndoEntry) => void>(() => {});
   const setRecorder = useCallback((fn: (e: UndoEntry) => void) => { recordRef.current = fn; }, []);
+
+  // Résolveur de conflits injecté par App (ouvre la modale). Défaut : pas de résolveur → keep (sûr).
+  const conflictResolver = useRef<ConflictResolver>(async () => ({}));
+  const setConflictResolver = useCallback((fn: ConflictResolver) => { conflictResolver.current = fn; }, []);
+  // Scanne les collisions ; renvoie les résolutions, {} si aucune, ou null si l'utilisateur annule.
+  const resolveConflicts = useCallback(async (paths: string[], destDir: string): Promise<Resolutions | null> => {
+    const conflicts = await fs.scanConflicts(paths, destDir);
+    if (conflicts.length === 0) return {};
+    return conflictResolver.current(conflicts);
+  }, []);
 
   const history = useRef<string[]>([]);
   const histIdx = useRef(-1);
@@ -321,14 +335,16 @@ export function useFileManager() {
     async (src: string, destDir: string) => {
       try {
         const paths = selection.has(src) ? [...selection] : [src];
-        await fs.moveEntries(paths, destDir);
+        const res = await resolveConflicts(paths, destDir);
+        if (res === null) return; // annulé
+        await fs.moveEntries(paths, destDir, res);
         recordRef.current({ kind: "move", moves: paths.map((p) => ({ from: p, to: `${destDir}/${baseName(p)}` })) });
         await refresh();
       } catch (e) {
         setError(String(e));
       }
     },
-    [refresh, selection],
+    [refresh, selection, resolveConflicts],
   );
 
   // ── opérations groupées ────────────────────────────────────────────────────
@@ -388,11 +404,13 @@ export function useFileManager() {
   const paste = useCallback(async () => {
     if (!clipboard) return;
     try {
+      const res = await resolveConflicts(clipboard.paths, cwd);
+      if (res === null) return; // annulé
       if (clipboard.op === "copy") {
-        const created = await fs.copyEntries(clipboard.paths, cwd);
+        const created = await fs.copyEntries(clipboard.paths, cwd, res);
         if (created.length) recordRef.current({ kind: "copy", created });
       } else {
-        await fs.moveEntries(clipboard.paths, cwd);
+        await fs.moveEntries(clipboard.paths, cwd, res);
         recordRef.current({ kind: "move", moves: clipboard.paths.map((p) => ({ from: p, to: `${cwd}/${baseName(p)}` })) });
         setClipboard(null);
       }
@@ -400,7 +418,7 @@ export function useFileManager() {
     } catch (e) {
       setError(String(e));
     }
-  }, [clipboard, cwd, refresh]);
+  }, [clipboard, cwd, refresh, resolveConflicts]);
 
   const compress = useCallback(
     async (paths: string[], dest: string, format: fs.ArchiveFormat, password?: string) => {
@@ -431,6 +449,6 @@ export function useFileManager() {
     rename, renameMany, remove, newFolder, createFile, moveEntry,
     trash, deletePermanent, compress,
     trashCount, emptyTrash, openTrash,
-    setRecorder,
+    setRecorder, setConflictResolver,
   };
 }

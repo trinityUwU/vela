@@ -73,6 +73,7 @@ pub fn run() {
             ops::delete_entries,
             ops::copy_entries,
             ops::move_entries,
+            ops::scan_conflicts,
             ops::transfer_pause,
             ops::transfer_resume,
             ops::transfer_cancel,

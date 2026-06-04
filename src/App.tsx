@@ -22,6 +22,8 @@ import { OverlayHost } from "./components/OverlayHost";
 import { StatusBar } from "./components/StatusBar";
 import { InputModal } from "./components/InputModal";
 import { HashModal } from "./components/HashModal";
+import { ConflictModal } from "./components/ConflictModal";
+import type { Conflict, ConflictResolution } from "./services/fs";
 import { useGridNav } from "./hooks/useGridNav";
 import { useGitStatus } from "./hooks/useGitStatus";
 import { useCommandPalette } from "./hooks/useCommandPalette";
@@ -95,6 +97,9 @@ export default function App() {
   const [folderSizes, setFolderSizes] = useState<Record<string, number>>({});
   const [analyzePath, setAnalyzePath] = useState<string | null>(null);
   const [hashPath, setHashPath] = useState<string | null>(null);
+  const [conflictReq, setConflictReq] = useState<
+    { conflicts: Conflict[]; resolve: (r: Record<string, ConflictResolution> | null) => void } | null
+  >(null);
   const [translate, setTranslate] = useState<{ path: string | null } | null>(null);
   const [codeSearchOpen, setCodeSearchOpen] = useState(false);
   const [editPath, setEditPath] = useState<string | null>(null);
@@ -181,6 +186,11 @@ export default function App() {
     if (!fm.cwd) { setDisk(null); return; }
     diskFree(fm.cwd).then(setDisk).catch(() => setDisk(null));
   }, [fm.cwd]);
+
+  // Résolveur de conflits : la copie/déplacement attend la réponse de la modale (ou son annulation).
+  useEffect(() => {
+    fm.setConflictResolver((conflicts) => new Promise((resolve) => setConflictReq({ conflicts, resolve })));
+  }, [fm.setConflictResolver]);
 
   const selectedSize = useMemo(
     () => entries.reduce((sum, e) => {
@@ -594,6 +604,14 @@ export default function App() {
 
       {hashPath && (
         <HashModal path={hashPath} onClose={() => setHashPath(null)} onError={fm.setError} />
+      )}
+
+      {conflictReq && (
+        <ConflictModal
+          conflicts={conflictReq.conflicts}
+          onResolve={(r) => { conflictReq.resolve(r); setConflictReq(null); }}
+          onCancel={() => { conflictReq.resolve(null); setConflictReq(null); }}
+        />
       )}
 
       <ExtractionPanel jobs={extractionJobs} transfers={transferJobs} ocr={ocrJobs} onNavigate={fm.navigate} />

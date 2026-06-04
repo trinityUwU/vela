@@ -143,12 +143,33 @@ export function deleteEntries(paths: string[]): Promise<void> {
   return invoke("delete_entries", { paths });
 }
 
-export function copyEntries(paths: string[], destDir: string): Promise<string[]> {
-  return invoke<string[]>("copy_entries", { paths, destDir });
+// Résolution d'un conflit de nom : remplacer / ignorer / garder les deux / fusionner (dossiers).
+export type ConflictResolution = "replace" | "skip" | "keep" | "merge";
+
+export interface Conflict {
+  name: string;
+  srcPath: string;
+  destPath: string;
+  srcSize: number;
+  destSize: number;
+  srcIsDir: boolean;
+  destIsDir: boolean;
 }
 
-export function moveEntries(paths: string[], destDir: string): Promise<void> {
-  return invoke("move_entries", { paths, destDir });
+export function scanConflicts(paths: string[], destDir: string): Promise<Conflict[]> {
+  return invoke<Conflict[]>("scan_conflicts", { paths, destDir });
+}
+
+export function copyEntries(
+  paths: string[], destDir: string, resolutions: Record<string, ConflictResolution> = {},
+): Promise<string[]> {
+  return invoke<string[]>("copy_entries", { paths, destDir, resolutions });
+}
+
+export function moveEntries(
+  paths: string[], destDir: string, resolutions: Record<string, ConflictResolution> = {},
+): Promise<void> {
+  return invoke("move_entries", { paths, destDir, resolutions });
 }
 
 export type ArchiveFormat = "zip" | "targz" | "7z" | "rar";

@@ -332,5 +332,14 @@ Lancer `claude` dans le terminal intégré → Claude charge un MCP `vela` qui l
 - **Robustesse lancement GUI** : `resolve_real_bin` avec fallbacks (`~/.local/bin`…), socket bind toujours (shim best-effort), injection shell-aware ZDOTDIR(zsh)/`--rcfile`(bash) re-préfixant le shim **après** le rc utilisateur (bat le réordering `~/.local/bin`).
 - **Validation** : Rust+front compilent, handshake MCP OK, round-trip socket testé (open_file ok si zone éditeur, erreur si fichier absent ; lancement PATH appauvri OK), test live confirmé. Commits `78df655`→`c3d05d7`.
 
+## v2.6 — Git enrichi : overlay explorateur + GitPanel + contexte autonome ✅ LIVRÉ
+- **Overlay git dans l'explorateur** : badges sur `FileTile`/`FileTable`/`FileList` depuis `git.statusMap` (chemins absolus, rafraîchi sur `fs-changed`). Dossiers : badge agrégé `dir` (anneau) si un fichier modifié est dessous (`gitDirs` = Set d'ancêtres, memo). Couleurs/labels unifiés dans `services/git-ui.ts` (fin de la triple duplication GIT_COLOR). Coche **« Git »** dans la `SortBar` (activée par défaut, persistée `vela-git-overlay`, visible si dans un repo).
+- **GitPanel enrichi** : branche + **ahead/behind** (`git_ahead_behind` → `graph_ahead_behind` vs upstream), sections **Indexé / Modifications** avec **stage/unstage par fichier** (et « +/− tout »), label de statut, **clic sur un fichier → ouverture dans l'éditeur** (`onOpenFile` → `openTermPath`), commit des fichiers indexés, log enrichi (id + résumé + auteur). Backend : `GitFileStatus.staged` (flag INDEX_*), `git_ahead_behind`. `useGitStatus` expose `files` + `aheadBehind`.
+- **Diff git inline** : délibérément **différé** au futur tool MCP `show_diff` (le `DiffViewer` actuel lit 2 fichiers disque, pas du contenu HEAD-vs-workdir).
+- **Contexte autonome** (`vela-context.md`) : avant une session autonome longue, Claude demande **présentation temps réel** vs **silencieux** et respecte le choix (modifiable en cours).
+- **Validation** : Rust + front compilent, install smoke RUNNING. Test live UI délégué (fenêtre Tauri non scriptable). Commits `a6f33c8` (overlay+autonome) → git enrichi.
+
+**Commandes Rust** : 81 (+1 : `git_ahead_behind`).
+
 ## Backlog
 `BACKLOG.md` : P1 (v1.9) + P2 (v1.11) + P3 (v1.12) + P4 média (v1.14) + téléchargeur (v1.15) + profils (v1.16) livrés. Reste : édition image en plein écran (HUD dans conteneur fullscreen). Dette : `App.tsx` reste à ~499 lignes (sous la limite mais dense — candidat à découpage si une feature s'y ajoute).

@@ -435,7 +435,7 @@ export default function App() {
           onError: fm.setError,
         }}
         terminal={terminalProps}
-        git={{ state: git, cwd: fm.cwd, onError: fm.setError }}
+        git={{ state: git, cwd: fm.cwd, onError: fm.setError, onOpenFile: (p: string) => openTermPath(p, false) }}
       />
 
       {!terminalInZone && (termVisible || terminals.tabs.length > 0) && (

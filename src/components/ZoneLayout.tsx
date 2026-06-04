@@ -94,7 +94,7 @@ interface ZoneLayoutProps {
   sidebar: SidebarProps;
   filetree: FileTreeProps;
   terminal: TerminalProps;
-  git: { state: GitState; cwd: string; onError: (msg: string) => void };
+  git: { state: GitState; cwd: string; onError: (msg: string) => void; onOpenFile: (path: string) => void };
   centerOverride?: React.ReactNode;
 }
 
@@ -143,7 +143,7 @@ function renderPanel(panel: PanelId, props: ZoneLayoutProps): React.ReactElement
     case "terminal":
       return <TerminalPanel {...props.terminal} />;
     case "git":
-      return <GitPanel git={props.git.state} cwd={props.git.cwd} onError={props.git.onError} />;
+      return <GitPanel git={props.git.state} cwd={props.git.cwd} onError={props.git.onError} onOpenFile={props.git.onOpenFile} />;
     default:
       return null;
   }

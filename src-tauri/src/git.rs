@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 pub struct GitFileStatus {
     pub path: String,
     pub status: String,
+    pub staged: bool,
 }
 
 #[derive(Serialize)]
@@ -63,9 +64,14 @@ fn status_blocking(path: &str) -> Result<Vec<GitFileStatus>, String> {
     let mut out = Vec::new();
     for e in statuses.iter() {
         if let Some(rel) = e.path() {
+            let st = e.status();
             out.push(GitFileStatus {
                 path: workdir.join(rel).to_string_lossy().into_owned(),
-                status: map_status(e.status()).to_string(),
+                status: map_status(st).to_string(),
+                staged: st.intersects(
+                    Status::INDEX_NEW | Status::INDEX_MODIFIED | Status::INDEX_DELETED
+                        | Status::INDEX_RENAMED | Status::INDEX_TYPECHANGE,
+                ),
             });
         }
     }
@@ -86,6 +92,21 @@ pub fn git_current_branch(path: String) -> Result<String, String> {
     let repo = open(&path)?;
     let head = repo.head().map_err(|e| e.to_string())?;
     Ok(head.shorthand().unwrap_or("HEAD").to_string())
+}
+
+// Commits d'avance/de retard de la branche courante vs son upstream. Err si pas d'upstream.
+#[tauri::command]
+pub fn git_ahead_behind(path: String) -> Result<(usize, usize), String> {
+    let repo = open(&path)?;
+    let head = repo.head().map_err(|e| e.to_string())?;
+    let local = head.target().ok_or("HEAD sans cible")?;
+    let branch_name = head.shorthand().ok_or("branche inconnue")?;
+    let upstream = repo
+        .find_branch(branch_name, BranchType::Local)
+        .and_then(|b| b.upstream())
+        .map_err(|e| format!("pas d'upstream : {e}"))?;
+    let up_oid = upstream.get().target().ok_or("upstream sans cible")?;
+    repo.graph_ahead_behind(local, up_oid).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

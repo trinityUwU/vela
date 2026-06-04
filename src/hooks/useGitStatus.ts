@@ -1,10 +1,13 @@
 // Statut git du dossier courant : map path→statut + branche, rafraîchi sur fs-changed (debounce).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { gitRepoRoot, gitStatus, gitCurrentBranch } from "../services/git";
+import { gitRepoRoot, gitStatus, gitCurrentBranch, gitAheadBehind } from "../services/git";
+import type { GitFileStatus } from "../services/git";
 
 export interface GitState {
   statusMap: Map<string, string>;
+  files: GitFileStatus[];
+  aheadBehind: [number, number];
   branch: string | null;
   repoRoot: string | null;
   refresh: () => void;
@@ -12,6 +15,8 @@ export interface GitState {
 
 export function useGitStatus(cwd: string): GitState {
   const [statusMap, setStatusMap] = useState<Map<string, string>>(new Map());
+  const [files, setFiles] = useState<GitFileStatus[]>([]);
+  const [aheadBehind, setAheadBehind] = useState<[number, number]>([0, 0]);
   const [branch, setBranch] = useState<string | null>(null);
   const [repoRoot, setRepoRoot] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -22,11 +27,17 @@ export function useGitStatus(cwd: string): GitState {
         setRepoRoot(root);
         if (!root) {
           setStatusMap(new Map());
+          setFiles([]);
+          setAheadBehind([0, 0]);
           setBranch(null);
           return;
         }
-        gitStatus(cwd).then((list) => setStatusMap(new Map(list.map((s) => [s.path, s.status])))).catch(() => {});
+        gitStatus(cwd).then((list) => {
+          setStatusMap(new Map(list.map((s) => [s.path, s.status])));
+          setFiles(list);
+        }).catch(() => {});
         gitCurrentBranch(cwd).then(setBranch).catch(() => setBranch(null));
+        gitAheadBehind(cwd).then(setAheadBehind).catch(() => setAheadBehind([0, 0]));
       })
       .catch(() => setRepoRoot(null));
   }, [cwd]);
@@ -41,5 +52,5 @@ export function useGitStatus(cwd: string): GitState {
     return () => { un.then((f) => f()); };
   }, [refresh]);
 
-  return { statusMap, branch, repoRoot, refresh };
+  return { statusMap, files, aheadBehind, branch, repoRoot, refresh };
 }

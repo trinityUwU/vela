@@ -166,6 +166,7 @@ pub fn run() {
             git::git_repo_root,
             git::git_status,
             git::git_current_branch,
+            git::git_ahead_behind,
             git::git_branches,
             git::git_log,
             git::git_stage,

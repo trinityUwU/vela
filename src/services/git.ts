@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 export interface GitFileStatus {
   path: string;
   status: string;
+  staged: boolean;
 }
 
 export interface GitCommit {
@@ -27,6 +28,10 @@ export function gitStatus(path: string): Promise<GitFileStatus[]> {
 
 export function gitCurrentBranch(path: string): Promise<string> {
   return invoke("git_current_branch", { path });
+}
+
+export function gitAheadBehind(path: string): Promise<[number, number]> {
+  return invoke("git_ahead_behind", { path });
 }
 
 export function gitBranches(path: string): Promise<string[]> {

@@ -138,6 +138,13 @@ export function useFileManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Remplace tous les onglets (restauration d'un espace de travail — F24).
+  const openTabs = useCallback((seeds: TabSeed[]) => {
+    if (!seeds.length) return;
+    const start = initTabs(seeds, 0);
+    navigate(start);
+  }, [initTabs, navigate]);
+
   useEffect(() => {
     if (!tabs.length) return;
     saveSession({
@@ -474,7 +481,7 @@ export function useFileManager() {
     error, setError,
     navigate, openEntry, openNative, previewEntry, goUp, refresh,
     goBack, goForward, canBack: histState.canBack, canForward: histState.canForward,
-    tabs, activeTabId, newTab, closeTab, switchTab, cycleTab, renameTab, setTabColor,
+    tabs, activeTabId, newTab, closeTab, switchTab, cycleTab, renameTab, setTabColor, openTabs,
     rename, renameMany, remove, newFolder, createFile, moveEntry,
     trash, deletePermanent, compress,
     trashCount, emptyTrash, openTrash,

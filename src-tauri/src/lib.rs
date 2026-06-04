@@ -27,6 +27,7 @@ mod player;
 mod profiles;
 mod stems;
 mod tags;
+mod templates;
 mod terminal;
 mod thumbs;
 mod video;
@@ -60,6 +61,7 @@ pub fn run() {
             fs_ops::list_dir,
             fs_ops::read_file,
             fs_ops::read_file_chunk,
+            fs_ops::read_byte_range,
             fs_ops::write_file,
             fs_ops::rename_entry,
             fs_ops::delete_entry,
@@ -113,6 +115,9 @@ pub fn run() {
             browser::browser_reset,
             tags::load_tags,
             tags::set_tag,
+            templates::template_list,
+            templates::template_instantiate,
+            templates::save_as_template,
             analyze::analyze_disk,
             dircmp::compare_dirs,
             player::player_open,

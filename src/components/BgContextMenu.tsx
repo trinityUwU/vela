@@ -15,9 +15,10 @@ interface Props {
   onProperties: () => void;
   onPaste?: () => void;
   canPaste: boolean;
+  onNewFromTemplate?: () => void;
 }
 
-export function BgContextMenu({ x, y, showHidden, onClose, onNewFile, onNewFolder, onRefresh, onToggleHidden, onPinCurrent, onProperties, onPaste, canPaste }: Props) {
+export function BgContextMenu({ x, y, showHidden, onClose, onNewFile, onNewFolder, onRefresh, onToggleHidden, onPinCurrent, onProperties, onPaste, canPaste, onNewFromTemplate }: Props) {
   const { ref, style } = useMenuPosition(x, y);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export function BgContextMenu({ x, y, showHidden, onClose, onNewFile, onNewFolde
     >
       <Item label="Nouveau fichier" onClick={onNewFile} />
       <Item label="Nouveau dossier" onClick={onNewFolder} />
+      {onNewFromTemplate && <Item label="Nouveau depuis modèle…" onClick={onNewFromTemplate} />}
       {canPaste && <Item label="Coller" onClick={() => onPaste?.()} />}
       <Item label="Actualiser" onClick={onRefresh} />
       <Divider />

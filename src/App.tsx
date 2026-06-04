@@ -20,10 +20,15 @@ import { hexFor } from "./services/tags";
 import { getEntryProps, writeFile, diskFree, startExtraction, pathExists } from "./services/fs";
 import { scanConflicts, copyEntries, moveEntries } from "./services/fs";
 import { usePane } from "./hooks/usePane";
+import { useWorkspaces } from "./hooks/useWorkspaces";
+import { templateInstantiate, saveAsTemplate } from "./services/templates";
+import { TemplatePicker } from "./components/TemplatePicker";
+import type { TabSeed } from "./hooks/useFolderTabs";
 import { OverlayHost } from "./components/OverlayHost";
 import { StatusBar } from "./components/StatusBar";
 import { InputModal } from "./components/InputModal";
 import { HashModal } from "./components/HashModal";
+import { HexViewer } from "./components/HexViewer";
 import { ConflictModal } from "./components/ConflictModal";
 import { ExtractConflictModal } from "./components/ExtractConflictModal";
 import type { Conflict, ConflictResolution } from "./services/fs";
@@ -102,6 +107,9 @@ export default function App() {
   const [folderSizes, setFolderSizes] = useState<Record<string, number>>({});
   const [analyzePath, setAnalyzePath] = useState<string | null>(null);
   const [hashPath, setHashPath] = useState<string | null>(null);
+  const [hexPath, setHexPath] = useState<string | null>(null);
+  const [templatePick, setTemplatePick] = useState(false);
+  const workspaces = useWorkspaces();
   const [extractConflict, setExtractConflict] = useState<{ archivePath: string; dest: string } | null>(null);
   const [conflictReq, setConflictReq] = useState<
     { conflicts: Conflict[]; resolve: (r: Record<string, ConflictResolution> | null) => void } | null
@@ -434,7 +442,31 @@ export default function App() {
       if (p.length === 1) setHashPath(p[0]);
       else fm.setError("Sélectionne un seul fichier pour calculer son empreinte.");
     },
+    hexSelected: () => {
+      const p = selPaths();
+      if (p.length === 1) setHexPath(p[0]);
+      else fm.setError("Sélectionne un seul fichier pour l'ouvrir en hexadécimal.");
+    },
+    newFromTemplate: () => setTemplatePick(true),
+    saveAsTemplate: () => {
+      const p = selPaths();
+      if (p.length === 1) setDialog({ kind: "savetemplate", path: p[0] });
+      else fm.setError("Sélectionne un seul élément à enregistrer comme modèle.");
+    },
+    saveWorkspace: () => setDialog({ kind: "saveworkspace" }),
+    workspaces: workspaces.workspaces.map((w) => ({ id: w.id, name: w.name })),
+    openWorkspace: (id) => {
+      const ws = workspaces.workspaces.find((w) => w.id === id);
+      if (!ws) return;
+      profiles.setActive(ws.profileId);
+      fm.openTabs(ws.tabs);
+    },
   });
+
+  const tabSeeds = useCallback((): TabSeed[] => fm.tabs.map((t) => ({ cwd: t.cwd, name: t.name, color: t.color })), [fm.tabs]);
+  const instantiateTemplate = useCallback((name: string) => {
+    templateInstantiate(name, fm.cwd, "").then(() => fm.refresh()).catch((e) => fm.setError(String(e)));
+  }, [fm]);
 
   const { runSmartAction, runOcr, runConvert } = useFileActions({
     setError: fm.setError, refresh: fm.refresh, pushUndo: undo.push, onMissingTool: install.request,
@@ -674,6 +706,7 @@ export default function App() {
         computeSize={computeSize}
         onAnalyze={setAnalyzePath}
         onHash={setHashPath}
+        onHexView={setHexPath}
         onExtract={extractArchive}
         onMediaTools={openMediaTools}
         onTranslate={(p) => setTranslate({ path: p })}
@@ -685,6 +718,8 @@ export default function App() {
         refresh={fm.refresh}
         toggleHidden={fm.toggleHidden}
         pinCurrent={pinCurrent}
+        onSaveTemplate={(p) => setDialog({ kind: "savetemplate", path: p })}
+        onNewFromTemplate={() => setTemplatePick(true)}
       />
 
       <DialogHost
@@ -705,12 +740,43 @@ export default function App() {
         />
       )}
 
+      {dialog?.kind === "savetemplate" && (
+        <InputModal
+          title="Enregistrer comme modèle"
+          confirmLabel="Enregistrer"
+          initial={baseName(dialog.path)}
+          onSubmit={(name) => {
+            saveAsTemplate(dialog.path, name).catch((e) => fm.setError(String(e)));
+            setDialog(null);
+          }}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+
+      {dialog?.kind === "saveworkspace" && (
+        <InputModal
+          title="Enregistrer l'espace de travail"
+          confirmLabel="Enregistrer"
+          placeholder="Nom de l'espace"
+          onSubmit={(name) => { workspaces.save(name, profiles.activeId, tabSeeds()); setDialog(null); }}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+
+      {templatePick && (
+        <TemplatePicker onPick={instantiateTemplate} onClose={() => setTemplatePick(false)} />
+      )}
+
       {quickLook && (
         <QuickLook entry={quickLook} onClose={() => setQuickLook(null)} onError={fm.setError} />
       )}
 
       {hashPath && (
         <HashModal path={hashPath} onClose={() => setHashPath(null)} onError={fm.setError} />
+      )}
+
+      {hexPath && (
+        <HexViewer path={hexPath} onClose={() => setHexPath(null)} onError={fm.setError} />
       )}
 
       {conflictReq && (

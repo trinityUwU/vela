@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import type { Place, Profile } from "../types";
 
-export type CommandGroup = "Actions" | "Navigation" | "Lieux" | "Profils";
+export type CommandGroup = "Actions" | "Navigation" | "Lieux" | "Profils" | "Espaces";
 
 export interface Command {
   id: string;
@@ -39,6 +39,12 @@ export interface CommandContext {
   selectByPattern: () => void;
   invertSelection: () => void;
   hashSelected: () => void;
+  hexSelected: () => void;
+  newFromTemplate: () => void;
+  saveAsTemplate: () => void;
+  saveWorkspace: () => void;
+  workspaces: { id: string; name: string }[];
+  openWorkspace: (id: string) => void;
 }
 
 export function useCommandRegistry(ctx: CommandContext): Command[] {
@@ -65,7 +71,17 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
       { id: "select-pattern", title: "Sélectionner par motif…", hint: "*.png  /regex/", group: "Actions", run: ctx.selectByPattern },
       { id: "invert-selection", title: "Inverser la sélection", group: "Actions", run: ctx.invertSelection },
       { id: "hash", title: "Calculer une empreinte (hash)…", group: "Actions", run: ctx.hashSelected },
+      { id: "hex", title: "Ouvrir en hexadécimal", group: "Actions", run: ctx.hexSelected },
+      { id: "new-template", title: "Nouveau depuis modèle…", group: "Actions", run: ctx.newFromTemplate },
+      { id: "save-template", title: "Enregistrer comme modèle…", group: "Actions", run: ctx.saveAsTemplate },
+      { id: "save-workspace", title: "Enregistrer l'espace de travail…", group: "Espaces", run: ctx.saveWorkspace },
     ];
+    const spaces: Command[] = ctx.workspaces.map((w) => ({
+      id: `ws:${w.id}`,
+      title: `Espace : ${w.name}`,
+      group: "Espaces",
+      run: () => ctx.openWorkspace(w.id),
+    }));
     const places: Command[] = ctx.places.map((p) => ({
       id: `place:${p.path}`,
       title: p.name,
@@ -81,6 +97,6 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
         group: "Profils",
         run: () => ctx.switchProfile(p.id),
       }));
-    return [...actions, ...places, ...profiles];
+    return [...actions, ...spaces, ...places, ...profiles];
   }, [ctx]);
 }

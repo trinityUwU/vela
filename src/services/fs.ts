@@ -91,6 +91,15 @@ export function readFileBase64(path: string): Promise<string> {
   return invoke<string>("read_file_base64", { path });
 }
 
+export interface ByteRange {
+  dataB64: string;
+  total: number;
+}
+
+export function readByteRange(path: string, offset: number, len: number): Promise<ByteRange> {
+  return invoke<ByteRange>("read_byte_range", { path, offset, len });
+}
+
 export function searchDir(root: string, query: string): Promise<import("../types").DirEntry[]> {
   return invoke("search_dir", { root, query });
 }

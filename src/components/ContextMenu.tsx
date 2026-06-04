@@ -40,6 +40,7 @@ interface Props {
   onComputeSize?: () => void;
   onAnalyze?: () => void;
   onHash?: () => void;
+  onHexView?: () => void;
   onMediaTools?: () => void;
   onExtractHere?: () => void;
   onExtractTo?: () => void;
@@ -48,6 +49,7 @@ interface Props {
   onTranslate?: () => void;
   entries?: DirEntry[];
   onSmartAction?: (id: SmartActionId) => void;
+  onSaveTemplate?: () => void;
 }
 
 function relativePath(path: string, cwd: string): string {
@@ -136,6 +138,9 @@ export function ContextMenu(props: Props) {
       {!multi && !menu.isDir && props.onHash && (
         <Item label="Empreinte (hash)…" onClick={() => { props.onHash?.(); onClose(); }} />
       )}
+      {!multi && !menu.isDir && props.onHexView && (
+        <Item label="Ouvrir en hexadécimal" onClick={() => { props.onHexView?.(); onClose(); }} />
+      )}
       <Divider />
       <Item label="Copier" onClick={() => { onCopy(); onClose(); }} />
       <Item label="Couper" onClick={() => { onCut(); onClose(); }} />
@@ -151,6 +156,9 @@ export function ContextMenu(props: Props) {
       )}
       {menu.count === 2 && <Item label="Comparer les 2 éléments" onClick={() => { onCompare(); onClose(); }} />}
       {multi && <Item label="Renommer par lot…" onClick={onBatchRename} />}
+      {!multi && props.onSaveTemplate && (
+        <Item label="Enregistrer comme modèle…" onClick={() => { props.onSaveTemplate?.(); onClose(); }} />
+      )}
       <Divider />
       <div className="flex items-center gap-1.5 px-3 py-1.5">
         {TAG_COLORS.map((c) => (

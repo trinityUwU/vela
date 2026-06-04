@@ -357,6 +357,28 @@ pub fn read_file_base64(path: String) -> Result<String, String> {
     Ok(BASE64.encode(bytes))
 }
 
+#[derive(Serialize)]
+pub struct ByteRange {
+    pub data_b64: String,
+    pub total: u64,
+}
+
+// Lecture brute d'une plage d'octets (pour l'éditeur hexadécimal F10) — jamais le fichier entier.
+#[tauri::command]
+pub fn read_byte_range(path: String, offset: u64, len: u64) -> Result<ByteRange, String> {
+    let mut f = fs::File::open(&path).map_err(|e| {
+        eprintln!("[read_byte_range] open {path}: {e}");
+        e.to_string()
+    })?;
+    let total = f.metadata().map_err(|e| e.to_string())?.len();
+    f.seek(SeekFrom::Start(offset)).map_err(|e| e.to_string())?;
+    let cap = len.min(1024 * 1024) as usize; // plafond dur 1 Mo/appel
+    let mut buf = vec![0u8; cap];
+    let n = f.read(&mut buf).map_err(|e| e.to_string())?;
+    buf.truncate(n);
+    Ok(ByteRange { data_b64: BASE64.encode(&buf), total })
+}
+
 #[tauri::command]
 pub fn create_dir(path: String, name: String) -> Result<String, String> {
     let dst = Path::new(&path).join(&name);

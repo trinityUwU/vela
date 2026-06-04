@@ -33,6 +33,7 @@ interface Props {
   computeSize: (p: string) => void;
   onAnalyze: (p: string) => void;
   onHash: (p: string) => void;
+  onHexView: (p: string) => void;
   onExtract: (archivePath: string, dest: string) => void;
   onMediaTools: (e: DirEntry) => void;
   onTranslate: (p: string) => void;
@@ -44,6 +45,8 @@ interface Props {
   refresh: () => void;
   toggleHidden: () => void;
   pinCurrent: () => void;
+  onSaveTemplate: (path: string) => void;
+  onNewFromTemplate: () => void;
 }
 
 export function ContextMenus(props: Props): React.ReactElement {
@@ -82,6 +85,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           onComputeSize={() => { props.computeSize(menu.entry.path); onCloseMenu(); }}
           onAnalyze={() => { props.onAnalyze(menu.entry.path); onCloseMenu(); }}
           onHash={() => { props.onHash(menu.entry.path); onCloseMenu(); }}
+          onHexView={() => { props.onHexView(menu.entry.path); onCloseMenu(); }}
           onMediaTools={() => { props.onMediaTools(menu.entry); onCloseMenu(); }}
           onExtractHere={() => {
             const dest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
@@ -98,6 +102,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           onTranslate={() => { props.onTranslate(menu.entry.path); onCloseMenu(); }}
           entries={fileEntries(menu)}
           onSmartAction={(id) => { props.runSmartAction(id, fileEntries(menu)); onCloseMenu(); }}
+          onSaveTemplate={() => { props.onSaveTemplate(menu.entry.path); onCloseMenu(); }}
         />
       )}
 
@@ -114,6 +119,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           onRefresh={() => { props.refresh(); onCloseBg(); }}
           onToggleHidden={() => { props.toggleHidden(); onCloseBg(); }}
           onPinCurrent={() => { props.pinCurrent(); onCloseBg(); }}
+          onNewFromTemplate={() => { props.onNewFromTemplate(); onCloseBg(); }}
           onProperties={() => { props.onDialog({ kind: "props", entry: props.cwdEntry }); onCloseBg(); }}
         />
       )}

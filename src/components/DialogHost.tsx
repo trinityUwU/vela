@@ -19,6 +19,8 @@ export type Dialog =
   | { kind: "emptytrash" }
   | { kind: "extractto"; archivePath: string; defaultDest: string }
   | { kind: "selectpattern" }
+  | { kind: "savetemplate"; path: string }
+  | { kind: "saveworkspace" }
   | null;
 
 interface FmActions {

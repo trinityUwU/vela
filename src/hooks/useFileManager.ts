@@ -186,7 +186,8 @@ export function useFileManager() {
   const openEntry = useCallback(
     async (entry: DirEntry) => {
       if (entry.is_dir) return navigate(entry.path);
-      if (editorActive && isEditable(entry.extension)) {
+      // En mode éditeur : tout fichier s'ouvre dans l'éditeur interne (peu importe l'extension).
+      if (editorActive) {
         setOpened(entry);
         return;
       }
@@ -197,6 +198,17 @@ export function useFileManager() {
       }
     },
     [editorActive, navigate],
+  );
+
+  const openNative = useCallback(
+    async (entry: DirEntry) => {
+      try {
+        await fs.openNative(entry.path);
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [],
   );
 
   const previewEntry = useCallback(
@@ -400,7 +412,7 @@ export function useFileManager() {
     opened, setOpened,
     showHidden, toggleHidden,
     error, setError,
-    navigate, openEntry, previewEntry, goUp, refresh,
+    navigate, openEntry, openNative, previewEntry, goUp, refresh,
     goBack, goForward, canBack: histState.canBack, canForward: histState.canForward,
     rename, renameMany, remove, newFolder, createFile, moveEntry,
     trash, deletePermanent, compress,

@@ -22,6 +22,7 @@ interface Props {
   menu: MenuState;
   onClose: () => void;
   onOpen: () => void;
+  onOpenNative?: () => void;
   onRename: () => void;
   onTrash: () => void;
   onDeletePermanent: () => void;
@@ -57,7 +58,7 @@ function copyToClipboard(text: string) {
 
 export function ContextMenu(props: Props) {
   const { menu, onClose, onOpen, onRename, onTrash, onDeletePermanent, onProperties } = props;
-  const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onOpenTerminal, onComputeSize, onAnalyze, onMediaTools, onExtractHere, onExtractTo, onConvert } = props;
+  const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onOpenTerminal, onComputeSize, onAnalyze, onMediaTools, onExtractHere, onExtractTo, onConvert, onOpenNative } = props;
 
   useEffect(() => {
     window.addEventListener("click", onClose);
@@ -92,6 +93,9 @@ export function ContextMenu(props: Props) {
         </>
       )}
       {!multi && <Item label="Ouvrir" onClick={onOpen} />}
+      {!multi && !menu.isDir && onOpenNative && (
+        <Item label="Ouvrir dans l'app par défaut" onClick={() => { onOpenNative(); onClose(); }} />
+      )}
       {isMedia && onMediaTools && (
         <Item label={mediaLabel} onClick={() => { onMediaTools(); onClose(); }} />
       )}

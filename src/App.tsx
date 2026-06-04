@@ -188,12 +188,14 @@ export default function App() {
     else fm.setEditorActive(true);
   }, [profiles, fm]);
 
+  const openInEditor = (entry: DirEntry) => {
+    if (entry.is_dir) return fm.navigate(entry.path);
+    switchToEdition(); fm.setOpened(entry); fm.setSelected(entry.path);
+  };
+
   const openMatch = (path: string) => {
     const extension = path.includes(".") ? path.slice(path.lastIndexOf(".") + 1) : "";
-    const entry: DirEntry = { name: baseName(path), path, is_dir: false, size: 0, modified: 0, extension };
-    switchToEdition();
-    fm.setOpened(entry);
-    fm.setSelected(path);
+    openInEditor({ name: baseName(path), path, is_dir: false, size: 0, modified: 0, extension });
     search.close();
   };
 
@@ -393,7 +395,8 @@ export default function App() {
             count: fm.selection.size || 1,
           }}
           onClose={() => setMenu(null)}
-          onOpen={() => { fm.openEntry(menu.entry); setMenu(null); }}
+          onOpen={() => { openInEditor(menu.entry); setMenu(null); }}
+          onOpenNative={() => { fm.openNative(menu.entry); setMenu(null); }}
           onRename={() => { setDialog({ kind: "rename", entry: menu.entry }); setMenu(null); }}
           onTrash={() => { askTrash(selPaths(menu.entry.path)); setMenu(null); }}
           onDeletePermanent={() => { askDelete(selPaths(menu.entry.path)); setMenu(null); }}

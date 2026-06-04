@@ -20,3 +20,12 @@ export function termResize(id: string, cols: number, rows: number): Promise<void
 export function termClose(id: string): Promise<void> {
   return invoke("term_close", { id });
 }
+
+export interface ResolvedPath {
+  path: string;
+  isDir: boolean;
+}
+
+export function termResolve(id: string, token: string): Promise<ResolvedPath> {
+  return invoke<ResolvedPath>("term_resolve", { id, token });
+}

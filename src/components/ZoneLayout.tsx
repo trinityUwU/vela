@@ -37,6 +37,7 @@ interface TerminalProps {
   onHide: () => void;
   onRename: (id: string, title: string) => void;
   onSetColor: (id: string, color: string) => void;
+  onOpenPath: (path: string, isDir: boolean) => void;
 }
 
 interface ListingProps {

@@ -89,6 +89,7 @@ pub fn run() {
             terminal::term_input,
             terminal::term_resize,
             terminal::term_close,
+            terminal::term_resolve,
             places::home_dir,
             places::list_places,
             favorites::load_favorites,

@@ -50,6 +50,21 @@ Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1
   (`fixed inset-0`, image `max-h-full`, contrôles dockés en bas scrollables). Échap sort du plein écran
   puis ferme. Contrôles factorisés en fragment `controls` partagé entre vue normale et plein écran.
 
+## v2.4 — Ctrl+clic sur chemin dans le terminal ✅ LIVRÉ
+
+- **Ouverture de chemins depuis le terminal intégré** : en tenant **Ctrl**, les tokens chemin-like dans
+  la sortie xterm deviennent des liens (soulignés + curseur pointer). Ctrl+clic → fichier ouvert dans
+  l'éditeur (le terminal reste ouvert), dossier → navigation en restant dans le mode courant.
+- **Résolution du cwd VIVANT** : `terminal::term_resolve(id, token)` lit `/proc/<pid>/cwd` (pid =
+  `child.process_id()` de portable-pty) pour résoudre les chemins relatifs au dossier courant réel du
+  shell (suit les `cd`), pas au cwd d'ouverture. Gère `~`, absolu, relatif ; canonicalise ; erreur si
+  inexistant (le clic est alors silencieusement ignoré).
+- **xterm** : `registerLinkProvider` dans `TerminalView` ; liens fournis **seulement quand Ctrl est tenu**
+  (tracking `keydown`/`keyup` capture). `pathTokens(line)` extrait les runs `[A-Za-z0-9._~/+@%-]{2,}`.
+- Câblage : `TerminalPanel`/`ZoneLayout`/`TerminalDock` propagent `onOpenPath` → `App.openTermPath`.
+- ⚠️ Couleur du surlignage : xterm DOM renderer hérite de la couleur du texte (soulignement). Levier CSS
+  dispo si bleu franc requis (non ajouté tant que non validé visuellement).
+
 ## v2.1 — Traduction locale + CodeIndex + fix compression ✅ LIVRÉ
 
 1. **Fix freeze compression** — `create_archive` (sync, main thread GTK) → `archive::start_compression`,

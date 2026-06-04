@@ -129,6 +129,7 @@ export default function App() {
     tabs: terminals.tabs, activeId: terminals.activeId, onSelect: terminals.setActiveId, onNew: newTerm,
     onNewShell: (s: string) => terminals.open(fm.cwd, s), shells, onClose: terminals.close, onExit: terminals.exit,
     onFollow: followTerm, onHide: () => setTermVisible(false), onRename: terminals.rename, onSetColor: terminals.setColor,
+    onOpenPath: (p: string, d: boolean) => openTermPath(p, d),
   };
 
   useEffect(() => {
@@ -190,6 +191,14 @@ export default function App() {
   const openInEditor = (entry: DirEntry) => {
     if (entry.is_dir) return fm.navigate(entry.path);
     switchToEdition(); fm.setOpened(entry); fm.setSelected(entry.path);
+  };
+
+  // Ctrl+clic sur un chemin dans le terminal : fichier → éditeur (terminal reste ouvert),
+  // dossier → on entre dedans en restant dans le mode courant.
+  const openTermPath = (path: string, isDir: boolean) => {
+    const extension = !isDir && path.includes(".") ? path.slice(path.lastIndexOf(".") + 1) : "";
+    if (isDir) return fm.navigate(path);
+    openInEditor({ name: baseName(path), path, is_dir: false, size: 0, modified: 0, extension });
   };
 
   const openMediaTools = (entry: DirEntry) => {

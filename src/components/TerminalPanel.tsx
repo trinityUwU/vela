@@ -4,7 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { termInput, termResize } from "../services/term";
+import { termInput, termResize, termResolve } from "../services/term";
 import type { TermTab } from "../hooks/useTerminals";
 import { TAG_COLORS, hexFor } from "../services/tags";
 
@@ -21,6 +21,7 @@ interface Props {
   onHide: () => void;
   onRename: (id: string, title: string) => void;
   onSetColor: (id: string, color: string) => void;
+  onOpenPath: (path: string, isDir: boolean) => void;
 }
 
 type TabMenu = { id: string; x: number; y: number } | null;
@@ -119,7 +120,7 @@ export function TerminalPanel(props: Props) {
 
       <div className="flex-1 min-h-0 relative">
         {tabs.map((t) => (
-          <TerminalView key={t.id} id={t.id} cwd={t.cwd} active={t.id === activeId} onExit={props.onExit} />
+          <TerminalView key={t.id} id={t.id} cwd={t.cwd} active={t.id === activeId} onExit={props.onExit} onOpenPath={props.onOpenPath} />
         ))}
         {tabs.length === 0 && (
           <div className="flex items-center justify-center h-full text-xs text-[var(--color-text-dim)]">
@@ -178,11 +179,30 @@ function banner(cwd: string): string {
   return `${accent}▌${reset} ${dim}${cwd}${reset}\r\n${accent}▌${reset} ${dim}${date}${reset}\r\n\r\n`;
 }
 
-function TerminalView({ id, cwd, active, onExit }: {
+// Tokens « chemin-like » d'une ligne : on capte les runs de caractères de chemin
+// (avec leur colonne 1-based) ; la validation réelle d'existence se fait côté Rust au clic.
+const PATH_TOKEN = /[A-Za-z0-9._~/+@%-]{2,}/g;
+function pathTokens(line: string): { text: string; start: number; end: number }[] {
+  const out: { text: string; start: number; end: number }[] = [];
+  let m: RegExpExecArray | null;
+  PATH_TOKEN.lastIndex = 0;
+  while ((m = PATH_TOKEN.exec(line))) {
+    const text = m[0];
+    if (!/[/.~]/.test(text) && !/^[A-Za-z0-9]/.test(text)) continue;
+    out.push({ text, start: m.index + 1, end: m.index + text.length });
+  }
+  return out;
+}
+
+function TerminalView({ id, cwd, active, onExit, onOpenPath }: {
   id: string; cwd: string; active: boolean; onExit: (id: string) => void;
+  onOpenPath: (path: string, isDir: boolean) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const inst = useRef<{ term: Terminal; fit: FitAddon } | null>(null);
+  const ctrlHeld = useRef(false);
+  const onOpenRef = useRef(onOpenPath);
+  onOpenRef.current = onOpenPath;
 
   useEffect(() => {
     const term = new Terminal({
@@ -203,6 +223,31 @@ function TerminalView({ id, cwd, active, onExit }: {
     // Double rAF : la taille finale du conteneur n'est connue qu'après le layout.
     requestAnimationFrame(() => { fitNow(); requestAnimationFrame(fitNow); });
 
+    // Ctrl+clic ouvre un chemin ; liens actifs (surlignés) seulement quand Ctrl est tenu.
+    const linkProvider = term.registerLinkProvider({
+      provideLinks(lineNo, cb) {
+        if (!ctrlHeld.current) return cb(undefined);
+        const buf = term.buffer.active;
+        const line = buf.getLine(lineNo - 1)?.translateToString(true);
+        if (!line) return cb(undefined);
+        const links = pathTokens(line).map((t) => ({
+          text: t.text,
+          range: { start: { x: t.start, y: lineNo }, end: { x: t.end, y: lineNo } },
+          decorations: { pointerCursor: true, underline: true },
+          activate: (_e: MouseEvent, text: string) => {
+            termResolve(id, text)
+              .then((r) => onOpenRef.current(r.path, r.isDir))
+              .catch(() => {});
+          },
+        }));
+        cb(links);
+      },
+    });
+
+    const onKey = (e: KeyboardEvent) => { ctrlHeld.current = e.ctrlKey || e.metaKey; };
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("keyup", onKey, true);
+
     const onData = term.onData((data) => termInput(id, data).catch(() => {}));
     const unOut = listen<{ id: string; data: string }>("term-output", ({ payload }) => {
       if (payload.id === id) term.write(b64ToBytes(payload.data));
@@ -217,6 +262,9 @@ function TerminalView({ id, cwd, active, onExit }: {
 
     return () => {
       onData.dispose();
+      linkProvider.dispose();
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("keyup", onKey, true);
       unOut.then((f) => f());
       unExit.then((f) => f());
       ro.disconnect();

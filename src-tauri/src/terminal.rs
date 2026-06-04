@@ -125,6 +125,50 @@ pub fn term_input(state: tauri::State<'_, TerminalManager>, id: String, data: St
     s.writer.flush().map_err(|e| e.to_string())
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Resolved {
+    path: String,
+    is_dir: bool,
+}
+
+// Résout un token affiché dans le terminal en chemin réel, relatif au cwd VIVANT du shell
+// (lu via /proc/<pid>/cwd). Renvoie une erreur si le token ne correspond à rien d'existant.
+#[tauri::command]
+pub fn term_resolve(
+    state: tauri::State<'_, TerminalManager>,
+    id: String,
+    token: String,
+) -> Result<Resolved, String> {
+    let pid = {
+        let sessions = state.lock();
+        let s = sessions.get(&id).ok_or("Session introuvable")?;
+        s.child.process_id().ok_or("PID indisponible")?
+    };
+
+    let raw = token.trim().trim_matches(|c| matches!(c, '"' | '\'' | '`' | '(' | ')' | '[' | ']' | ',' | ':'));
+    if raw.is_empty() {
+        return Err("Token vide".into());
+    }
+
+    let base = std::fs::read_link(format!("/proc/{pid}/cwd"))
+        .map_err(|e| format!("cwd PTY illisible : {e}"))?;
+
+    let expanded = if let Some(rest) = raw.strip_prefix("~/") {
+        std::env::var("HOME").map(|h| Path::new(&h).join(rest)).unwrap_or_else(|_| base.join(raw))
+    } else if raw == "~" {
+        std::env::var("HOME").map(std::path::PathBuf::from).unwrap_or_else(|_| base.clone())
+    } else {
+        let p = Path::new(raw);
+        if p.is_absolute() { p.to_path_buf() } else { base.join(p) }
+    };
+
+    let canon = std::fs::canonicalize(&expanded)
+        .map_err(|e| format!("Chemin introuvable : {e}"))?;
+    let is_dir = canon.is_dir();
+    Ok(Resolved { path: canon.to_string_lossy().to_string(), is_dir })
+}
+
 // Redimensionne le PTY (suite à un fit côté front).
 #[tauri::command]
 pub fn term_resize(state: tauri::State<'_, TerminalManager>, id: String, cols: u16, rows: u16) -> Result<(), String> {

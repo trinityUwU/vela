@@ -22,6 +22,7 @@ mod imaging;
 mod media_probe;
 mod ocr;
 mod ops;
+mod pdf;
 mod places;
 mod player;
 mod profiles;
@@ -123,6 +124,9 @@ pub fn run() {
             share::share_start,
             share::share_stop,
             share::share_active,
+            pdf::pdf_merge,
+            pdf::pdf_extract_pages,
+            pdf::pdf_rotate,
             analyze::analyze_disk,
             dircmp::compare_dirs,
             player::player_open,

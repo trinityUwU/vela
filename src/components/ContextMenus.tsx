@@ -48,6 +48,7 @@ interface Props {
   onSaveTemplate: (path: string) => void;
   onNewFromTemplate: () => void;
   onShare: (paths: string[]) => void;
+  onPdfTools: (paths: string[]) => void;
 }
 
 export function ContextMenus(props: Props): React.ReactElement {
@@ -105,6 +106,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           onSmartAction={(id) => { props.runSmartAction(id, fileEntries(menu)); onCloseMenu(); }}
           onSaveTemplate={() => { props.onSaveTemplate(menu.entry.path); onCloseMenu(); }}
           onShare={() => { props.onShare(selPaths(menu.entry.path)); onCloseMenu(); }}
+          onPdfTools={() => { props.onPdfTools(selPaths(menu.entry.path)); onCloseMenu(); }}
         />
       )}
 

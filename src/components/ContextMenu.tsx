@@ -51,6 +51,7 @@ interface Props {
   onSmartAction?: (id: SmartActionId) => void;
   onSaveTemplate?: () => void;
   onShare?: () => void;
+  onPdfTools?: () => void;
 }
 
 function relativePath(path: string, cwd: string): string {
@@ -77,6 +78,8 @@ export function ContextMenu(props: Props) {
   const rel = relativePath(menu.path, menu.cwd);
   const smart = props.onSmartAction ? smartActions(props.entries ?? []) : [];
   const isArchive = !multi && !menu.isDir && previewKind(menu.extension) === "archive";
+  const allPdf = (props.entries ?? []).length > 0 && (props.entries ?? []).every((e) => !e.is_dir && e.extension.toLowerCase() === "pdf");
+  const isPdf = !menu.isDir && (multi ? allPdf : menu.extension.toLowerCase() === "pdf");
   const mediaKind = !multi && !menu.isDir ? previewKind(menu.extension) : "binary";
   const isMedia = mediaKind === "image" || mediaKind === "audio" || mediaKind === "video";
   const isOcrable = mediaKind === "image" || mediaKind === "pdf";
@@ -126,6 +129,9 @@ export function ContextMenu(props: Props) {
           <Item label="Extraire ici" onClick={() => { onExtractHere?.(); onClose(); }} />
           <Item label="Extraire vers…" onClick={() => { onExtractTo?.(); onClose(); }} />
         </>
+      )}
+      {isPdf && props.onPdfTools && (
+        <Item label={multi ? "Outils PDF (fusionner)…" : "Outils PDF…"} onClick={() => { props.onPdfTools?.(); onClose(); }} />
       )}
       {isOcrable && props.onOcr && (
         <Item label="Extraire le texte (OCR)" onClick={() => { props.onOcr?.(); onClose(); }} />

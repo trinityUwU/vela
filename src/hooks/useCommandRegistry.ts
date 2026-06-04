@@ -43,6 +43,7 @@ export interface CommandContext {
   newFromTemplate: () => void;
   saveAsTemplate: () => void;
   shareSelected: () => void;
+  pdfTools: () => void;
   saveWorkspace: () => void;
   workspaces: { id: string; name: string }[];
   openWorkspace: (id: string) => void;
@@ -76,6 +77,7 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
       { id: "new-template", title: "Nouveau depuis modèle…", group: "Actions", run: ctx.newFromTemplate },
       { id: "save-template", title: "Enregistrer comme modèle…", group: "Actions", run: ctx.saveAsTemplate },
       { id: "share-lan", title: "Partager sur le réseau local…", group: "Actions", run: ctx.shareSelected },
+      { id: "pdf-tools", title: "Outils PDF (fusion, extraction, rotation)…", group: "Actions", run: ctx.pdfTools },
       { id: "save-workspace", title: "Enregistrer l'espace de travail…", group: "Espaces", run: ctx.saveWorkspace },
     ];
     const spaces: Command[] = ctx.workspaces.map((w) => ({

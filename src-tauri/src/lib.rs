@@ -1,4 +1,4 @@
-// Point d'entrée Tauri : enregistre les 124 commandes natives exposées au front + le control plane MCP.
+// Point d'entrée Tauri : enregistre les 125 commandes natives exposées au front + le control plane MCP.
 mod actions;
 mod advsearch;
 mod analyze;

@@ -3,9 +3,33 @@
 ## Objectif
 File manager Linux (Tauri v2 + React/TypeScript) avec **profils de layout** : chaque profil compose une disposition par zones (favoris, listing, éditeur, arborescence, terminal). Alternative souveraine à Nemo.
 
-## État — v2.7 (fonctionnel, installé) · 124 commandes Rust
+## État — v2.9 (fonctionnel, installé) · 125 commandes Rust
 
 Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.15 sont documentés dans leurs sections dédiées.
+
+## v2.9 — Auth YouTube via navigateur intégré + cookies WebKit ✅ LIVRÉ
+
+Résolution des `AudioProviderError: Sign in to confirm you're not a bot` sur les téléchargements YouTube/Spotify. Root cause : yt-dlp utilisait le client `android_vr`/`web_safari` (sans PO Token), et même avec POT bgutil actif, les cookies YouTube étaient absents.
+
+**Couche 1 — Player client + JS runtime** (`download_job.rs`, `install.sh`)
+- `build_ytdlp_args()` : `--extractor-args youtube:player_client=web,default` + `--js-runtimes bun:PATH` → active le web player, POT bgutil utilisé.
+- `build_spotdl_args()` : `--audio youtube youtube-music` + `--yt-dlp-args "..."` (propagation args).
+- `install.sh` : crée/met à jour `~/.config/yt-dlp/config` avec `--js-runtimes bun:PATH` (actif sans rebuild).
+
+**Couche 2 — Cookies WebKit → Netscape** (`download_job.rs`)
+- `VELA_WEBKIT_COOKIES` = `~/.local/share/com.echo.vela/browser/cookies` (contexte WebKit du panneau navigateur — distinct de la WebView principale qui n'a pas les cookies YouTube).
+- `convert_webkit_cookies(src)` : WebKit 8 colonnes (SameSite en col 8, pas de header) → Netscape 7 colonnes + header `# Netscape HTTP Cookie File` → `~/.local/share/vela/yt-cookies.txt`.
+- `vela_cookie_file()` + `inject_yt_cookies(&mut spec)` : cookies Vela en priorité, Chrome en fallback. Détecte spotdl (arg `"download"`) → `--cookie-file` vs `--cookies`.
+- `run_download_job` : `mut spec: JobSpec`, appelle `inject_yt_cookies` avant spawn.
+
+**Couche 3 — Commande + bannière UI**
+- `youtube_auth_status()` Tauri command : vérifie `.youtube.com` dans les cookies convertis → `bool`.
+- `YoutubeAuthBanner` (`DownloadModal.tsx`) : vérifie au montage, affiche lien « Se connecter dans le navigateur Vela » + bouton « actualiser » si `hasAuth === false`.
+- `DownloadModalProps` gagne `onOpenUrl: (url: string) => void` ; câblé dans `App.tsx` sur `browser.open + setBrowserOpen(true)`.
+
+**Validé** : spotdl télécharge (2,1 MB MP3), 22 cookies `.youtube.com` présents. Commits `ac3f567` → `9443be4` → `c8a5fce`.
+
+**Commandes Rust** : 125 (+1 : `youtube_auth_status`).
 
 ## v2.8 — Menu contextuel onglets + clamp menus viewport ✅ LIVRÉ
 

@@ -272,6 +272,15 @@ Navigateur web multi-onglets dans la zone centrale (bouton Globe), vrai moteur W
 - [x] Refacto `TerminalDock.tsx` extrait d'App.tsx
 - [x] Validé à chaud : positionnement OK, vidéo YouTube OK, persistance + reset confirmés par Chris
 
+## Livré — v2.9 (auth YouTube navigateur intégré) ✅
+- [x] `download_job.rs` : `build_ytdlp_args` + `--extractor-args youtube:player_client=web,default` + `--js-runtimes bun:PATH`
+- [x] `download_job.rs` : `build_spotdl_args` + `--audio youtube youtube-music` + `--yt-dlp-args` (propagation)
+- [x] `download_job.rs` : `convert_webkit_cookies` (WebKit 8-col → Netscape 7-col + header) + `inject_yt_cookies`
+- [x] `download_job.rs` : `youtube_auth_status` command (vérifie cookies `.youtube.com`)
+- [x] `DownloadModal.tsx` : `YoutubeAuthBanner` (lien connexion navigateur intégré + actualiser), prop `onOpenUrl`
+- [x] `App.tsx` : `onOpenUrl` câblé sur `browser.open + setBrowserOpen(true)`
+- [x] `install.sh` : config yt-dlp `--js-runtimes bun:PATH` automatique
+
 ## Backlog
 - [ ] Édition image en plein écran (remonter le HUD dans le conteneur fullscreen du lecteur pour préserver l'immersion)
 - [ ] `App.tsx` à 500 lignes (limite dure atteinte) : découpe obligatoire avant toute nouvelle feature → **chantier 0 de la Roadmap v2 ci-dessous**

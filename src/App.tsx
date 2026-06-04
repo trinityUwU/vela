@@ -147,7 +147,7 @@ export default function App() {
 
   const gridCols = useGridNav({
     entries, view, editorActive, selected: fm.selected,
-    selectOne: fm.selectOne, openEntry: fm.openEntry, searchOpen: search.open,
+    selectOne: fm.selectOne, openEntry: (e: DirEntry) => openInEditor(e), searchOpen: search.open,
   });
 
   const onSelect = (entry: DirEntry, e: React.MouseEvent) => {
@@ -301,7 +301,7 @@ export default function App() {
           recents={search.recents}
           onApplyRecent={search.applyRecent}
           onClearRecents={search.clearRecents}
-          onOpen={(e) => { fm.openEntry(e); search.close(); }}
+          onOpen={(e) => { openInEditor(e); search.close(); }}
           onNavigate={(p) => { fm.navigate(p); search.close(); }}
           onOpenMatch={openMatch}
         />
@@ -329,7 +329,7 @@ export default function App() {
           onToggleBy: toggleBy,
           onSelect,
           onSelectEdit,
-          onOpen: fm.openEntry,
+          onOpen: openInEditor,
           onContext,
           onContextBg,
           onClearBg: fm.clearSelection,

@@ -403,22 +403,30 @@ export function useFileManager() {
 
   const paste = useCallback(async () => {
     if (!clipboard) return;
+    // Destination : le dossier sélectionné (sélection unique = dossier non source), sinon le dossier courant.
+    let destDir = cwd;
+    if (selection.size === 1) {
+      const only = [...selection][0];
+      const entry = listing?.entries.find((e) => e.path === only);
+      const inClipboard = clipboard.paths.some((p) => only === p || only.startsWith(`${p}/`));
+      if (entry?.is_dir && !inClipboard) destDir = only;
+    }
     try {
-      const res = await resolveConflicts(clipboard.paths, cwd);
+      const res = await resolveConflicts(clipboard.paths, destDir);
       if (res === null) return; // annulé
       if (clipboard.op === "copy") {
-        const created = await fs.copyEntries(clipboard.paths, cwd, res);
+        const created = await fs.copyEntries(clipboard.paths, destDir, res);
         if (created.length) recordRef.current({ kind: "copy", created });
       } else {
-        await fs.moveEntries(clipboard.paths, cwd, res);
-        recordRef.current({ kind: "move", moves: clipboard.paths.map((p) => ({ from: p, to: `${cwd}/${baseName(p)}` })) });
+        await fs.moveEntries(clipboard.paths, destDir, res);
+        recordRef.current({ kind: "move", moves: clipboard.paths.map((p) => ({ from: p, to: `${destDir}/${baseName(p)}` })) });
         setClipboard(null);
       }
       await refresh();
     } catch (e) {
       setError(String(e));
     }
-  }, [clipboard, cwd, refresh, resolveConflicts]);
+  }, [clipboard, cwd, refresh, resolveConflicts, selection, listing]);
 
   const compress = useCallback(
     async (paths: string[], dest: string, format: fs.ArchiveFormat, password?: string) => {

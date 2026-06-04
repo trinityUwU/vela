@@ -6,7 +6,7 @@ use std::process::Command;
 
 const CODEINDEX_DIR: &str = "/home/trinity/Documents/DEVS/codeindex";
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Serialize, Clone)]
 pub struct CodeHit {
     pub reading_order: u32,
     pub relative_path: String,
@@ -16,6 +16,42 @@ pub struct CodeHit {
     pub summary: Option<String>,
     pub exports: Vec<String>,
     pub top_functions: Vec<String>,
+}
+
+// Schéma brut du CLI : `top_functions` est un tableau d'objets (pas de chaînes).
+#[derive(Deserialize)]
+struct RawFn {
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct RawHit {
+    reading_order: u32,
+    relative_path: String,
+    cluster: String,
+    hot_score: f64,
+    relevance_score: f64,
+    #[serde(default)]
+    summary: Option<String>,
+    #[serde(default)]
+    exports: Vec<String>,
+    #[serde(default)]
+    top_functions: Vec<RawFn>,
+}
+
+impl From<RawHit> for CodeHit {
+    fn from(r: RawHit) -> Self {
+        CodeHit {
+            reading_order: r.reading_order,
+            relative_path: r.relative_path,
+            cluster: r.cluster,
+            hot_score: r.hot_score,
+            relevance_score: r.relevance_score,
+            summary: r.summary.filter(|s| !s.is_empty()),
+            exports: r.exports,
+            top_functions: r.top_functions.into_iter().map(|f| f.name).collect(),
+        }
+    }
 }
 
 fn codeindex_python() -> Option<(String, String)> {
@@ -49,7 +85,8 @@ pub async fn codeindex_search(project: String, question: String) -> Result<Vec<C
         let stdout = String::from_utf8_lossy(&out.stdout);
         let json = stdout.lines().rev().find(|l| l.trim_start().starts_with('['))
             .ok_or("réponse CodeIndex illisible")?;
-        serde_json::from_str::<Vec<CodeHit>>(json).map_err(|e| format!("parse JSON: {e}"))
+        let raw = serde_json::from_str::<Vec<RawHit>>(json).map_err(|e| format!("parse JSON: {e}"))?;
+        Ok(raw.into_iter().map(CodeHit::from).collect())
     })
     .await
     .unwrap_or_else(|e| Err(e.to_string()))
@@ -71,7 +108,10 @@ pub async fn codeindex_index(
     let (jid, proj) = (job_id.clone(), project.clone());
     std::thread::spawn(move || {
         crate::archive::emit_progress(&app, &jid, &name, &proj, 0, 0, "indexing", None);
-        let child = Command::new(&py).args([&cli, "index", &proj, "--device", "gpu", "--json"]).spawn();
+        // --no-llm : indexation embeddings seuls, sans résumés Groq (souveraineté + vitesse).
+        let child = Command::new(&py)
+            .args([&cli, "index", &proj, "--device", "gpu", "--json", "--no-llm"])
+            .spawn();
         let mut child = match child {
             Ok(c) => c,
             Err(e) => { crate::archive::emit_progress(&app, &jid, &name, &proj, 0, 0, "error", Some(e.to_string())); return; }

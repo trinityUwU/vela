@@ -45,6 +45,12 @@ Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1
 3. **CodeIndex intégré** — `codeindex.rs` : pont vers le CLI CodeIndex local (venv dédié). Requête FR
    traduite en EN (Argos) avant l'appel. UI : `CodeSearchModal` (palette « Recherche de code »),
    résultats classés cluster/score, clic = navigation, bouton réindexer.
+   - **Fix search (2026-06-04)** : le CLI renvoie `top_functions` comme tableau d'**objets**
+     (`{name, line_start, …}`), pas de chaînes → `serde_json` échouait → recherche toujours vide.
+     Struct intermédiaire `RawHit`/`RawFn` désérialise le vrai schéma puis mappe vers `CodeHit`
+     (contrat front `string[]` inchangé). `summary` vide → `None`.
+   - **Indexation sans résumés (`--no-llm`)** : plus d'appel Groq (souveraineté + vitesse). Les résumés
+     LLM sont désactivés ; `summary` reste vide côté UI. C'était aussi la cause des erreurs de réindexation.
 
 **Modules Rust v2.1** : `translate.rs`, `codeindex.rs`. Compression déplacée `ops.rs`→`archive.rs`.
 **Front v2.1** : `services/{translate,codeindex}.ts`, `TranslateModal`, `CodeSearchModal`,

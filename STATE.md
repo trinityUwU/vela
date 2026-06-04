@@ -317,5 +317,15 @@ Navigateur web multi-onglets dans la zone centrale (bouton Globe topbar), vrai m
 
 **Commandes Rust** : 80 (+7 : browser×7). Deps Linux ajoutées : `wry 0.55`, `gtk 0.18`, `webkit2gtk 2.0` (cfg target_os=linux ; wry/gtk déjà transitifs via Tauri).
 
+## v2.5 — Control plane MCP : Claude Code pilote l'UI depuis le terminal intégré ✅ LIVRÉ
+Lancer `claude` dans le terminal intégré → Claude charge un MCP `vela` qui lui donne des tools pour piloter l'app (ouvrir un fichier dans l'éditeur, ouvrir/masquer le navigateur, afficher un contenu). 3 couches, souverain, zéro réseau (socket Unix), zéro dépendance crate/npm.
+- **`control.rs` (NOUVEAU)** : socket Unix `$XDG_RUNTIME_DIR/vela-control.sock`, accept loop multi-thread, commandes JSON line-delimited `{action,args}`, **validation côté Rust** (fichier existe, URL http(s)), `emit("vela-control")` vers le front, répond `{ok:bool,error?}`. State `ControlPlane{sock_path,shim_dir,mcp_config}`, init au `setup()`.
+- **PATH-shim (PAS de shell function — shell-agnostique)** : `control::init` génère `$XDG_RUNTIME_DIR/vela-shim/` = wrapper exécutable `claude` (`env -u ANTHROPIC_BASE_URL -u CLAUDE_CODE_SUBAGENT_MODEL <vrai claude> --dangerously-skip-permissions --mcp-config <vela-mcp.json> "$@"`) + `vela-mcp.json` + `mcp-bridge.ts`. Vrai binaire `claude` résolu en scannant le PATH **hors** shim dir (évite la récursion). `terminal.rs::inject_control_env()` préfixe le PATH du PTY avec le shim + exporte `VELA_SOCK`/`VELA_MCP_CONFIG` (via `try_state`, no-op si absent).
+- **`assets/mcp-bridge.ts` (NOUVEAU, embarqué via `include_str!`)** : serveur MCP stdio JSON-RPC 2.0 newline-delimited, **zéro dépendance**, lancé par `bun`. Chaque `tools/call` ouvre une connexion au socket `VELA_SOCK` et forward `{action,args}`. App installée 100% autonome (bridge écrit au runtime depuis le binaire).
+- **Tools v1** : `open_file(path)`→`openInEditor` · `open_url(url)`→`browser.open`+`setBrowserOpen(true)` · `hide_browser()` · `preview_content(content,title)`→`/tmp/vela-preview-*.txt` puis éditeur. Front : listener `vela-control` dans `App.tsx` (via `controlRef`).
+- **Isolation (critique)** : `--mcp-config` **éphémère** — `vela` n'apparaît jamais dans `~/.claude.json` ni `claude mcp list`. Shim `claude` présent **uniquement** dans le PATH du PTY ouvert par Vela → **aucune session `claude` hors Vela ne voit le MCP vela**. `--strict-mcp-config` dispo si on veut isoler à ce seul MCP (non activé).
+- **Limite connue v1** : socket à chemin fixe → **une seule instance Vela** à la fois. Socket par-pid à prévoir si multi-fenêtre.
+- **Validation** : Rust+front compilent, handshake MCP OK, round-trip socket testé, test live confirmé (navigateur + éditeur réagissent à Claude). Commit `78df655`.
+
 ## Backlog
 `BACKLOG.md` : P1 (v1.9) + P2 (v1.11) + P3 (v1.12) + P4 média (v1.14) + téléchargeur (v1.15) + profils (v1.16) livrés. Reste : édition image en plein écran (HUD dans conteneur fullscreen). Dette : `App.tsx` reste à ~499 lignes (sous la limite mais dense — candidat à découpage si une feature s'y ajoute).

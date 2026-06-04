@@ -3,7 +3,9 @@
 // délègue le travail bloquant à spawn_blocking. Le format de sortie est inféré de l'extension.
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImageView, Rgba};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::path::Path;
+use tauri::Emitter;
 
 /// Charge une image depuis `input`, loggue et mappe l'erreur en String.
 fn load(input: &str) -> Result<DynamicImage, String> {
@@ -233,6 +235,97 @@ pub async fn image_apply_ops(
     tauri::async_runtime::spawn_blocking(move || do_apply_ops(&input, &output, &ops, quality))
         .await
         .map_err(|e| e.to_string())?
+}
+
+// ── traitement par lot (F15) ─────────────────────────────────────────────────
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchOptions {
+    pub max_width: Option<u32>,   // borne dans une box en gardant le ratio (None = pas de resize)
+    pub max_height: Option<u32>,
+    pub format: Option<String>,   // "png" | "jpg" | "jpeg" | "webp" — None = garde l'extension d'origine
+    pub quality: Option<u8>,      // JPEG/WebP
+    pub strip_exif: bool,         // ré-encodage = EXIF retiré de fait ; conservé ici pour clarté d'API
+    pub rename_pattern: Option<String>, // ex. "photo_###" → photo_001, photo_002…
+    pub out_subdir: String,       // sous-dossier de sortie (jamais d'écrasement de l'original)
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct BatchProgress {
+    done: usize,
+    total: usize,
+    current: String,
+}
+
+fn pad_number(pattern: &str, index: usize) -> String {
+    if let Some(start) = pattern.find('#') {
+        let hashes = pattern[start..].chars().take_while(|&c| c == '#').count();
+        let num = format!("{:0width$}", index, width = hashes);
+        format!("{}{}{}", &pattern[..start], num, &pattern[start + hashes..])
+    } else {
+        format!("{pattern}{index}")
+    }
+}
+
+// Borne l'image dans (max_w, max_h) en gardant le ratio. Sans contrainte → image inchangée.
+fn fit(img: DynamicImage, max_w: Option<u32>, max_h: Option<u32>) -> DynamicImage {
+    let (w, h) = img.dimensions();
+    let tw = max_w.unwrap_or(w);
+    let th = max_h.unwrap_or(h);
+    if w <= tw && h <= th {
+        img
+    } else {
+        img.resize(tw, th, FilterType::Lanczos3)
+    }
+}
+
+fn process_one(input: &str, out_dir: &Path, idx: usize, opts: &BatchOptions) -> Result<(), String> {
+    let src = Path::new(input);
+    let stem = src.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "image".into());
+    let ext = opts.format.clone().unwrap_or_else(|| {
+        src.extension().map(|e| e.to_string_lossy().to_string()).unwrap_or_else(|| "png".into())
+    });
+    let name = match &opts.rename_pattern {
+        Some(p) if !p.trim().is_empty() => pad_number(p, idx),
+        _ => stem,
+    };
+    let output = out_dir.join(format!("{name}.{ext}"));
+    let out_str = output.to_string_lossy().to_string();
+
+    let img = fit(load(input)?, opts.max_width, opts.max_height);
+    match opts.quality {
+        Some(q) if is_jpeg_ext(&out_str) => save_jpeg(&img, &out_str, q),
+        _ => save(&img, &out_str),
+    }
+}
+
+/// Traite un lot d'images (resize/convert/strip EXIF/renommage) vers un sous-dossier. Non-destructif.
+/// Émet `image-batch-progress` au fil de l'eau, renvoie le dossier de sortie.
+#[tauri::command]
+pub async fn images_batch(app: tauri::AppHandle, paths: Vec<String>, options: BatchOptions) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let parent = Path::new(paths.first().ok_or("aucune image")?)
+            .parent().ok_or("dossier parent introuvable")?.to_path_buf();
+        let out_dir = parent.join(if options.out_subdir.trim().is_empty() { "optimized" } else { &options.out_subdir });
+        std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;
+        // Le ré-encodage via la crate `image` n'écrit pas les blocs EXIF source : strip_exif=true est
+        // donc le comportement par défaut. Si un jour on veut préserver l'EXIF, ce flag pilotera une copie.
+        let _strip = options.strip_exif;
+        let total = paths.len();
+        for (i, input) in paths.iter().enumerate() {
+            if let Err(e) = process_one(input, &out_dir, i + 1, &options) {
+                eprintln!("[images_batch] {input}: {e}");
+            }
+            let _ = app.emit("image-batch-progress", BatchProgress {
+                done: i + 1, total, current: input.clone(),
+            });
+        }
+        Ok(out_dir.to_string_lossy().to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[cfg(test)]

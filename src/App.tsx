@@ -30,6 +30,7 @@ import { ImageAnnotate } from "./components/ImageAnnotate";
 import { FindReplace } from "./components/FindReplace";
 import { AdvancedSearch } from "./components/AdvancedSearch";
 import { Lightbox } from "./components/Lightbox";
+import { ImageBatch } from "./components/ImageBatch";
 import { previewKind } from "./services/file-kind";
 import { useSmartSearches } from "./hooks/useSmartSearches";
 import type { SearchCriteria } from "./services/advsearch";
@@ -130,6 +131,7 @@ export default function App() {
   const [advSearch, setAdvSearch] = useState<{ criteria: SearchCriteria; autoRun: boolean } | null>(null);
   const [smartName, setSmartName] = useState<SearchCriteria | null>(null);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
+  const [batchImages, setBatchImages] = useState<string[] | null>(null);
   const workspaces = useWorkspaces();
   const smartSearches = useSmartSearches();
   const [extractConflict, setExtractConflict] = useState<{ archivePath: string; dest: string } | null>(null);
@@ -500,6 +502,12 @@ export default function App() {
       const sel = selPaths()[0];
       openGallery(sel ?? imageEntries[0].path);
     },
+    batchImages: () => {
+      const imgs = selPaths().filter((p) => imageEntries.some((e) => e.path === p));
+      const target = imgs.length ? imgs : imageEntries.map((e) => e.path);
+      if (target.length) setBatchImages(target);
+      else fm.setError("Sélectionne des images à traiter.");
+    },
     newFromTemplate: () => setTemplatePick(true),
     saveAsTemplate: () => {
       const p = selPaths();
@@ -788,6 +796,7 @@ export default function App() {
         onAnnotate={setAnnotatePath}
         onFindReplace={setFindReplaceRoot}
         onGallery={openGallery}
+        onBatchImages={(p) => { if (p.length) setBatchImages(p); }}
       />
 
       <DialogHost
@@ -853,6 +862,15 @@ export default function App() {
           path={annotatePath}
           onSaved={(p) => { setAnnotatePath(null); fm.refresh(); fm.navigate(parentDir(p)); }}
           onClose={() => setAnnotatePath(null)}
+          onError={fm.setError}
+        />
+      )}
+
+      {batchImages && (
+        <ImageBatch
+          paths={batchImages}
+          onDone={(dir) => { setBatchImages(null); setNotice("Images traitées."); fm.navigate(dir); }}
+          onClose={() => setBatchImages(null)}
           onError={fm.setError}
         />
       )}

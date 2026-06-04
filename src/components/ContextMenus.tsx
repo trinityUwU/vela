@@ -52,6 +52,7 @@ interface Props {
   onAnnotate: (path: string) => void;
   onFindReplace: (dir: string) => void;
   onGallery: (path: string) => void;
+  onBatchImages: (paths: string[]) => void;
 }
 
 export function ContextMenus(props: Props): React.ReactElement {
@@ -113,6 +114,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           onAnnotate={() => { props.onAnnotate(menu.entry.path); onCloseMenu(); }}
           onFindReplace={() => { props.onFindReplace(menu.entry.path); onCloseMenu(); }}
           onGallery={() => { props.onGallery(menu.entry.path); onCloseMenu(); }}
+          onBatchImages={() => { props.onBatchImages(selPaths(menu.entry.path)); onCloseMenu(); }}
         />
       )}
 

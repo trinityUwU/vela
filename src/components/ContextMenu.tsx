@@ -55,6 +55,7 @@ interface Props {
   onAnnotate?: () => void;
   onFindReplace?: () => void;
   onGallery?: () => void;
+  onBatchImages?: () => void;
 }
 
 function relativePath(path: string, cwd: string): string {
@@ -83,6 +84,7 @@ export function ContextMenu(props: Props) {
   const isArchive = !multi && !menu.isDir && previewKind(menu.extension) === "archive";
   const allPdf = (props.entries ?? []).length > 0 && (props.entries ?? []).every((e) => !e.is_dir && e.extension.toLowerCase() === "pdf");
   const isPdf = !menu.isDir && (multi ? allPdf : menu.extension.toLowerCase() === "pdf");
+  const allImages = (props.entries ?? []).length > 0 && (props.entries ?? []).every((e) => !e.is_dir && previewKind(e.extension) === "image");
   const mediaKind = !multi && !menu.isDir ? previewKind(menu.extension) : "binary";
   const isMedia = mediaKind === "image" || mediaKind === "audio" || mediaKind === "video";
   const isOcrable = mediaKind === "image" || mediaKind === "pdf";
@@ -119,6 +121,9 @@ export function ContextMenu(props: Props) {
       )}
       {mediaKind === "image" && props.onGallery && (
         <Item label="Voir dans la galerie" onClick={() => { props.onGallery?.(); onClose(); }} />
+      )}
+      {allImages && props.onBatchImages && (
+        <Item label={multi ? `Traiter ${menu.count} images par lot…` : "Traiter par lot…"} onClick={() => { props.onBatchImages?.(); onClose(); }} />
       )}
       {mediaKind === "image" && props.onAnnotate && (
         <Item label="Annoter…" onClick={() => { props.onAnnotate?.(); onClose(); }} />

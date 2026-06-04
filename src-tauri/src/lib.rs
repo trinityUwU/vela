@@ -138,6 +138,7 @@ pub fn run() {
             advsearch::search_advanced,
             gallery::image_exif,
             gallery::image_palette,
+            imaging::images_batch,
             analyze::analyze_disk,
             dircmp::compare_dirs,
             player::player_open,

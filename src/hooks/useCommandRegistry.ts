@@ -47,6 +47,7 @@ export interface CommandContext {
   annotateSelected: () => void;
   findReplace: () => void;
   openGallery: () => void;
+  batchImages: () => void;
   saveWorkspace: () => void;
   workspaces: { id: string; name: string }[];
   openWorkspace: (id: string) => void;
@@ -88,6 +89,7 @@ export function useCommandRegistry(ctx: CommandContext): Command[] {
       { id: "pdf-tools", title: "Outils PDF (fusion, extraction, rotation)…", group: "Actions", run: ctx.pdfTools },
       { id: "annotate", title: "Annoter une image…", group: "Actions", run: ctx.annotateSelected },
       { id: "gallery", title: "Ouvrir la galerie d'images", group: "Actions", run: ctx.openGallery },
+      { id: "batch-images", title: "Optimiser des images par lot…", group: "Actions", run: ctx.batchImages },
       { id: "find-replace", title: "Rechercher & remplacer (multi-fichiers)…", group: "Actions", run: ctx.findReplace },
       { id: "adv-search", title: "Recherche avancée…", group: "Recherches", run: ctx.advancedSearch },
       { id: "save-workspace", title: "Enregistrer l'espace de travail…", group: "Espaces", run: ctx.saveWorkspace },

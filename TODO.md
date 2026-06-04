@@ -7,6 +7,8 @@
 - [x] v2.1 — CodeIndex intégré (recherche sémantique FR→EN, palette + modal)
 - [x] v2.2 — Compression multi-formats (zip/targz/7z/rar) + mot de passe
 - [x] v2.2 — Indexation CodeIndex async dans panneau bas-droite (pattern jobs longs réutilisable)
+- [x] v2.2 — Robustesse chiffrement : stdin null, chiffrement données-seules (pas -hp/-mhe), détection
+      mot de passe en amont (`7z l -slt`), zip AES délégué à 7z (crate `zip` = ZipCrypto only)
 - [ ] v2.1 — Conversion de langages de programmation (MIS DE CÔTÉ — promesse intenable en l'état)
 - [x] Preview image inline (base64 data URL, skip useFileContent)
 - [x] Viewer archive ZIP/TAR/GZ/BZ2/XZ/RAR/7Z + extraction (ici ou chemin custom)

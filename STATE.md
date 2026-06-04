@@ -10,8 +10,23 @@ Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1
 ## v2.2 — Compression multi-formats + jobs longs async ✅ LIVRÉ
 
 - **Compression** : formats zip / tar.gz (natifs) + **7z / rar** (CLI) + **mot de passe** optionnel
-  (zip via 7z, 7z AES `-mhe=on`, rar `-hp`). `run_cli_archiver` factorise 7z/rar (progression `-bsp1`,
+  (zip chiffré via 7z `-tzip`, 7z AES, rar). `run_cli_archiver` factorise 7z/rar (progression `-bsp1`,
   pause/cancel via signaux). CompressModal : 4 formats + champ mot de passe (désactivé si non supporté).
+
+### Robustesse chiffrement (fixes post-livraison)
+- **stdin null obligatoire** sur 7z/rar (`Stdio::null()`) : sans ça les binaires héritent du stdin du
+  GUI et **bloquent sur un prompt** (confirmation mot de passe, message d'évaluation rar) → freeze +
+  archive vide. rar reçoit aussi `-y`.
+- **Chiffrement données-seules** : `-p<pwd>` (rar) / `-p<pwd>` sans `-mhe=on` (7z). **PAS** `-hp`/`-mhe`
+  (chiffrent les en-têtes → listing sans passe renvoie « vide » + l'extraction ne détecte pas le besoin
+  de mot de passe). Les noms restent lisibles, Vela liste et détecte le chiffrement.
+- **Détection mot de passe en amont à l'extraction** : `archive_is_encrypted_7z` (`7z l -slt` →
+  `Encrypted = +`) AVANT `7z x`. Sinon `7z x` bloque sur le prompt stdin (statut figé à 0 %, fichier
+  vide écrit). Si chiffré → statut `password_required` (panneau bas-droite) → `wait_password` → extraction.
+- **zip chiffré délégué à 7z** : un `.zip` chiffré par 7z utilise WinZip **AES-256** (méthode 99), non géré
+  par la crate Rust `zip` (qui ne décrypte que le ZipCrypto legacy → fichier 0 octet). `run_zip_job` route
+  donc tout zip chiffré (`zip_is_encrypted`) vers `run_7z_job` ; les zip non chiffrés gardent la crate Rust.
+- Extraction rar passe par `run_7z_job` (7z lit le rar nativement, codec présent).
 - **Indexation CodeIndex async** : `codeindex_index` devient un job de fond annulable affiché dans le
   panneau bas-droite (statut `indexing`), la modal ne bloque plus. Helpers publics `archive::emit_progress`
   + `new_job_id` + `ExtractionManager::add` → **pattern réutilisable** pour toute tâche longue lancée

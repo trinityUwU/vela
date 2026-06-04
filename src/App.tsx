@@ -23,6 +23,7 @@ import { usePane } from "./hooks/usePane";
 import { useWorkspaces } from "./hooks/useWorkspaces";
 import { templateInstantiate, saveAsTemplate } from "./services/templates";
 import { TemplatePicker } from "./components/TemplatePicker";
+import { SharePanel } from "./components/SharePanel";
 import type { TabSeed } from "./hooks/useFolderTabs";
 import { OverlayHost } from "./components/OverlayHost";
 import { StatusBar } from "./components/StatusBar";
@@ -109,6 +110,7 @@ export default function App() {
   const [hashPath, setHashPath] = useState<string | null>(null);
   const [hexPath, setHexPath] = useState<string | null>(null);
   const [templatePick, setTemplatePick] = useState(false);
+  const [sharePaths, setSharePaths] = useState<string[] | null>(null);
   const workspaces = useWorkspaces();
   const [extractConflict, setExtractConflict] = useState<{ archivePath: string; dest: string } | null>(null);
   const [conflictReq, setConflictReq] = useState<
@@ -447,6 +449,7 @@ export default function App() {
       if (p.length === 1) setHexPath(p[0]);
       else fm.setError("Sélectionne un seul fichier pour l'ouvrir en hexadécimal.");
     },
+    shareSelected: () => { const p = selPaths(); if (p.length) setSharePaths(p); else fm.setError("Sélectionne quelque chose à partager."); },
     newFromTemplate: () => setTemplatePick(true),
     saveAsTemplate: () => {
       const p = selPaths();
@@ -720,6 +723,7 @@ export default function App() {
         pinCurrent={pinCurrent}
         onSaveTemplate={(p) => setDialog({ kind: "savetemplate", path: p })}
         onNewFromTemplate={() => setTemplatePick(true)}
+        onShare={(p) => { if (p.length) setSharePaths(p); }}
       />
 
       <DialogHost
@@ -765,6 +769,10 @@ export default function App() {
 
       {templatePick && (
         <TemplatePicker onPick={instantiateTemplate} onClose={() => setTemplatePick(false)} />
+      )}
+
+      {sharePaths && (
+        <SharePanel paths={sharePaths} onClose={() => setSharePaths(null)} onError={fm.setError} />
       )}
 
       {quickLook && (

@@ -47,6 +47,9 @@ sha2 = "0.10"
 blake3 = "1"
 infer = "0.16"
 hex = "0.4"
+tiny_http = "0.12"
+qrcode = "0.14"
+local-ip-address = "0.6"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 wry = "0.55"

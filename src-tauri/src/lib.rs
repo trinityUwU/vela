@@ -25,6 +25,7 @@ mod ops;
 mod places;
 mod player;
 mod profiles;
+mod share;
 mod stems;
 mod tags;
 mod templates;
@@ -46,6 +47,7 @@ pub fn run() {
         .manage(stems::StemsManager::new())
         .manage(download_job::DownloadManager::new())
         .manage(index::SearchIndex::new())
+        .manage(share::ShareManager::new())
         .setup(|app| {
             use tauri::Manager;
             let idx = app.state::<index::SearchIndex>().inner().clone();
@@ -118,6 +120,9 @@ pub fn run() {
             templates::template_list,
             templates::template_instantiate,
             templates::save_as_template,
+            share::share_start,
+            share::share_stop,
+            share::share_active,
             analyze::analyze_disk,
             dircmp::compare_dirs,
             player::player_open,

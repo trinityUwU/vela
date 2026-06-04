@@ -50,6 +50,7 @@ interface Props {
   entries?: DirEntry[];
   onSmartAction?: (id: SmartActionId) => void;
   onSaveTemplate?: () => void;
+  onShare?: () => void;
 }
 
 function relativePath(path: string, cwd: string): string {
@@ -145,6 +146,7 @@ export function ContextMenu(props: Props) {
       <Item label="Copier" onClick={() => { onCopy(); onClose(); }} />
       <Item label="Couper" onClick={() => { onCut(); onClose(); }} />
       <Item label="Compresser…" onClick={() => { onCompress(); onClose(); }} />
+      {props.onShare && <Item label="Partager sur le réseau local…" onClick={() => { props.onShare?.(); onClose(); }} />}
       <Divider />
       {!multi && (
         <>

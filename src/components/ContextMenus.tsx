@@ -47,6 +47,7 @@ interface Props {
   pinCurrent: () => void;
   onSaveTemplate: (path: string) => void;
   onNewFromTemplate: () => void;
+  onShare: (paths: string[]) => void;
 }
 
 export function ContextMenus(props: Props): React.ReactElement {
@@ -103,6 +104,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           entries={fileEntries(menu)}
           onSmartAction={(id) => { props.runSmartAction(id, fileEntries(menu)); onCloseMenu(); }}
           onSaveTemplate={() => { props.onSaveTemplate(menu.entry.path); onCloseMenu(); }}
+          onShare={() => { props.onShare(selPaths(menu.entry.path)); onCloseMenu(); }}
         />
       )}
 

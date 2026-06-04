@@ -80,6 +80,14 @@ else
     echo "⚠ install yt-dlp/spotdl échouée — Vela fonctionne ; réessaie plus tard"
   fi
 fi
+# Deno local pour spotdl : requis depuis spotdl 4.5 pour résoudre le challenge JS YouTube,
+# sinon « AudioProviderError » silencieux. Téléchargé une fois dans ~/.config/spotdl/deno.
+if [ -x "$DL_VENV/bin/spotdl" ] && [ ! -e "$HOME/.config/spotdl/deno" ]; then
+  echo "→ téléchargement de Deno pour spotdl (résolution YouTube)…"
+  "$DL_VENV/bin/spotdl" --download-deno >/dev/null 2>&1 \
+    && echo "✓ Deno installé pour spotdl" \
+    || echo "⚠ Deno non téléchargé — les téléchargements Spotify peuvent échouer (réessaie : spotdl --download-deno)"
+fi
 
 # ── Traduction locale (Argos Translate) — automatique, idempotent, non bloquant ──────────────
 # Venv Vela dédié. Traduction 100% offline après téléchargement des paquets de langue (à la demande

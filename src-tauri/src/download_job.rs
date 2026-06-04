@@ -173,10 +173,27 @@ fn last_error(buf: &Arc<Mutex<Vec<String>>>) -> String {
         .unwrap_or_else(|| "échec sans message (voir logs)".into())
 }
 
-/// Lit le stdout ligne par ligne, émet la progression yt-dlp, gère l'annulation.
-/// Retourne true si annulé (child tué).
+// Marqueurs d'échec présents même quand le process sort avec le code 0 (spotdl ment sur son exit code).
+const ERR_MARKERS: &[&str] = &[
+    "AudioProviderError", "YT-DLP download error", "ERROR:", "LookupError",
+    "No results found", "could not be found", "Unable to download", "Sign in to confirm",
+];
+
+/// Détecte un échec malgré exit 0 en scannant stdout + stderr. Retourne le message si trouvé.
+fn detect_failure(out: &Arc<Mutex<Vec<String>>>, err: &Arc<Mutex<Vec<String>>>) -> Option<String> {
+    for buf in [out, err] {
+        let g = buf.lock().unwrap();
+        if let Some(l) = g.iter().rev().find(|l| ERR_MARKERS.iter().any(|m| l.contains(m))) {
+            return Some(l.clone());
+        }
+    }
+    None
+}
+
+/// Lit le stdout ligne par ligne : émet la progression yt-dlp, conserve les lignes non-progression
+/// (diagnostic), gère l'annulation. Retourne true si annulé (child tué).
 fn pump_download(app: &AppHandle, child: &mut Child, job_id: &str,
-                 cancelled: &Arc<AtomicBool>) -> bool {
+                 cancelled: &Arc<AtomicBool>, out_buf: &Arc<Mutex<Vec<String>>>) -> bool {
     use std::io::BufRead;
     let Some(stdout) = child.stdout.take() else { return false; };
     for line in std::io::BufReader::new(stdout).lines().map_while(Result::ok) {
@@ -186,6 +203,13 @@ fn pump_download(app: &AppHandle, child: &mut Child, job_id: &str,
         }
         if let Some((pct, speed, eta)) = parse_progress_line(&line) {
             emit_dl(app, job_id, pct, "running", &speed, &eta, "");
+        } else {
+            let t = line.trim();
+            if !t.is_empty() {
+                let mut g = out_buf.lock().unwrap();
+                g.push(t.to_string());
+                if g.len() > 30 { g.remove(0); }
+            }
         }
     }
     cancelled.load(Ordering::Relaxed)
@@ -202,17 +226,20 @@ fn run_download_job(app: AppHandle, cancelled: Arc<AtomicBool>, job_id: String, 
         Ok(c) => c,
         Err(e) => { eprintln!("[downloader] job {job_id} err: {e}"); emit_dl(&app, &job_id, 0.0, "error", "", "", &e); return; }
     };
+    let out_buf = Arc::new(Mutex::new(Vec::<String>::new()));
     let (stderr, stderr_handle) = capture_stderr(&mut child);
-    if pump_download(&app, &mut child, &job_id, &cancelled) {
+    if pump_download(&app, &mut child, &job_id, &cancelled, &out_buf) {
         emit_dl(&app, &job_id, 0.0, "cancelled", "", "", "");
         return;
     }
     let result = child.wait();
     if let Some(h) = stderr_handle { let _ = h.join(); }
+    // spotdl sort en 0 même en échec : on vérifie aussi les marqueurs d'erreur dans la sortie.
+    let failure = detect_failure(&out_buf, &stderr);
     match result {
-        Ok(s) if s.success() => emit_dl(&app, &job_id, 100.0, "done", "", "", ""),
+        Ok(s) if s.success() && failure.is_none() => emit_dl(&app, &job_id, 100.0, "done", "", "", ""),
         Ok(s) => {
-            let msg = last_error(&stderr);
+            let msg = failure.unwrap_or_else(|| last_error(&stderr));
             eprintln!("[downloader] job {job_id} exit {s} — {msg}");
             emit_dl(&app, &job_id, 0.0, "error", "", "", &msg);
         }

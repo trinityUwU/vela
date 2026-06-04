@@ -13,9 +13,11 @@ interface Props {
   b: DirEntry;
   onClose: () => void;
   onError: (msg: string) => void;
+  // Mode docs : contenus déjà chargés (ex. diff git HEAD↔disque) — court-circuite la lecture disque.
+  docs?: { a: string; b: string };
 }
 
-export function DiffViewer({ a, b, onClose, onError }: Props) {
+export function DiffViewer({ a, b, onClose, onError, docs }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,7 +30,8 @@ export function DiffViewer({ a, b, onClose, onError }: Props) {
     let view: MergeView | null = null;
     let cancelled = false;
     const common = [EditorView.editable.of(false), EditorState.readOnly.of(true), vscodeDark, EditorView.lineWrapping];
-    Promise.all([fs.readFile(a.path), fs.readFile(b.path)])
+    const load = docs ? Promise.resolve([docs.a, docs.b] as [string, string]) : Promise.all([fs.readFile(a.path), fs.readFile(b.path)]);
+    load
       .then(([da, db]) => {
         if (cancelled || !ref.current) return;
         view = new MergeView({
@@ -40,7 +43,7 @@ export function DiffViewer({ a, b, onClose, onError }: Props) {
       })
       .catch((e) => onError(String(e)));
     return () => { cancelled = true; view?.destroy(); };
-  }, [a.path, b.path, a.extension, b.extension, onError]);
+  }, [a.path, b.path, a.extension, b.extension, docs, onError]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/70" onClick={onClose}>

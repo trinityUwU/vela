@@ -148,6 +148,42 @@ fn handle(app: &AppHandle, req: &Request) -> serde_json::Value {
             emit(app, "open_url", json!({ "url": url }))
         }
         "hide_browser" => emit(app, "hide_browser", json!({})),
+        "navigate" => {
+            let path = req.args.get("path").and_then(|v| v.as_str()).unwrap_or("");
+            if !Path::new(path).is_dir() {
+                return json!({ "ok": false, "error": format!("dossier introuvable : {path}") });
+            }
+            emit(app, "navigate", json!({ "path": path }))
+        }
+        "reveal_file" => {
+            let path = req.args.get("path").and_then(|v| v.as_str()).unwrap_or("");
+            if !Path::new(path).is_file() {
+                return json!({ "ok": false, "error": format!("fichier introuvable : {path}") });
+            }
+            emit(app, "reveal_file", json!({ "path": path }))
+        }
+        "show_diff" => {
+            let path = req.args.get("path").and_then(|v| v.as_str()).unwrap_or("");
+            if !Path::new(path).is_file() {
+                return json!({ "ok": false, "error": format!("fichier introuvable : {path}") });
+            }
+            emit(app, "show_diff", json!({ "path": path }))
+        }
+        "compare_files" => {
+            let a = req.args.get("a").and_then(|v| v.as_str()).unwrap_or("");
+            let b = req.args.get("b").and_then(|v| v.as_str()).unwrap_or("");
+            if !Path::new(a).is_file() || !Path::new(b).is_file() {
+                return json!({ "ok": false, "error": "les deux chemins doivent être des fichiers existants" });
+            }
+            emit(app, "compare_files", json!({ "a": a, "b": b }))
+        }
+        "notify" => {
+            let message = req.args.get("message").and_then(|v| v.as_str()).unwrap_or("");
+            if message.is_empty() {
+                return json!({ "ok": false, "error": "message requis" });
+            }
+            emit(app, "notify", json!({ "message": message }))
+        }
         "preview_content" => {
             if let Some(err) = require_editor_zone() {
                 return err;

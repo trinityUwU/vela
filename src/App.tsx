@@ -43,7 +43,8 @@ import { BrowserView } from "./components/BrowserView";
 import { trashDir, homeDir } from "./services/fs";
 import { globalSearch } from "./services/search-index";
 import { useFileActions } from "./hooks/useFileActions";
-import { archiveStem, baseName } from "./services/path-util";
+import { archiveStem, baseName, parentDir } from "./services/path-util";
+import { gitDiff } from "./services/git";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
@@ -68,7 +69,8 @@ export default function App() {
   const [bgMenu, setBgMenu] = useState<BgMenu>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [quickLook, setQuickLook] = useState<DirEntry | null>(null);
-  const [diff, setDiff] = useState<{ a: DirEntry; b: DirEntry } | null>(null);
+  const [diff, setDiff] = useState<{ a: DirEntry; b: DirEntry; docs?: { a: string; b: string } } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [dirDiff, setDirDiff] = useState<{ a: string; b: string } | null>(null);
   const [trashPath, setTrashPath] = useState("");
   const [homePath, setHomePath] = useState("/");
@@ -231,6 +233,20 @@ export default function App() {
     else openInEditor(fileEntry(path));
   };
 
+  // Diff git d'un fichier (HEAD ↔ disque) en overlay — partagé par le GitPanel et le tool MCP show_diff.
+  const openGitDiff = useCallback((path: string) => {
+    gitDiff(git.repoRoot ?? fm.cwd, path)
+      .then((d) => {
+        const name = baseName(path);
+        setDiff({
+          a: { ...fileEntry(path), name: `${name} (HEAD)` },
+          b: { ...fileEntry(path), name: `${name} (actuel)` },
+          docs: { a: d.old, b: d.new },
+        });
+      })
+      .catch((e) => fm.setError(String(e)));
+  }, [git.repoRoot, fm]);
+
   // Control plane : commandes émises par le MCP de Vela (Claude Code lancé dans le terminal intégré).
   // open_file/preview_content : le Rust a déjà garanti qu'une zone éditeur existe → pas de switch ici.
   const controlRef = useRef<(action: string, args: Record<string, unknown>) => void>(() => {});
@@ -238,6 +254,16 @@ export default function App() {
     if (action === "open_file") showFileInEditor(String(args.path ?? ""));
     else if (action === "open_url") { browser.open(String(args.url ?? "")); setBrowserOpen(true); }
     else if (action === "hide_browser") setBrowserOpen(false);
+    else if (action === "navigate") fm.navigate(String(args.path ?? ""));
+    else if (action === "reveal_file") {
+      const path = String(args.path ?? "");
+      fm.navigate(parentDir(path)); fm.setSelected(path);
+    }
+    else if (action === "compare_files") {
+      setDiff({ a: fileEntry(String(args.a ?? "")), b: fileEntry(String(args.b ?? "")) });
+    }
+    else if (action === "show_diff") openGitDiff(String(args.path ?? ""));
+    else if (action === "notify") setNotice(String(args.message ?? ""));
     else if (action === "preview_content") {
       const safe = String(args.title ?? "apercu").replace(/[^\w.-]+/g, "_").slice(0, 60);
       const path = `/tmp/vela-preview-${safe}.txt`;
@@ -251,6 +277,11 @@ export default function App() {
     );
     return () => { un.then((f) => f()); };
   }, []);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(t);
+  }, [notice]);
 
   const openMediaTools = (entry: DirEntry) => {
     switchToEdition(); fm.setOpened(entry); setEditPath(entry.path);
@@ -435,7 +466,7 @@ export default function App() {
           onError: fm.setError,
         }}
         terminal={terminalProps}
-        git={{ state: git, cwd: fm.cwd, onError: fm.setError, onOpenFile: (p: string) => openTermPath(p, false) }}
+        git={{ state: git, cwd: fm.cwd, onError: fm.setError, onOpenFile: (p: string) => openTermPath(p, false), onDiff: openGitDiff }}
       />
 
       {!terminalInZone && (termVisible || terminals.tabs.length > 0) && (
@@ -450,6 +481,12 @@ export default function App() {
       {fm.error && (
         <div className="absolute bottom-3 right-3 max-w-md px-3 py-2 rounded-md bg-[var(--color-danger)] text-[var(--color-bg)] text-xs shadow-lg">
           {fm.error}<button className="ml-3 underline" onClick={() => fm.setError(null)}>OK</button>
+        </div>
+      )}
+
+      {notice && (
+        <div className="absolute bottom-3 right-3 max-w-md px-3 py-2 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] text-xs shadow-lg">
+          {notice}<button className="ml-3 text-[var(--color-text-dim)] hover:text-[var(--color-text)]" onClick={() => setNotice(null)}>✕</button>
         </div>
       )}
 
@@ -516,7 +553,7 @@ export default function App() {
         } : null}
         profileEditor={profileEditorOpen ? { ...profileEditorProps, onClose: () => setProfileEditorOpen(false) } : null}
         download={downloadOpen ? { cwd: fm.cwd, onClose: () => setDownloadOpen(false), onError: fm.setError } : null}
-        diff={diff ? { a: diff.a, b: diff.b, onClose: () => setDiff(null), onError: fm.setError } : null}
+        diff={diff ? { a: diff.a, b: diff.b, docs: diff.docs, onClose: () => setDiff(null), onError: fm.setError } : null}
         dirDiff={dirDiff ? { a: dirDiff.a, b: dirDiff.b, onClose: () => setDirDiff(null), onError: fm.setError } : null}
         analyzer={analyzePath ? { path: analyzePath, onClose: () => setAnalyzePath(null), onReveal: fm.navigate, onError: fm.setError } : null}
         translate={translate ? { path: translate.path, onClose: () => { setTranslate(null); fm.refresh(); } } : null}

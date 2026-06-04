@@ -52,6 +52,67 @@ const TOOLS: ToolDef[] = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "navigate",
+    description:
+      "Fait naviguer l'explorateur de fichiers de Vela vers un DOSSIER, pour montrer son contenu à " +
+      "l'utilisateur. Dès que tu veux lui faire voir un répertoire (où tu travailles, un dossier que tu " +
+      "viens de créer/modifier), appelle CE tool plutôt que de lister le contenu dans le chat.",
+    inputSchema: {
+      type: "object",
+      properties: { path: { type: "string", description: "Chemin absolu du dossier" } },
+      required: ["path"],
+    },
+  },
+  {
+    name: "reveal_file",
+    description:
+      "Affiche un fichier dans l'explorateur de Vela : navigue vers son dossier parent et le sélectionne " +
+      "(sans l'ouvrir dans l'éditeur). Utile pour pointer un fichier dans son contexte. Pour AFFICHER son " +
+      "contenu, utilise open_file ; pour voir ses MODIFICATIONS git, utilise show_diff.",
+    inputSchema: {
+      type: "object",
+      properties: { path: { type: "string", description: "Chemin absolu du fichier à localiser" } },
+      required: ["path"],
+    },
+  },
+  {
+    name: "show_diff",
+    description:
+      "Affiche le DIFF git d'un fichier (version committée HEAD ↔ version actuelle sur le disque) dans Vela. " +
+      "C'est l'UNIQUE bonne façon de montrer ce que TU as changé dans un fichier suivi par git : après une " +
+      "modification, appelle CE tool pour présenter visuellement le diff au lieu de le décrire dans le chat.",
+    inputSchema: {
+      type: "object",
+      properties: { path: { type: "string", description: "Chemin absolu du fichier suivi par git" } },
+      required: ["path"],
+    },
+  },
+  {
+    name: "compare_files",
+    description:
+      "Affiche côte à côte (diff) DEUX fichiers existants dans Vela. Utilise-le pour comparer deux fichiers " +
+      "distincts (ex. avant/après sauvegardé, deux variantes). Pour le diff git d'un seul fichier, utilise show_diff.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        a: { type: "string", description: "Chemin absolu du premier fichier" },
+        b: { type: "string", description: "Chemin absolu du second fichier" },
+      },
+      required: ["a", "b"],
+    },
+  },
+  {
+    name: "notify",
+    description:
+      "Affiche une notification courte (toast) dans Vela. Utilise-le pour signaler à l'utilisateur une étape " +
+      "clé sans interrompre son travail : « feature X terminée », « refacto en cours », « tests au vert ».",
+    inputSchema: {
+      type: "object",
+      properties: { message: { type: "string", description: "Texte court à afficher" } },
+      required: ["message"],
+    },
+  },
+  {
     name: "preview_content",
     description:
       "Affiche dans l'éditeur de Vela un contenu texte que TU génères (rapport, résumé, code généré…). " +
@@ -98,6 +159,11 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<Rp
     open_file: "open_file",
     open_url: "open_url",
     hide_browser: "hide_browser",
+    navigate: "navigate",
+    reveal_file: "reveal_file",
+    show_diff: "show_diff",
+    compare_files: "compare_files",
+    notify: "notify",
     preview_content: "preview_content",
   };
   const action = actionByTool[name];

@@ -11,13 +11,14 @@ interface Props {
   cwd: string;
   onError: (msg: string) => void;
   onOpenFile: (path: string) => void;
+  onDiff: (path: string) => void;
 }
 
 function basename(p: string): string {
   return p.split("/").filter(Boolean).pop() ?? p;
 }
 
-export function GitPanel({ git, cwd, onError, onOpenFile }: Props) {
+export function GitPanel({ git, cwd, onError, onOpenFile, onDiff }: Props) {
   const repo = git.repoRoot ?? cwd;
   const [message, setMessage] = useState("");
   const [branches, setBranches] = useState<string[]>([]);
@@ -49,9 +50,9 @@ export function GitPanel({ git, cwd, onError, onOpenFile }: Props) {
       <div className="flex-1 overflow-auto min-h-0">
         {git.files.length === 0 && <div className="p-3 text-xs text-[var(--color-text-dim)]">Arbre propre — rien à valider.</div>}
         <Section title="Indexé" count={staged.length} action="−" actionTitle="Désindexer"
-          files={staged} onAction={(p) => run(gitUnstage(repo, [p]))} onOpen={onOpenFile} onAll={staged.length ? () => run(gitUnstage(repo, staged.map((f) => f.path))) : undefined} />
+          files={staged} onAction={(p) => run(gitUnstage(repo, [p]))} onOpen={onOpenFile} onDiff={onDiff} onAll={staged.length ? () => run(gitUnstage(repo, staged.map((f) => f.path))) : undefined} />
         <Section title="Modifications" count={unstaged.length} action="+" actionTitle="Indexer"
-          files={unstaged} onAction={(p) => run(gitStage(repo, [p]))} onOpen={onOpenFile} onAll={unstaged.length ? () => run(gitStage(repo, unstaged.map((f) => f.path))) : undefined} />
+          files={unstaged} onAction={(p) => run(gitStage(repo, [p]))} onOpen={onOpenFile} onDiff={onDiff} onAll={unstaged.length ? () => run(gitStage(repo, unstaged.map((f) => f.path))) : undefined} />
       </div>
 
       <div className="border-t border-[var(--color-border)] p-2 flex flex-col gap-2">
@@ -105,9 +106,9 @@ function GitHeader({ git, repo, branches, onError }: {
   );
 }
 
-function Section({ title, count, action, actionTitle, files, onAction, onOpen, onAll }: {
+function Section({ title, count, action, actionTitle, files, onAction, onOpen, onDiff, onAll }: {
   title: string; count: number; action: string; actionTitle: string; files: GitFileStatus[];
-  onAction: (path: string) => void; onOpen: (path: string) => void; onAll?: () => void;
+  onAction: (path: string) => void; onOpen: (path: string) => void; onDiff: (path: string) => void; onAll?: () => void;
 }) {
   if (count === 0) return null;
   return (
@@ -128,6 +129,13 @@ function Section({ title, count, action, actionTitle, files, onAction, onOpen, o
           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: gitColor(f.status) }} title={GIT_LABEL[f.status] ?? f.status} />
           <button onClick={() => onOpen(f.path)} className="truncate text-left text-[var(--color-text)] flex-1" title={f.path}>
             {basename(f.path)}
+          </button>
+          <button
+            onClick={() => onDiff(f.path)}
+            title="Voir le diff (HEAD ↔ actuel)"
+            className="shrink-0 opacity-0 group-hover:opacity-100 text-[var(--color-text-dim)] hover:text-[var(--color-accent)] font-mono"
+          >
+            ⇄
           </button>
         </div>
       ))}

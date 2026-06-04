@@ -7,6 +7,16 @@ File manager Linux (Tauri v2 + React/TypeScript) avec **profils de layout** : ch
 
 Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.15 sont documentés dans leurs sections dédiées.
 
+## v2.7 — MCP vela v2 (tools de présentation) + diff git inline ✅ LIVRÉ
+
+Extension du control plane (`control.rs` + `assets/mcp-bridge.ts` + `assets/vela-context.md`) avec 5 nouveaux tools pilotables par Claude depuis le terminal intégré :
+- `navigate(path)` → explorateur sur un dossier · `reveal_file(path)` → parent + sélection.
+- `show_diff(path)` → overlay diff git HEAD↔disque (réutilise `git_diff_file` + `DiffViewer` mode `docs`).
+- `compare_files(a, b)` → overlay diff deux fichiers.
+- `notify(message)` → toast neutre auto-dismiss 4s (état `notice` dans App).
+
+Diff git inline : bouton `⇄` par fichier dans `GitPanel` (sections Indexé/Modifications) → `openGitDiff` partagé avec le tool `show_diff`. `DiffViewer` accepte un mode `docs` (contenus pré-chargés) court-circuitant la lecture disque. `gitDiff` wrapper ajouté dans `services/git.ts` (`git_diff_file` déjà enregistré).
+
 ## v2.2 — Compression multi-formats + jobs longs async ✅ LIVRÉ
 
 - **Compression** : formats zip / tar.gz (natifs) + **7z / rar** (CLI) + **mot de passe** optionnel

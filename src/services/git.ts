@@ -57,3 +57,7 @@ export function gitCommit(path: string, message: string): Promise<string> {
 export function gitCheckoutBranch(path: string, name: string): Promise<void> {
   return invoke("git_checkout_branch", { path, name });
 }
+
+export function gitDiff(path: string, file: string): Promise<GitDiff> {
+  return invoke("git_diff_file", { path, file });
+}

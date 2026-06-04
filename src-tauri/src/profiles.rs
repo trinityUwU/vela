@@ -86,6 +86,27 @@ pub fn load_profiles() -> ProfilesState {
         .unwrap_or_default()
 }
 
+fn zone_is_editor(z: &Option<PanelId>) -> bool {
+    matches!(z, Some(PanelId::Editor))
+}
+
+// Le profil actif possède-t-il une zone éditeur ? Renvoie (has_editor, nom_du_profil).
+// Source de vérité = profiles.json (persisté par le front), lu à la demande par le control plane.
+pub fn active_editor_status() -> (bool, String) {
+    let state = load_profiles();
+    let active = state.profiles.iter().find(|p| p.id == state.active).or_else(|| state.profiles.first());
+    match active {
+        Some(p) => {
+            let has = matches!(p.zones.center, PanelId::Editor)
+                || zone_is_editor(&p.zones.left)
+                || zone_is_editor(&p.zones.right)
+                || zone_is_editor(&p.zones.bottom);
+            (has, p.name.clone())
+        }
+        None => (false, String::new()),
+    }
+}
+
 #[tauri::command]
 pub fn save_profiles(profiles: ProfilesState) -> Result<(), String> {
     let p = config_path();

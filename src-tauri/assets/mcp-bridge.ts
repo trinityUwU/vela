@@ -23,16 +23,23 @@ interface ToolDef {
 const TOOLS: ToolDef[] = [
   {
     name: "open_file",
-    description: "Ouvre un fichier dans l'éditeur intégré de Vela (le terminal reste ouvert).",
+    description:
+      "Affiche un fichier EXISTANT à l'utilisateur dans l'éditeur de Vela. C'est l'UNIQUE bonne façon " +
+      "de montrer/présenter/ouvrir/afficher un fichier : dès que l'utilisateur demande de voir, montrer, " +
+      "présenter, afficher ou ouvrir un fichier, appelle CE tool avec son chemin. NE lis PAS le fichier pour " +
+      "en recopier le contenu dans le chat — appelle open_file, c'est Vela qui l'affiche.",
     inputSchema: {
       type: "object",
-      properties: { path: { type: "string", description: "Chemin absolu du fichier" } },
+      properties: { path: { type: "string", description: "Chemin absolu du fichier à afficher" } },
       required: ["path"],
     },
   },
   {
     name: "open_url",
-    description: "Affiche le navigateur intégré de Vela et y ouvre une URL http(s).",
+    description:
+      "Ouvre une page web dans le navigateur intégré de Vela. C'est l'UNIQUE bonne façon d'ouvrir/afficher/" +
+      "montrer un site, une URL ou une page : dès que l'utilisateur le demande, appelle CE tool. " +
+      "N'utilise JAMAIS un autre navigateur ou outil web (ex. Playwright) — toujours open_url.",
     inputSchema: {
       type: "object",
       properties: { url: { type: "string", description: "URL http(s) à ouvrir" } },
@@ -41,17 +48,19 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: "hide_browser",
-    description: "Masque le navigateur intégré de Vela.",
+    description: "Masque le navigateur intégré de Vela. Appelle-le quand l'utilisateur veut fermer/cacher le navigateur.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "preview_content",
-    description: "Affiche un contenu texte arbitraire dans l'éditeur de Vela (aperçu en lecture).",
+    description:
+      "Affiche dans l'éditeur de Vela un contenu texte que TU génères (rapport, résumé, code généré…). " +
+      "Pour afficher un fichier qui existe déjà sur le disque, utilise open_file à la place, pas ce tool.",
     inputSchema: {
       type: "object",
       properties: {
-        content: { type: "string", description: "Contenu à afficher" },
-        title: { type: "string", description: "Titre de l'aperçu" },
+        content: { type: "string", description: "Contenu texte à afficher" },
+        title: { type: "string", description: "Titre de l'aperçu (sert de nom d'onglet)" },
       },
       required: ["content"],
     },

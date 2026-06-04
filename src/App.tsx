@@ -194,24 +194,36 @@ export default function App() {
     switchToEdition(); fm.setOpened(entry); fm.setSelected(entry.path);
   };
 
-  // Ctrl+clic sur un chemin dans le terminal : fichier → éditeur (terminal reste ouvert),
-  // dossier → on entre dedans en restant dans le mode courant.
+  const fileEntry = (path: string): DirEntry => {
+    const extension = path.includes(".") ? path.slice(path.lastIndexOf(".") + 1) : "";
+    return { name: baseName(path), path, is_dir: false, size: 0, modified: 0, extension };
+  };
+  // Affiche un fichier dans la zone éditeur du profil ACTUEL, sans changer de profil.
+  const showFileInEditor = (path: string) => { const e = fileEntry(path); fm.setOpened(e); fm.setSelected(e.path); };
+  const activeHasEditorZone = (): boolean => {
+    const z = activeProfile.zones;
+    return z.center === "editor" || z.left === "editor" || z.right === "editor" || z.bottom === "editor";
+  };
+
+  // Clic sur un chemin dans le terminal : dossier → on entre ; fichier → affiché dans la zone éditeur
+  // du profil courant si elle existe, sinon bascule sur le profil Édition (fallback du clic).
   const openTermPath = (path: string, isDir: boolean) => {
-    const extension = !isDir && path.includes(".") ? path.slice(path.lastIndexOf(".") + 1) : "";
     if (isDir) return fm.navigate(path);
-    openInEditor({ name: baseName(path), path, is_dir: false, size: 0, modified: 0, extension });
+    if (activeHasEditorZone()) showFileInEditor(path);
+    else openInEditor(fileEntry(path));
   };
 
   // Control plane : commandes émises par le MCP de Vela (Claude Code lancé dans le terminal intégré).
+  // open_file/preview_content : le Rust a déjà garanti qu'une zone éditeur existe → pas de switch ici.
   const controlRef = useRef<(action: string, args: Record<string, unknown>) => void>(() => {});
   controlRef.current = (action, args) => {
-    if (action === "open_file") openTermPath(String(args.path ?? ""), false);
+    if (action === "open_file") showFileInEditor(String(args.path ?? ""));
     else if (action === "open_url") { browser.open(String(args.url ?? "")); setBrowserOpen(true); }
     else if (action === "hide_browser") setBrowserOpen(false);
     else if (action === "preview_content") {
       const safe = String(args.title ?? "apercu").replace(/[^\w.-]+/g, "_").slice(0, 60);
       const path = `/tmp/vela-preview-${safe}.txt`;
-      writeFile(path, String(args.content ?? "")).then(() => openTermPath(path, false)).catch(() => {});
+      writeFile(path, String(args.content ?? "")).then(() => showFileInEditor(path)).catch(() => {});
     }
   };
   useEffect(() => {

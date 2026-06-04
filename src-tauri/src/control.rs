@@ -127,6 +127,9 @@ fn handle(app: &AppHandle, req: &Request) -> serde_json::Value {
             if !p.is_file() {
                 return json!({ "ok": false, "error": format!("fichier introuvable : {path}") });
             }
+            if let Some(err) = require_editor_zone() {
+                return err;
+            }
             emit(app, "open_file", json!({ "path": path }))
         }
         "open_url" => {
@@ -138,12 +141,31 @@ fn handle(app: &AppHandle, req: &Request) -> serde_json::Value {
         }
         "hide_browser" => emit(app, "hide_browser", json!({})),
         "preview_content" => {
+            if let Some(err) = require_editor_zone() {
+                return err;
+            }
             let content = req.args.get("content").and_then(|v| v.as_str()).unwrap_or("");
             let title = req.args.get("title").and_then(|v| v.as_str()).unwrap_or("Aperçu");
             emit(app, "preview_content", json!({ "content": content, "title": title }))
         }
         other => json!({ "ok": false, "error": format!("action inconnue : {other}") }),
     }
+}
+
+// Renvoie Some(erreur) si le profil Vela actif n'a aucune zone éditeur (sinon None → on peut afficher).
+// Évite de switcher de profil : on n'affiche un fichier que si le layout courant peut le montrer.
+fn require_editor_zone() -> Option<serde_json::Value> {
+    let (has_editor, profile) = crate::profiles::active_editor_status();
+    if has_editor {
+        return None;
+    }
+    Some(json!({
+        "ok": false,
+        "error": format!(
+            "Le profil Vela actif « {profile} » n'a aucune zone éditeur pour afficher un fichier. \
+             Demande à l'utilisateur de basculer sur un profil qui contient un éditeur (ex. « Édition »), puis réessaie."
+        )
+    }))
 }
 
 fn emit(app: &AppHandle, action: &str, args: serde_json::Value) -> serde_json::Value {

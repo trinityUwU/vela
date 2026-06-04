@@ -80,16 +80,28 @@ pub fn available_shells() -> Vec<String> {
     out
 }
 
-// Préfixe le PATH du PTY avec le shim dir (wrapper `claude`) et expose le socket du control plane,
-// pour que `claude` lancé dans le terminal intégré soit branché au MCP de Vela. No-op si absent.
-fn inject_control_env(app: &AppHandle, cmd: &mut CommandBuilder) {
+// Branche le terminal intégré au control plane : expose VELA_SOCK et fait gagner le wrapper `claude`
+// du shim. Le PATH-shim seul perd contre ~/.zshrc qui re-préfixe ~/.local/bin → on re-préfixe APRÈS
+// le rc utilisateur (ZDOTDIR pour zsh, --rcfile pour bash). No-op si le wrapper n'a pas été généré.
+fn inject_control_env(app: &AppHandle, cmd: &mut CommandBuilder, shell: &str) {
     use tauri::Manager;
     let Some(plane) = app.try_state::<crate::control::ControlPlane>() else { return };
+    if !plane.shim_dir.join("claude").is_file() {
+        return;
+    }
     let shim = plane.shim_dir.to_string_lossy().to_string();
     let current = std::env::var("PATH").unwrap_or_default();
     cmd.env("PATH", format!("{shim}:{current}"));
     cmd.env("VELA_SOCK", plane.sock_path.to_string_lossy().to_string());
     cmd.env("VELA_MCP_CONFIG", plane.mcp_config.to_string_lossy().to_string());
+
+    let name = Path::new(shell).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    if name.contains("zsh") {
+        cmd.env("ZDOTDIR", &shim);
+    } else if name.contains("bash") {
+        cmd.arg("--rcfile");
+        cmd.arg(plane.shim_dir.join("bashrc"));
+    }
 }
 
 #[tauri::command]
@@ -108,10 +120,10 @@ pub fn term_open(
     let shell = shell
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into()));
-    let mut cmd = CommandBuilder::new(shell);
+    let mut cmd = CommandBuilder::new(&shell);
     cmd.cwd(cwd);
     cmd.env("TERM", "xterm-256color");
-    inject_control_env(&app, &mut cmd);
+    inject_control_env(&app, &mut cmd, &shell);
     let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
     drop(pair.slave);
 

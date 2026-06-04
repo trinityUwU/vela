@@ -31,19 +31,22 @@ fn runtime_base() -> PathBuf {
         .unwrap_or_else(|_| std::env::temp_dir())
 }
 
-// Cherche le vrai binaire `claude` dans le PATH, en excluant notre shim dir.
+// Cherche un binaire en excluant le shim dir. Scanne le PATH puis des emplacements connus —
+// le PATH est souvent appauvri quand Vela est lancé depuis un launcher graphique (sans ~/.local/bin).
 fn resolve_real_bin(name: &str, exclude: &Path) -> Option<PathBuf> {
-    let path = std::env::var("PATH").ok()?;
-    for dir in std::env::split_paths(&path) {
-        if dir == exclude {
-            continue;
-        }
-        let cand = dir.join(name);
-        if cand.is_file() {
-            return Some(cand);
+    let mut dirs: Vec<PathBuf> = std::env::var("PATH")
+        .map(|p| std::env::split_paths(&p).collect())
+        .unwrap_or_default();
+    if let Ok(home) = std::env::var("HOME") {
+        for sub in [".local/bin", ".bun/bin", ".cargo/bin"] {
+            dirs.push(Path::new(&home).join(sub));
         }
     }
-    None
+    dirs.extend(["/usr/local/bin", "/usr/bin", "/bin"].iter().map(PathBuf::from));
+    dirs.into_iter()
+        .filter(|d| d != exclude)
+        .map(|d| d.join(name))
+        .find(|c| c.is_file())
 }
 
 // Génère le shim dir : wrapper `claude` (PATH-shim) + config MCP + bridge. None si claude introuvable.
@@ -71,6 +74,14 @@ fn build_shim(sock_path: &Path) -> Result<ControlPlane, String> {
     std::fs::write(&mcp_config, serde_json::to_vec_pretty(&cfg).unwrap_or_default())
         .map_err(|e| format!("mcp config : {e}"))?;
 
+    write_wrapper(&shim_dir, &real_claude, &mcp_config)?;
+    write_rc_files(&shim_dir)?;
+
+    Ok(ControlPlane { sock_path: sock_path.to_path_buf(), shim_dir, mcp_config })
+}
+
+// Wrapper exécutable `claude` : relance le vrai binaire avec --mcp-config (env EchoHub purgé).
+fn write_wrapper(shim_dir: &Path, real_claude: &Path, mcp_config: &Path) -> Result<(), String> {
     let wrapper = shim_dir.join("claude");
     let script = format!(
         "#!/usr/bin/env bash\n\
@@ -81,9 +92,23 @@ fn build_shim(sock_path: &Path) -> Result<ControlPlane, String> {
     );
     std::fs::write(&wrapper, script).map_err(|e| format!("wrapper : {e}"))?;
     std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))
-        .map_err(|e| format!("chmod wrapper : {e}"))?;
+        .map_err(|e| format!("chmod wrapper : {e}"))
+}
 
-    Ok(ControlPlane { sock_path: sock_path.to_path_buf(), shim_dir, mcp_config })
+// rc shell qui sourcent la config utilisateur PUIS re-préfixent le shim au PATH → bat le réordering
+// du PATH par ~/.zshrc/~/.bashrc. zsh via ZDOTDIR (cf. inject_control_env), bash via --rcfile.
+fn write_rc_files(shim_dir: &Path) -> Result<(), String> {
+    let q = shell_quote(&shim_dir.to_string_lossy());
+    let zshenv = "[[ -f \"$HOME/.zshenv\" ]] && source \"$HOME/.zshenv\"\n";
+    let zshrc = format!(
+        "export ZDOTDIR=\"$HOME\"\n[[ -f \"$HOME/.zshrc\" ]] && source \"$HOME/.zshrc\"\nexport PATH={q}:\"$PATH\"\n"
+    );
+    let bashrc = format!(
+        "[ -f \"$HOME/.bashrc\" ] && source \"$HOME/.bashrc\"\nexport PATH={q}:\"$PATH\"\n"
+    );
+    std::fs::write(shim_dir.join(".zshenv"), zshenv).map_err(|e| format!(".zshenv : {e}"))?;
+    std::fs::write(shim_dir.join(".zshrc"), zshrc).map_err(|e| format!(".zshrc : {e}"))?;
+    std::fs::write(shim_dir.join("bashrc"), bashrc).map_err(|e| format!("bashrc : {e}"))
 }
 
 fn shell_quote(s: &str) -> String {
@@ -158,8 +183,17 @@ pub fn init(app: &AppHandle) -> Result<ControlPlane, String> {
     if sock_path.exists() {
         let _ = std::fs::remove_file(&sock_path);
     }
-    let plane = build_shim(&sock_path)?;
     let listener = UnixListener::bind(&sock_path).map_err(|e| format!("bind socket : {e}"))?;
+    // Shim best-effort : si claude/bun introuvables, le socket reste actif (le wrapper sera absent).
+    let plane = build_shim(&sock_path).unwrap_or_else(|e| {
+        eprintln!("[control] shim non généré : {e}");
+        let shim_dir = runtime_base().join("vela-shim");
+        ControlPlane {
+            sock_path: sock_path.clone(),
+            mcp_config: shim_dir.join("vela-mcp.json"),
+            shim_dir,
+        }
+    });
 
     let app = app.clone();
     std::thread::spawn(move || {

@@ -49,6 +49,7 @@ interface Props {
   onNewFromTemplate: () => void;
   onShare: (paths: string[]) => void;
   onPdfTools: (paths: string[]) => void;
+  onAnnotate: (path: string) => void;
 }
 
 export function ContextMenus(props: Props): React.ReactElement {
@@ -107,6 +108,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           onSaveTemplate={() => { props.onSaveTemplate(menu.entry.path); onCloseMenu(); }}
           onShare={() => { props.onShare(selPaths(menu.entry.path)); onCloseMenu(); }}
           onPdfTools={() => { props.onPdfTools(selPaths(menu.entry.path)); onCloseMenu(); }}
+          onAnnotate={() => { props.onAnnotate(menu.entry.path); onCloseMenu(); }}
         />
       )}
 

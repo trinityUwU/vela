@@ -52,6 +52,7 @@ interface Props {
   onSaveTemplate?: () => void;
   onShare?: () => void;
   onPdfTools?: () => void;
+  onAnnotate?: () => void;
 }
 
 function relativePath(path: string, cwd: string): string {
@@ -113,6 +114,9 @@ export function ContextMenu(props: Props) {
       )}
       {isMedia && onMediaTools && (
         <Item label={mediaLabel} onClick={() => { onMediaTools(); onClose(); }} />
+      )}
+      {mediaKind === "image" && props.onAnnotate && (
+        <Item label="Annoter…" onClick={() => { props.onAnnotate?.(); onClose(); }} />
       )}
       {!multi && menu.isDir && onOpenTerminal && (
         <Item label="Ouvrir un terminal ici" onClick={() => { onOpenTerminal(); onClose(); }} />

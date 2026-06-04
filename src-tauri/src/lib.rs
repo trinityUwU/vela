@@ -65,6 +65,7 @@ pub fn run() {
             fs_ops::read_file,
             fs_ops::read_file_chunk,
             fs_ops::read_byte_range,
+            fs_ops::write_file_base64,
             fs_ops::write_file,
             fs_ops::rename_entry,
             fs_ops::delete_entry,

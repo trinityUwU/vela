@@ -91,6 +91,10 @@ export function readFileBase64(path: string): Promise<string> {
   return invoke<string>("read_file_base64", { path });
 }
 
+export function writeFileBase64(path: string, dataB64: string): Promise<void> {
+  return invoke("write_file_base64", { path, dataB64 });
+}
+
 export interface ByteRange {
   dataB64: string;
   total: number;

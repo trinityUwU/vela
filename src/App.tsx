@@ -25,6 +25,7 @@ import { templateInstantiate, saveAsTemplate } from "./services/templates";
 import { TemplatePicker } from "./components/TemplatePicker";
 import { SharePanel } from "./components/SharePanel";
 import { PdfTools } from "./components/PdfTools";
+import { ImageAnnotate } from "./components/ImageAnnotate";
 import type { TabSeed } from "./hooks/useFolderTabs";
 import { OverlayHost } from "./components/OverlayHost";
 import { StatusBar } from "./components/StatusBar";
@@ -113,6 +114,7 @@ export default function App() {
   const [templatePick, setTemplatePick] = useState(false);
   const [sharePaths, setSharePaths] = useState<string[] | null>(null);
   const [pdfPaths, setPdfPaths] = useState<string[] | null>(null);
+  const [annotatePath, setAnnotatePath] = useState<string | null>(null);
   const workspaces = useWorkspaces();
   const [extractConflict, setExtractConflict] = useState<{ archivePath: string; dest: string } | null>(null);
   const [conflictReq, setConflictReq] = useState<
@@ -457,6 +459,11 @@ export default function App() {
       if (p.length) setPdfPaths(p);
       else fm.setError("Sélectionne un ou plusieurs PDF.");
     },
+    annotateSelected: () => {
+      const p = selPaths();
+      if (p.length === 1) setAnnotatePath(p[0]);
+      else fm.setError("Sélectionne une seule image à annoter.");
+    },
     newFromTemplate: () => setTemplatePick(true),
     saveAsTemplate: () => {
       const p = selPaths();
@@ -732,6 +739,7 @@ export default function App() {
         onNewFromTemplate={() => setTemplatePick(true)}
         onShare={(p) => { if (p.length) setSharePaths(p); }}
         onPdfTools={(p) => { if (p.length) setPdfPaths(p); }}
+        onAnnotate={setAnnotatePath}
       />
 
       <DialogHost
@@ -788,6 +796,15 @@ export default function App() {
           paths={pdfPaths}
           onDone={(p) => { setPdfPaths(null); fm.refresh(); fm.navigate(parentDir(p)); }}
           onClose={() => setPdfPaths(null)}
+          onError={fm.setError}
+        />
+      )}
+
+      {annotatePath && (
+        <ImageAnnotate
+          path={annotatePath}
+          onSaved={(p) => { setAnnotatePath(null); fm.refresh(); fm.navigate(parentDir(p)); }}
+          onClose={() => setAnnotatePath(null)}
           onError={fm.setError}
         />
       )}

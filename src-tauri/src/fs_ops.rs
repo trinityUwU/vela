@@ -357,6 +357,19 @@ pub fn read_file_base64(path: String) -> Result<String, String> {
     Ok(BASE64.encode(bytes))
 }
 
+// Écrit des octets bruts depuis du base64 (export d'annotation/image — F16).
+#[tauri::command]
+pub fn write_file_base64(path: String, data_b64: String) -> Result<(), String> {
+    let bytes = BASE64.decode(data_b64.as_bytes()).map_err(|e| {
+        eprintln!("[write_file_base64] decode {path}: {e}");
+        e.to_string()
+    })?;
+    fs::write(&path, bytes).map_err(|e| {
+        eprintln!("[write_file_base64] {path}: {e}");
+        e.to_string()
+    })
+}
+
 #[derive(Serialize)]
 pub struct ByteRange {
     pub data_b64: String,

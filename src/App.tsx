@@ -32,18 +32,17 @@ import type { View } from "./components/Topbar";
 import { SearchResults } from "./components/SearchBar";
 import { SortBar } from "./components/SortBar";
 import { ZoneLayout } from "./components/ZoneLayout";
-import { ContextMenu } from "./components/ContextMenu";
-import { BgContextMenu } from "./components/BgContextMenu";
+import { ContextMenus } from "./components/ContextMenus";
 import { DialogHost } from "./components/DialogHost";
 import type { Dialog } from "./components/DialogHost";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { QuickLook } from "./components/QuickLook";
 import { ExtractionPanel } from "./components/ExtractionPanel";
 import { BrowserView } from "./components/BrowserView";
-import { startExtraction, trashDir, homeDir } from "./services/fs";
+import { trashDir, homeDir } from "./services/fs";
 import { globalSearch } from "./services/search-index";
 import { useFileActions } from "./hooks/useFileActions";
-import { archiveStem, parentDir, baseName } from "./services/path-util";
+import { archiveStem, baseName } from "./services/path-util";
 import type { DirEntry } from "./types";
 
 type Menu = { x: number; y: number; entry: DirEntry } | null;
@@ -191,6 +190,10 @@ export default function App() {
   const openInEditor = (entry: DirEntry) => {
     if (entry.is_dir) return fm.navigate(entry.path);
     switchToEdition(); fm.setOpened(entry); fm.setSelected(entry.path);
+  };
+
+  const openMediaTools = (entry: DirEntry) => {
+    switchToEdition(); fm.setOpened(entry); setEditPath(entry.path);
   };
 
   const openMatch = (path: string) => {
@@ -387,74 +390,41 @@ export default function App() {
         </div>
       )}
 
-      {menu && (
-        <ContextMenu
-          menu={{
-            x: menu.x, y: menu.y, path: menu.entry.path, name: menu.entry.name,
-            isDir: menu.entry.is_dir, extension: menu.entry.extension, cwd: fm.cwd,
-            count: fm.selection.size || 1,
-          }}
-          onClose={() => setMenu(null)}
-          onOpen={() => { openInEditor(menu.entry); setMenu(null); }}
-          onOpenNative={() => { fm.openNative(menu.entry); setMenu(null); }}
-          onRename={() => { setDialog({ kind: "rename", entry: menu.entry }); setMenu(null); }}
-          onTrash={() => { askTrash(selPaths(menu.entry.path)); setMenu(null); }}
-          onDeletePermanent={() => { askDelete(selPaths(menu.entry.path)); setMenu(null); }}
-          onProperties={() => { setDialog({ kind: "props", entry: menu.entry }); setMenu(null); }}
-          onCopy={() => { fm.copyToClipboard("copy", selPaths(menu.entry.path)); setMenu(null); }}
-          onCut={() => { fm.copyToClipboard("cut", selPaths(menu.entry.path)); setMenu(null); }}
-          onCompress={() => { setDialog({ kind: "compress", paths: selPaths(menu.entry.path) }); setMenu(null); }}
-          onBatchRename={() => {
-            const paths = selPaths(menu.entry.path);
-            setDialog({ kind: "batchrename", names: paths.map(baseName) });
-            setMenu(null);
-          }}
-          onCompare={() => { compareSelection(menu.entry.path); setMenu(null); }}
-          onSetColor={(color) => tags.setColor(selPaths(menu.entry.path), color)}
-          currentColor={tags.colorOf(menu.entry.path)}
-          onOpenTerminal={() => { openTerminalHere(menu.entry.path); setMenu(null); }}
-          onComputeSize={() => { computeSize(menu.entry.path); setMenu(null); }}
-          onAnalyze={() => { setAnalyzePath(menu.entry.path); setMenu(null); }}
-          onMediaTools={() => {
-            switchToEdition();
-            fm.setOpened(menu.entry);
-            setEditPath(menu.entry.path);
-            setMenu(null);
-          }}
-          onExtractHere={() => {
-            const dest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
-            startExtraction(menu.entry.path, dest).catch((e) => fm.setError(String(e)));
-            setMenu(null);
-          }}
-          onExtractTo={() => {
-            const defaultDest = `${parentDir(menu.entry.path)}/${archiveStem(menu.entry.name)}`;
-            setDialog({ kind: "extractto", archivePath: menu.entry.path, defaultDest });
-            setMenu(null);
-          }}
-          onConvert={(target) => { runConvert(menu.entry.path, target); setMenu(null); }}
-          onOcr={() => { runOcr(menu.entry.path); setMenu(null); }}
-          onTranslate={() => { setTranslate({ path: menu.entry.path }); setMenu(null); }}
-          entries={selectedEntries.length ? selectedEntries : [menu.entry]}
-          onSmartAction={(id) => { runSmartAction(id, selectedEntries.length ? selectedEntries : [menu.entry]); setMenu(null); }}
-        />
-      )}
-
-      {bgMenu && (
-        <BgContextMenu
-          x={bgMenu.x}
-          y={bgMenu.y}
-          showHidden={fm.showHidden}
-          canPaste={!!fm.clipboard}
-          onClose={() => setBgMenu(null)}
-          onNewFile={() => { setDialog({ kind: "newfile" }); setBgMenu(null); }}
-          onNewFolder={() => { setDialog({ kind: "newfolder" }); setBgMenu(null); }}
-          onPaste={() => { fm.paste(); setBgMenu(null); }}
-          onRefresh={() => { fm.refresh(); setBgMenu(null); }}
-          onToggleHidden={() => { fm.toggleHidden(); setBgMenu(null); }}
-          onPinCurrent={() => { pinCurrent(); setBgMenu(null); }}
-          onProperties={() => { setDialog({ kind: "props", entry: cwdEntry }); setBgMenu(null); }}
-        />
-      )}
+      <ContextMenus
+        menu={menu}
+        bgMenu={bgMenu}
+        cwd={fm.cwd}
+        selectionSize={fm.selection.size || 1}
+        showHidden={fm.showHidden}
+        canPaste={!!fm.clipboard}
+        selectedEntries={selectedEntries}
+        cwdEntry={cwdEntry}
+        colorOf={tags.colorOf}
+        onCloseMenu={() => setMenu(null)}
+        onCloseBg={() => setBgMenu(null)}
+        selPaths={selPaths}
+        openInEditor={openInEditor}
+        openNative={fm.openNative}
+        copyToClipboard={fm.copyToClipboard}
+        onDialog={setDialog}
+        askTrash={askTrash}
+        askDelete={askDelete}
+        compareSelection={compareSelection}
+        setColor={tags.setColor}
+        openTerminalHere={openTerminalHere}
+        computeSize={computeSize}
+        onAnalyze={setAnalyzePath}
+        onMediaTools={openMediaTools}
+        onTranslate={(p) => setTranslate({ path: p })}
+        runConvert={runConvert}
+        runOcr={runOcr}
+        runSmartAction={runSmartAction}
+        onError={(m) => fm.setError(m)}
+        paste={fm.paste}
+        refresh={fm.refresh}
+        toggleHidden={fm.toggleHidden}
+        pinCurrent={pinCurrent}
+      />
 
       <DialogHost
         dialog={dialog}

@@ -16,6 +16,7 @@ import { ArchiveViewer } from "./ArchiveViewer";
 import { PdfViewer } from "./PdfViewer";
 import { MediaViewer } from "./MediaViewer";
 import { MediaToolsModal } from "./MediaToolsModal";
+import { MarkdownStudio } from "./MarkdownStudio";
 
 const MIME: Record<string, string> = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
@@ -127,7 +128,7 @@ export function Editor({ entry, onClose, onError, active = true, editPath = null
             <Search />
           </HBtn>
         )}
-        {file.editable && (isMd || isHtml) && (
+        {file.editable && isHtml && (
           <HBtn onClick={() => setPreview((v) => !v)} active={preview} title="Aperçu">
             {preview ? <Code /> : <Eye />}
           </HBtn>
@@ -180,6 +181,13 @@ export function Editor({ entry, onClose, onError, active = true, editPath = null
         <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)]">
           Chargement…
         </div>
+      ) : isMd && file.editable ? (
+        <MarkdownStudio
+          path={entry.path}
+          content={file.content}
+          onChange={(v) => { file.setContent(v); setDirty(true); }}
+          onError={onError}
+        />
       ) : preview && isHtml ? (
         <iframe
           title={entry.name}

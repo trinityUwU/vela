@@ -200,7 +200,6 @@ function TerminalView({ id, cwd, active, onExit, onOpenPath }: {
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const inst = useRef<{ term: Terminal; fit: FitAddon } | null>(null);
-  const ctrlHeld = useRef(false);
   const onOpenRef = useRef(onOpenPath);
   onOpenRef.current = onOpenPath;
 
@@ -223,10 +222,9 @@ function TerminalView({ id, cwd, active, onExit, onOpenPath }: {
     // Double rAF : la taille finale du conteneur n'est connue qu'après le layout.
     requestAnimationFrame(() => { fitNow(); requestAnimationFrame(fitNow); });
 
-    // Ctrl+clic ouvre un chemin ; liens actifs (surlignés) seulement quand Ctrl est tenu.
+    // Tous les chemins sont des liens cliquables en temps réel (surlignés + curseur pointer).
     const linkProvider = term.registerLinkProvider({
       provideLinks(lineNo, cb) {
-        if (!ctrlHeld.current) return cb(undefined);
         const buf = term.buffer.active;
         const line = buf.getLine(lineNo - 1)?.translateToString(true);
         if (!line) return cb(undefined);
@@ -244,10 +242,6 @@ function TerminalView({ id, cwd, active, onExit, onOpenPath }: {
       },
     });
 
-    // Premier appui sur Ctrl/Cmd → active les liens définitivement (pas besoin de maintenir).
-    const onKey = (e: KeyboardEvent) => { if (e.ctrlKey || e.metaKey) ctrlHeld.current = true; };
-    window.addEventListener("keydown", onKey, true);
-
     const onData = term.onData((data) => termInput(id, data).catch(() => {}));
     const unOut = listen<{ id: string; data: string }>("term-output", ({ payload }) => {
       if (payload.id === id) term.write(b64ToBytes(payload.data));
@@ -263,7 +257,6 @@ function TerminalView({ id, cwd, active, onExit, onOpenPath }: {
     return () => {
       onData.dispose();
       linkProvider.dispose();
-      window.removeEventListener("keydown", onKey, true);
       unOut.then((f) => f());
       unExit.then((f) => f());
       ro.disconnect();

@@ -221,17 +221,11 @@ fn run_zip_job(app: AppHandle, jc: Arc<JobControl>, job_id: String, path: String
     let base = base_payload(&job_id, &archive_name, &dest);
     let dest_path = Path::new(&dest);
 
-    // Détection mot de passe
-    let password: Option<String> = if zip_is_encrypted(&path) {
-        emit(&app, ProgressPayload { status: "password_required".into(), ..base.clone() });
-        let pwd = wait_password(&jc);
-        if pwd.is_none() { finish(&app, base, Some("Annulé".into())); return; }
-        // Réinitialise le verrou après lecture
-        *jc.password.lock().unwrap() = None;
-        pwd
-    } else {
-        None
-    };
+    // Les zip chiffrés par 7z utilisent WinZip AES-256 (méthode 99), non géré par la crate `zip`
+    // (qui ne décrypte que le ZipCrypto legacy → fichier vide). On délègue à 7z qui gère l'AES.
+    if zip_is_encrypted(&path) {
+        return run_7z_job(app, jc, job_id, path, dest, None);
+    }
 
     if let Err(e) = fs::create_dir_all(dest_path) {
         finish(&app, base, Some(e.to_string())); return;
@@ -249,13 +243,8 @@ fn run_zip_job(app: AppHandle, jc: Arc<JobControl>, job_id: String, path: String
         if pause_wait(&jc) { finish(&app, base, Some("Annulé".into())); return; }
 
         let result: Result<(), String> = (|| {
-            if let Some(ref pwd) = password {
-                let mut entry = archive.by_index_decrypt(i, pwd.as_bytes()).map_err(|e| e.to_string())?;
-                write_zip_entry(&mut entry, dest_path)
-            } else {
-                let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
-                write_zip_entry(&mut entry, dest_path)
-            }
+            let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
+            write_zip_entry(&mut entry, dest_path)
         })();
 
         if let Err(e) = result { finish(&app, base, Some(e)); return; }

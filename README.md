@@ -2,6 +2,8 @@
 
 File manager Linux organisé en **profils** : chaque profil est une disposition complète que tu composes toi-même. Tu choisis ce qui occupe la gauche, le centre, la droite et le bas parmi un jeu de panneaux — favoris, listing, éditeur, arborescence, terminal — et tu bascules de l'un à l'autre depuis la barre du haut. Deux profils sont fournis d'office : « Explorateur » (la navigation classique) et « Édition » (listing + éditeur côte à côte). Zéro dépendance réseau.
 
+> 📋 Panorama complet des fonctionnalités, comparatifs et tableaux : **[FEATURES.md](FEATURES.md)**.
+
 ## Pourquoi
 
 Nemo n'a jamais intégré de preview pane. Vela le fait nativement, avec un vrai éditeur, sans fork à maintenir.
@@ -27,6 +29,8 @@ Nemo n'a jamais intégré de preview pane. Vela le fait nativement, avec un vrai
 - Drag & drop : fichiers/dossiers vers dossiers, crumbs du chemin, sidebar
 - Clic droit fichier : ouvrir, copier le chemin absolu, copier le chemin relatif, renommer, supprimer, propriétés
 - Clic droit zone vide : nouveau fichier/dossier, actualiser, toggle fichiers cachés, épingler le dossier, propriétés
+- Menus contextuels toujours clampés dans l'écran (ancrés au curseur, rabattus à l'intérieur, jamais coupés)
+- `Ctrl+clic` sur un chemin affiché dans le terminal intégré → ouvre le fichier dans l'éditeur / entre dans le dossier
 
 **Panneau Édition**
 - Split liste / éditeur
@@ -37,6 +41,7 @@ Nemo n'a jamais intégré de preview pane. Vela le fait nativement, avec un vrai
 - Tableaux CSV/TSV/XLSX/XLS/ODS avec filtre live
 - Gros fichiers (> 1 Mo) : chunks 512 Ko, zéro freeze
 - Fichiers sans extension reconnue : éditables (texte brut)
+- Onglets multi-fichiers : clic droit (renommer, supprimer, copier le chemin, couleur) + pastille de tag
 
 **Propriétés (clic droit)**
 - Métadonnées : extension, emplacement, permissions Unix
@@ -82,7 +87,11 @@ Le menu s'adapte à ce que tu sélectionnes. Plusieurs images → « Créer un P
 
 **Git intégré**
 
-Dans un dépôt, les fichiers portent une pastille d'état (modifié / nouveau / supprimé). Un panneau Git assignable à une zone : statut, sélection à valider, commit, bascule de branche, historique. Natif (libgit2), sans appeler `git`.
+Dans un dépôt, les fichiers et dossiers portent une pastille d'état (modifié / nouveau / supprimé), togglable depuis la barre de filtres. Un panneau Git assignable à une zone : statut, ahead/behind vs upstream, index et modifications séparés, stage/unstage par fichier, commit, bascule de branche, historique. **Diff inline** HEAD ↔ disque (bouton `⇄` par fichier). Natif (libgit2), sans appeler `git`.
+
+**Agent IA intégré (control plane)**
+
+Lance `claude` dans le terminal intégré : Claude Code pilote l'interface de Vela via un serveur MCP souverain (socket Unix, zéro réseau). Il peut afficher un fichier (`open_file`), un contenu généré (`preview_content`), piloter le navigateur (`open_url` / `hide_browser`), faire naviguer l'explorateur (`navigate` / `reveal_file`), présenter un diff git (`show_diff` / `compare_files`) ou notifier une étape (`notify`). Isolation stricte : ce MCP n'existe que dans le terminal de Vela, jamais dans une session Claude normale, et aucune config globale n'est modifiée.
 
 **Recherche globale**
 

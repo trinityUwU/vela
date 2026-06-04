@@ -1,4 +1,4 @@
-// Point d'entrée Tauri : enregistre les commandes filesystem exposées au front.
+// Point d'entrée Tauri : enregistre les 124 commandes natives exposées au front + le control plane MCP.
 mod actions;
 mod analyze;
 mod apps;

@@ -32,6 +32,7 @@ vela/
 │   │   ├── actions.ts              Wrappers actions intelligentes (merge_csv / organize_dir)
 │   │   ├── smart-actions.ts        Actions selon type collectif de la sélection — pur, testé (+ .test.ts)
 │   │   ├── git.ts                  Wrappers git (status/branch/log/stage/commit/checkout/diff)
+│   │   ├── git-ui.ts               Couleurs/labels d'état git partagés (GIT_COLOR / GIT_LABEL / gitColor)
 │   │   ├── search-index.ts         Recherche globale (index_refresh / global_search)
 │   │   ├── ocr.ts                  Wrappers OCR (capabilities / extract)
 │   │   ├── translate.ts            Wrappers traduction Argos (capabilities/text/file/install) + LANGUAGES
@@ -65,7 +66,8 @@ vela/
 │   │   ├── useGridNav.ts           Navigation clavier grille/liste (flèches+Entrée, capture phase, e.code)
 │   │   ├── useCommandRegistry.ts   Registre d'actions de la palette (généré depuis les handlers d'App)
 │   │   ├── useCommandPalette.ts    État d'ouverture de la palette Ctrl+K
-│   │   ├── useGitStatus.ts         Statut git du cwd (map path→statut + branche), refresh debounce fs-changed
+│   │   ├── useGitStatus.ts         Statut git du cwd (map path→statut + files + ahead/behind + branche), refresh debounce
+│   │   ├── useMenuPosition.ts      Clamp d'un menu flottant dans le viewport (ancré curseur + ResizeObserver)
 │   │   ├── useFileActions.ts       runSmartAction (PDF/CSV/rangement) + runOcr — extraits d'App
 │   │   └── useNlSettings.ts        Réglages palette intelligente (LLM local) — localStorage, off par défaut
 │   │
@@ -76,7 +78,8 @@ vela/
 │       ├── TranslateModal.tsx      Traduction fichier texte : choix langues + install paquet à la volée (Argos)
 │       ├── CodeSearchModal.tsx     Recherche sémantique code (CodeIndex) : requête FR, résultats classés, clic = navigation
 │       ├── CommandPalette.tsx      Palette Ctrl+K : fuzzy actions + fichiers cwd + recherche globale + « Interpréter » (LLM)
-│       ├── GitPanel.tsx            Panneau git (zone) : statut, sélection à valider, commit, bascule branche, log
+│       ├── GitPanel.tsx            Panneau git (zone) : ahead/behind, index/modifs, stage par fichier, diff ⇄, commit, log
+│       ├── FloatingMenu.tsx        Conteneur de menu flottant clampé (via useMenuPosition)
 │       ├── BrowserView.tsx         Navigateur intégré : chrome onglets + barre d'adresse + useNativeSync (mesure bounds → couche wry native)
 │       ├── TerminalDock.tsx        Dock terminal bas (extrait d'App.tsx) — rendu hors zone profil
 │       ├── FileTree.tsx            Arborescence dossiers pliable, lazy par expand (listDir filtré), cwd surligné
@@ -130,8 +133,12 @@ vela/
     ├── capabilities/default.json   core:default, start-dragging, opener:default + allow-open-path
     └── src/
         ├── main.rs
-        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal/Player/SearchIndex) +
-        │                           setup (build index background) + 114 commandes
+        ├── lib.rs                  Builder + manage(Extraction/DirWatcher/Transfer/Terminal/Player/SearchIndex/ControlPlane) +
+        │                           setup (build index background + control::init) + 124 commandes
+        ├── control.rs              Control plane MCP : socket Unix, shim claude (PATH/ZDOTDIR), génère bridge+config+contexte,
+        │                           valide les actions (open_file/url, navigate, reveal_file, show_diff, compare_files, notify) → events UI
+        ├── assets/mcp-bridge.ts    Bridge MCP stdio (JSON-RPC 2.0, zéro dép) embarqué via include_str! — relaie au socket
+        ├── assets/vela-context.md  System prompt injecté (--append-system-prompt) : contexte Vela + tools + mode autonome
         ├── convert.rs              Conversion universelle : image (crate image) / pandoc / libreoffice → pdf /
         │                           printpdf (image→pdf, images_to_pdf multi-pages) — routage testé
         ├── actions.rs              Actions intelligentes : merge_csv (1 header) + organize_dir (type/date, moves undo)

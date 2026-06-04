@@ -3,9 +3,17 @@
 ## Objectif
 File manager Linux (Tauri v2 + React/TypeScript) avec **profils de layout** : chaque profil compose une disposition par zones (favoris, listing, éditeur, arborescence, terminal). Alternative souveraine à Nemo.
 
-## État — v2.0 (fonctionnel, installé) · 114 commandes Rust
+## État — v2.7 (fonctionnel, installé) · 124 commandes Rust
 
 Historique détaillé par version plus bas. Le bloc qui suit décrit le socle v1.5 ; les incréments v1.6→v1.15 sont documentés dans leurs sections dédiées.
+
+## v2.8 — Menu contextuel onglets + clamp menus viewport ✅ LIVRÉ
+
+- Clic droit sur un onglet du visualiseur multi-fichiers → menu fichier complet réutilisé (rename, corbeille,
+  suppression, copier le chemin, couleur…). Pastille de tag affichée sur chaque onglet. (`EditorArea` reçoit `onContext`+`colorOf`.)
+- Fix menus contextuels qui sortaient de l'écran : hook `useMenuPosition` (ancré curseur, rabattu dans le viewport,
+  `maxHeight` sur `clientHeight`, **ResizeObserver** pour re-clamper après le reflow de chargement de police) +
+  composant `FloatingMenu`. Appliqué à `ContextMenu`, `BgContextMenu`, menu d'onglet terminal et sidebar.
 
 ## v2.7 — MCP vela v2 (tools de présentation) + diff git inline ✅ LIVRÉ
 

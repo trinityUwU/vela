@@ -212,6 +212,102 @@ pub fn video_convert_cancel(state: State<VideoJobManager>, job_id: String) -> Re
     Ok(())
 }
 
+// ── boîte à outils étendue (F18) ─────────────────────────────────────────────
+
+fn do_gif(input: &str, output: &str, start: f64, dur: f64, fps: u32, width: u32) -> Result<(), String> {
+    // palettegen/paletteuse en un seul graphe de filtres → GIF propre.
+    let vf = format!("fps={fps},scale={width}:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse");
+    let args = vec![
+        "-ss".into(), start.to_string(), "-t".into(), dur.to_string(),
+        "-i".into(), input.into(), "-vf".into(), vf, "-loop".into(), "0".into(), output.into(),
+    ];
+    run_ffmpeg(&args)
+}
+
+#[tauri::command]
+pub async fn video_to_gif(input: String, output: String, start: f64, dur: f64, fps: u32, width: u32) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || do_gif(&input, &output, start, dur, fps.clamp(5, 30), width.clamp(120, 1024)))
+        .await
+        .map_err(|e| format!("tâche video_to_gif échouée: {e}"))?
+}
+
+// Brûle un .srt dans la vidéo (sous-titres incrustés). Le chemin srt est échappé pour le filtre subtitles.
+fn do_subtitles(input: &str, srt: &str, output: &str) -> Result<(), String> {
+    let escaped = srt.replace('\\', "\\\\").replace(':', "\\:").replace('\'', "\\'");
+    let args = vec![
+        "-i".into(), input.into(), "-vf".into(), format!("subtitles='{escaped}'"),
+        "-c:a".into(), "copy".into(), output.into(),
+    ];
+    run_ffmpeg(&args)
+}
+
+#[tauri::command]
+pub async fn video_subtitles(input: String, srt: String, output: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || do_subtitles(&input, &srt, &output))
+        .await
+        .map_err(|e| format!("tâche video_subtitles échouée: {e}"))?
+}
+
+// Compresse pour viser une taille cible (Mo) : bitrate = taille_bits / durée, marge audio 128k.
+fn do_target_size(input: &str, output: &str, target_mb: f64) -> Result<(), String> {
+    let dur = probe_duration(input)?.max(1.0);
+    let audio_kbps = 128.0;
+    let total_kbits = target_mb * 8.0 * 1024.0;
+    let video_kbps = ((total_kbits / dur) - audio_kbps).max(150.0);
+    let bv = format!("{}k", video_kbps.round() as u64);
+    let args = vec![
+        "-i".into(), input.into(), "-b:v".into(), bv, "-maxrate".into(),
+        format!("{}k", (video_kbps * 1.5).round() as u64), "-bufsize".into(),
+        format!("{}k", (video_kbps * 2.0).round() as u64),
+        "-c:v".into(), "libx264".into(), "-c:a".into(), "aac".into(), "-b:a".into(), "128k".into(),
+        output.into(),
+    ];
+    run_ffmpeg(&args)
+}
+
+#[tauri::command]
+pub async fn video_target_size(input: String, output: String, target_mb: f64) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || do_target_size(&input, &output, target_mb))
+        .await
+        .map_err(|e| format!("tâche video_target_size échouée: {e}"))?
+}
+
+// Storyboard : N vignettes régulières → cache ~/.cache/vela/storyboard/<hash>/. Sert l'aperçu au survol.
+fn do_storyboard(input: &str, n: u32) -> Result<Vec<String>, String> {
+    let dur = probe_duration(input)?.max(0.1);
+    let hash = blake3::hash(input.as_bytes()).to_hex()[..16].to_string();
+    let cache = dirs_cache().join("storyboard").join(&hash);
+    std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    let count = n.clamp(4, 16);
+    for i in 0..count {
+        let t = dur * (i as f64 + 0.5) / count as f64;
+        let frame = cache.join(format!("{i}.jpg"));
+        let frame_str = frame.to_string_lossy().to_string();
+        if !frame.exists() {
+            let args = vec![
+                "-ss".into(), t.to_string(), "-i".into(), input.into(),
+                "-frames:v".into(), "1".into(), "-vf".into(), "scale=320:-1".into(), frame_str.clone(),
+            ];
+            run_ffmpeg(&args)?;
+        }
+        out.push(frame_str);
+    }
+    Ok(out)
+}
+
+fn dirs_cache() -> std::path::PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
+    std::path::PathBuf::from(home).join(".cache").join("vela")
+}
+
+#[tauri::command]
+pub async fn video_storyboard(input: String, n: u32) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || do_storyboard(&input, n))
+        .await
+        .map_err(|e| format!("tâche video_storyboard échouée: {e}"))?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -56,6 +56,7 @@ interface Props {
   onFindReplace?: () => void;
   onGallery?: () => void;
   onBatchImages?: () => void;
+  onVideoTools?: () => void;
 }
 
 function relativePath(path: string, cwd: string): string {
@@ -118,6 +119,9 @@ export function ContextMenu(props: Props) {
       )}
       {isMedia && onMediaTools && (
         <Item label={mediaLabel} onClick={() => { onMediaTools(); onClose(); }} />
+      )}
+      {mediaKind === "video" && props.onVideoTools && (
+        <Item label="GIF, compression, sous-titres…" onClick={() => { props.onVideoTools?.(); onClose(); }} />
       )}
       {mediaKind === "image" && props.onGallery && (
         <Item label="Voir dans la galerie" onClick={() => { props.onGallery?.(); onClose(); }} />

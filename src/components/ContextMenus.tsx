@@ -53,6 +53,7 @@ interface Props {
   onFindReplace: (dir: string) => void;
   onGallery: (path: string) => void;
   onBatchImages: (paths: string[]) => void;
+  onVideoTools: (path: string) => void;
 }
 
 export function ContextMenus(props: Props): React.ReactElement {
@@ -115,6 +116,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           onFindReplace={() => { props.onFindReplace(menu.entry.path); onCloseMenu(); }}
           onGallery={() => { props.onGallery(menu.entry.path); onCloseMenu(); }}
           onBatchImages={() => { props.onBatchImages(selPaths(menu.entry.path)); onCloseMenu(); }}
+          onVideoTools={() => { props.onVideoTools(menu.entry.path); onCloseMenu(); }}
         />
       )}
 

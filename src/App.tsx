@@ -31,6 +31,7 @@ import { FindReplace } from "./components/FindReplace";
 import { AdvancedSearch } from "./components/AdvancedSearch";
 import { Lightbox } from "./components/Lightbox";
 import { ImageBatch } from "./components/ImageBatch";
+import { VideoTools } from "./components/VideoTools";
 import { previewKind } from "./services/file-kind";
 import { useSmartSearches } from "./hooks/useSmartSearches";
 import type { SearchCriteria } from "./services/advsearch";
@@ -132,6 +133,7 @@ export default function App() {
   const [smartName, setSmartName] = useState<SearchCriteria | null>(null);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   const [batchImages, setBatchImages] = useState<string[] | null>(null);
+  const [videoToolsPath, setVideoToolsPath] = useState<string | null>(null);
   const workspaces = useWorkspaces();
   const smartSearches = useSmartSearches();
   const [extractConflict, setExtractConflict] = useState<{ archivePath: string; dest: string } | null>(null);
@@ -797,6 +799,7 @@ export default function App() {
         onFindReplace={setFindReplaceRoot}
         onGallery={openGallery}
         onBatchImages={(p) => { if (p.length) setBatchImages(p); }}
+        onVideoTools={setVideoToolsPath}
       />
 
       <DialogHost
@@ -862,6 +865,15 @@ export default function App() {
           path={annotatePath}
           onSaved={(p) => { setAnnotatePath(null); fm.refresh(); fm.navigate(parentDir(p)); }}
           onClose={() => setAnnotatePath(null)}
+          onError={fm.setError}
+        />
+      )}
+
+      {videoToolsPath && (
+        <VideoTools
+          path={videoToolsPath}
+          onDone={(out) => { setVideoToolsPath(null); setNotice("Vidéo traitée."); fm.navigate(parentDir(out)); }}
+          onClose={() => setVideoToolsPath(null)}
           onError={fm.setError}
         />
       )}

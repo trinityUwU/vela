@@ -4,6 +4,7 @@ import type { DirEntry } from "../types";
 import { FileIcon } from "./FileIcon";
 import { previewKind } from "../services/file-kind";
 import { useThumbnail } from "../hooks/useThumbnail";
+import { useHoverPreview } from "../hooks/useHoverPreview";
 import { gitColor, GIT_LABEL } from "../services/git-ui";
 
 interface Props {
@@ -22,7 +23,9 @@ export function FileTile({ entry, selected, active, color, git, onClick, onDoubl
   const [dragOver, setDragOver] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const isImage = !entry.is_dir && previewKind(entry.extension) === "image";
+  const isVideo = !entry.is_dir && previewKind(entry.extension) === "video";
   const thumb = useThumbnail(entry.path, isImage);
+  const hover = useHoverPreview(entry.path, isVideo);
 
   useEffect(() => {
     if (active && btnRef.current) btnRef.current.scrollIntoView({ block: "nearest" });
@@ -61,6 +64,8 @@ export function FileTile({ entry, selected, active, color, git, onClick, onDoubl
       onClick={onClick}
       onDoubleClick={onDouble}
       onContextMenu={(e) => { e.stopPropagation(); onContext(e); }}
+      onMouseEnter={hover.start}
+      onMouseLeave={hover.stop}
       title={entry.name}
       className={`flex flex-col items-center gap-1.5 w-24 p-2 rounded-lg transition-colors ${
         dragOver
@@ -71,7 +76,9 @@ export function FileTile({ entry, selected, active, color, git, onClick, onDoubl
       }`}
     >
       <span className="relative">
-        {isImage && thumb.src && !thumb.error ? (
+        {isVideo && hover.frame ? (
+          <img src={hover.frame} alt={entry.name} draggable={false} className="w-[34px] h-[34px] object-cover rounded ring-1 ring-[var(--color-accent)]" />
+        ) : isImage && thumb.src && !thumb.error ? (
           <img
             src={thumb.src}
             alt={entry.name}

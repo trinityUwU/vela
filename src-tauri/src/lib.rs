@@ -16,6 +16,7 @@ mod download_job;
 mod downloader;
 mod favorites;
 mod fs_ops;
+mod gallery;
 mod git;
 mod integrity;
 mod index;
@@ -135,6 +136,8 @@ pub fn run() {
             replace::search_replace_preview,
             replace::search_replace_apply,
             advsearch::search_advanced,
+            gallery::image_exif,
+            gallery::image_palette,
             analyze::analyze_disk,
             dircmp::compare_dirs,
             player::player_open,

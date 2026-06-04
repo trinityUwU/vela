@@ -52,6 +52,8 @@ qrcode = "0.14"
 local-ip-address = "0.6"
 lopdf = "0.34"
 regex = "1"
+kamadak-exif = "0.5"
+color-thief = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 wry = "0.55"

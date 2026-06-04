@@ -29,6 +29,8 @@ import { PdfTools } from "./components/PdfTools";
 import { ImageAnnotate } from "./components/ImageAnnotate";
 import { FindReplace } from "./components/FindReplace";
 import { AdvancedSearch } from "./components/AdvancedSearch";
+import { Lightbox } from "./components/Lightbox";
+import { previewKind } from "./services/file-kind";
 import { useSmartSearches } from "./hooks/useSmartSearches";
 import type { SearchCriteria } from "./services/advsearch";
 import type { TabSeed } from "./hooks/useFolderTabs";
@@ -127,6 +129,7 @@ export default function App() {
   const [findReplaceRoot, setFindReplaceRoot] = useState<string | null>(null);
   const [advSearch, setAdvSearch] = useState<{ criteria: SearchCriteria; autoRun: boolean } | null>(null);
   const [smartName, setSmartName] = useState<SearchCriteria | null>(null);
+  const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   const workspaces = useWorkspaces();
   const smartSearches = useSmartSearches();
   const [extractConflict, setExtractConflict] = useState<{ archivePath: string; dest: string } | null>(null);
@@ -220,6 +223,14 @@ export default function App() {
     () => applySortFilter(fm.listing?.entries ?? [], sort),
     [fm.listing, sort],
   );
+  const imageEntries = useMemo(
+    () => entries.filter((e) => !e.is_dir && previewKind(e.extension) === "image"),
+    [entries],
+  );
+  const openGallery = useCallback((path: string) => {
+    const idx = imageEntries.findIndex((e) => e.path === path);
+    setGalleryIndex(idx >= 0 ? idx : 0);
+  }, [imageEntries]);
 
   useEffect(() => {
     if (!fm.cwd) { setDisk(null); return; }
@@ -484,6 +495,11 @@ export default function App() {
       else fm.setError("Sélectionne une seule image à annoter.");
     },
     findReplace: () => setFindReplaceRoot(fm.cwd),
+    openGallery: () => {
+      if (!imageEntries.length) { fm.setError("Aucune image dans ce dossier."); return; }
+      const sel = selPaths()[0];
+      openGallery(sel ?? imageEntries[0].path);
+    },
     newFromTemplate: () => setTemplatePick(true),
     saveAsTemplate: () => {
       const p = selPaths();
@@ -771,6 +787,7 @@ export default function App() {
         onPdfTools={(p) => { if (p.length) setPdfPaths(p); }}
         onAnnotate={setAnnotatePath}
         onFindReplace={setFindReplaceRoot}
+        onGallery={openGallery}
       />
 
       <DialogHost
@@ -836,6 +853,15 @@ export default function App() {
           path={annotatePath}
           onSaved={(p) => { setAnnotatePath(null); fm.refresh(); fm.navigate(parentDir(p)); }}
           onClose={() => setAnnotatePath(null)}
+          onError={fm.setError}
+        />
+      )}
+
+      {galleryIndex !== null && imageEntries.length > 0 && (
+        <Lightbox
+          images={imageEntries}
+          index={galleryIndex}
+          onClose={() => setGalleryIndex(null)}
           onError={fm.setError}
         />
       )}

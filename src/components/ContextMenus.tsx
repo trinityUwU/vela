@@ -51,6 +51,7 @@ interface Props {
   onPdfTools: (paths: string[]) => void;
   onAnnotate: (path: string) => void;
   onFindReplace: (dir: string) => void;
+  onGallery: (path: string) => void;
 }
 
 export function ContextMenus(props: Props): React.ReactElement {
@@ -111,6 +112,7 @@ export function ContextMenus(props: Props): React.ReactElement {
           onPdfTools={() => { props.onPdfTools(selPaths(menu.entry.path)); onCloseMenu(); }}
           onAnnotate={() => { props.onAnnotate(menu.entry.path); onCloseMenu(); }}
           onFindReplace={() => { props.onFindReplace(menu.entry.path); onCloseMenu(); }}
+          onGallery={() => { props.onGallery(menu.entry.path); onCloseMenu(); }}
         />
       )}
 

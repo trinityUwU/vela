@@ -54,6 +54,7 @@ interface Props {
   onPdfTools?: () => void;
   onAnnotate?: () => void;
   onFindReplace?: () => void;
+  onGallery?: () => void;
 }
 
 function relativePath(path: string, cwd: string): string {
@@ -115,6 +116,9 @@ export function ContextMenu(props: Props) {
       )}
       {isMedia && onMediaTools && (
         <Item label={mediaLabel} onClick={() => { onMediaTools(); onClose(); }} />
+      )}
+      {mediaKind === "image" && props.onGallery && (
+        <Item label="Voir dans la galerie" onClick={() => { props.onGallery?.(); onClose(); }} />
       )}
       {mediaKind === "image" && props.onAnnotate && (
         <Item label="Annoter…" onClick={() => { props.onAnnotate?.(); onClose(); }} />

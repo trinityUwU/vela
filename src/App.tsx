@@ -484,7 +484,7 @@ export default function App() {
         dirDiff={dirDiff ? { a: dirDiff.a, b: dirDiff.b, onClose: () => setDirDiff(null), onError: fm.setError } : null}
         analyzer={analyzePath ? { path: analyzePath, onClose: () => setAnalyzePath(null), onReveal: fm.navigate, onError: fm.setError } : null}
         translate={translate ? { path: translate.path, onClose: () => { setTranslate(null); fm.refresh(); } } : null}
-        codeSearch={codeSearchOpen ? { project: fm.cwd, onReveal: (p: string) => fm.navigate(parentDir(p)), onClose: () => setCodeSearchOpen(false) } : null}
+        codeSearch={codeSearchOpen ? { project: fm.cwd, onReveal: (p: string) => { openMatch(p); setCodeSearchOpen(false); }, onClose: () => setCodeSearchOpen(false) } : null}
         palette={palette.open ? {
           commands, entries, onOpenEntry: fm.openEntry,
           onGlobalSearch: (q) => globalSearch(q, 20),

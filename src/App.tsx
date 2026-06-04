@@ -297,6 +297,9 @@ export default function App() {
 
   const openInEditor = (entry: DirEntry) => {
     if (entry.is_dir) return fm.navigate(entry.path);
+    // Si le profil courant a déjà une zone éditeur, on y affiche le fichier sans le quitter ;
+    // sinon seulement on bascule vers le profil Édition.
+    if (activeHasEditorZone()) { showFileInEditor(entry.path); return; }
     switchToEdition(); fm.setOpened(entry); fm.setSelected(entry.path);
   };
 

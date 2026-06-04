@@ -179,15 +179,21 @@ function banner(cwd: string): string {
   return `${accent}▌${reset} ${dim}${cwd}${reset}\r\n${accent}▌${reset} ${dim}${date}${reset}\r\n\r\n`;
 }
 
-// Tokens « chemin-like » d'une ligne : on capte les runs de caractères de chemin
-// (avec leur colonne 1-based) ; la validation réelle d'existence se fait côté Rust au clic.
-const PATH_TOKEN = /[A-Za-z0-9._~/+@%-]{2,}/g;
+// Tokens « chemin-like » d'une ligne : segments entre quotes (noms avec espaces, façon `ls`)
+// OU runs de caractères de chemin. Colonnes 1-based ; validation d'existence côté Rust au clic.
+const PATH_TOKEN = /'([^']+)'|"([^"]+)"|([A-Za-z0-9._~/+@%-]{2,})/g;
 function pathTokens(line: string): { text: string; start: number; end: number }[] {
   const out: { text: string; start: number; end: number }[] = [];
   let m: RegExpExecArray | null;
   PATH_TOKEN.lastIndex = 0;
   while ((m = PATH_TOKEN.exec(line))) {
-    const text = m[0];
+    const quoted = m[1] ?? m[2];
+    if (quoted !== undefined) {
+      const start = m.index + 2; // saute la quote ouvrante (1-based)
+      out.push({ text: quoted, start, end: start + quoted.length - 1 });
+      continue;
+    }
+    const text = m[3];
     if (!/[/.~]/.test(text) && !/^[A-Za-z0-9]/.test(text)) continue;
     out.push({ text, start: m.index + 1, end: m.index + text.length });
   }

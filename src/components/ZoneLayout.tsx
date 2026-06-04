@@ -1,4 +1,5 @@
 // Rendu de la zone centrale piloté par le profil actif : place chaque panneau selon les zones.
+import { useState } from "react";
 import type { DirEntry, PanelId, Zones } from "../types";
 import type { SortBy, SortState } from "../hooks/useSort";
 import type { useFavorites } from "../hooks/useFavorites";
@@ -10,6 +11,7 @@ import { FileList } from "./FileList";
 import { EditorArea } from "./EditorArea";
 import { FileTree } from "./FileTree";
 import { TerminalPanel } from "./TerminalPanel";
+import { ResizeHandle } from "./ResizeHandle";
 import { GitPanel } from "./GitPanel";
 import type { GitState } from "../hooks/useGitStatus";
 import type { TermTab } from "../hooks/useTerminals";
@@ -149,6 +151,10 @@ function renderPanel(panel: PanelId, props: ZoneLayoutProps): React.ReactElement
 
 export function ZoneLayout(props: ZoneLayoutProps): React.ReactElement {
   const { zones, centerOverride } = props;
+  // Zone bottom redimensionnable (drag) — même mécanique que le dock terminal legacy.
+  const [bottomH, setBottomH] = useState(256);
+  const resizeBottom = (dy: number): void =>
+    setBottomH((h) => Math.max(120, Math.min(window.innerHeight - 160, h - dy)));
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <div className="flex-1 flex min-h-0">
@@ -159,8 +165,9 @@ export function ZoneLayout(props: ZoneLayoutProps): React.ReactElement {
         {zones.right && renderPanel(zones.right, props)}
       </div>
       {zones.bottom && (
-        <div className="shrink-0 h-64 min-h-0 flex flex-col">
-          {renderPanel(zones.bottom, props)}
+        <div className="shrink-0 flex flex-col" style={{ height: bottomH }}>
+          <ResizeHandle onResize={resizeBottom} />
+          <div className="flex-1 min-h-0">{renderPanel(zones.bottom, props)}</div>
         </div>
       )}
     </div>

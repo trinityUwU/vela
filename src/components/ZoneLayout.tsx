@@ -67,6 +67,8 @@ interface EditorProps {
   onSelect: (path: string) => void;
   onClose: (path: string) => void;
   onError: (msg: string) => void;
+  onContext: (e: React.MouseEvent, entry: DirEntry) => void;
+  colorOf: (path: string) => string | undefined;
   editPath: string | null;
 }
 

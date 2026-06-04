@@ -442,6 +442,8 @@ export default function App() {
           onSelect: editorTabs.select,
           onClose: editorTabs.close,
           onError: fm.setError,
+          onContext,
+          colorOf: tagHex,
           editPath,
         }}
         sidebar={{

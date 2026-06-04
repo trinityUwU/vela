@@ -8,10 +8,12 @@ interface Props {
   onSelect: (path: string) => void;
   onClose: (path: string) => void;
   onError: (msg: string) => void;
+  onContext: (e: React.MouseEvent, entry: DirEntry) => void;
+  colorOf: (path: string) => string | undefined;
   editPath?: string | null;
 }
 
-export function EditorArea({ tabs, activePath, onSelect, onClose, onError, editPath = null }: Props) {
+export function EditorArea({ tabs, activePath, onSelect, onClose, onError, onContext, colorOf, editPath = null }: Props) {
   if (tabs.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-text-dim)]">
@@ -26,6 +28,7 @@ export function EditorArea({ tabs, activePath, onSelect, onClose, onError, editP
           <div
             key={t.path}
             onClick={() => onSelect(t.path)}
+            onContextMenu={(e) => onContext(e, t)}
             onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); onClose(t.path); } }}
             className={`group flex items-center gap-1.5 px-3 text-xs cursor-pointer whitespace-nowrap border-r border-[var(--color-border)] ${
               t.path === activePath
@@ -33,6 +36,9 @@ export function EditorArea({ tabs, activePath, onSelect, onClose, onError, editP
                 : "text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
             }`}
           >
+            {colorOf(t.path) && (
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: colorOf(t.path) }} />
+            )}
             <span className="truncate max-w-48">{t.name}</span>
             <button
               onClick={(e) => { e.stopPropagation(); onClose(t.path); }}

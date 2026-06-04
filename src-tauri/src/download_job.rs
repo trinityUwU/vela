@@ -103,12 +103,31 @@ fn find_bun() -> Option<String> {
 // Le WebKit de Vela stocke ses cookies à ce chemin en format Netscape (lisible par yt-dlp).
 // L'utilisateur se connecte à YouTube dans le navigateur Vela → cookies injectés automatiquement.
 
-const VELA_WEBKIT_COOKIES: &str = ".local/share/com.echo.vela/cookies";
+const VELA_WEBKIT_COOKIES: &str = ".local/share/com.echo.vela/browser/cookies";
+
+/// Convertit le fichier cookies WebKit (8 colonnes, sans header) en format Netscape standard
+/// (7 colonnes + header `# Netscape HTTP Cookie File`) que yt-dlp accepte.
+fn convert_webkit_cookies(src: &str) -> Option<String> {
+    let home = std::env::var("HOME").ok()?;
+    let dst = format!("{home}/.local/share/vela/yt-cookies.txt");
+    let content = std::fs::read_to_string(src).ok()?;
+    let mut out = "# Netscape HTTP Cookie File\n".to_string();
+    for line in content.lines() {
+        if line.is_empty() || line.starts_with("# ") { continue; }
+        let parts: Vec<&str> = line.splitn(9, '\t').collect();
+        if parts.len() >= 7 {
+            out.push_str(&parts[..7].join("\t"));
+            out.push('\n');
+        }
+    }
+    std::fs::write(&dst, out).ok()?;
+    Some(dst)
+}
 
 fn vela_cookie_file() -> Option<String> {
     let home = std::env::var("HOME").ok()?;
     let path = format!("{home}/{VELA_WEBKIT_COOKIES}");
-    std::path::Path::new(&path).exists().then_some(path)
+    std::path::Path::new(&path).exists().then(|| convert_webkit_cookies(&path)).flatten()
 }
 
 /// True si des cookies youtube.com sont présents dans le store WebKit de Vela.

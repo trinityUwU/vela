@@ -10,11 +10,11 @@ interface Props {
 }
 
 export function FloatingMenu({ x, y, className = "", children }: Props): React.ReactElement {
-  const { ref, pos } = useMenuPosition(x, y);
+  const { ref, style } = useMenuPosition(x, y);
   return (
     <div
       ref={ref}
-      style={{ top: pos.top, left: pos.left, maxHeight: "calc(100vh - 16px)" }}
+      style={{ top: style.top, left: style.left, maxHeight: style.maxHeight }}
       className={`fixed z-50 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl overflow-y-auto ${className}`}
     >
       {children}

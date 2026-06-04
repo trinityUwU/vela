@@ -61,7 +61,7 @@ export function ContextMenu(props: Props) {
   const { menu, onClose, onOpen, onRename, onTrash, onDeletePermanent, onProperties } = props;
   const { onCopy, onCut, onCompress, onBatchRename, onCompare, onSetColor, onOpenTerminal, onComputeSize, onAnalyze, onMediaTools, onExtractHere, onExtractTo, onConvert, onOpenNative } = props;
 
-  const { ref, pos } = useMenuPosition(menu.x, menu.y);
+  const { ref, style: menuStyle } = useMenuPosition(menu.x, menu.y);
 
   useEffect(() => {
     window.addEventListener("click", onClose);
@@ -82,7 +82,7 @@ export function ContextMenu(props: Props) {
   return (
     <div
       ref={ref}
-      style={{ top: pos.top, left: pos.left, maxHeight: "calc(100vh - 16px)" }}
+      style={{ top: menuStyle.top, left: menuStyle.left, maxHeight: menuStyle.maxHeight }}
       className="fixed z-50 min-w-52 py-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xl overflow-y-auto"
     >
       {multi && (

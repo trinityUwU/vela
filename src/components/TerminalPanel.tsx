@@ -244,9 +244,9 @@ function TerminalView({ id, cwd, active, onExit, onOpenPath }: {
       },
     });
 
-    const onKey = (e: KeyboardEvent) => { ctrlHeld.current = e.ctrlKey || e.metaKey; };
+    // Premier appui sur Ctrl/Cmd → active les liens définitivement (pas besoin de maintenir).
+    const onKey = (e: KeyboardEvent) => { if (e.ctrlKey || e.metaKey) ctrlHeld.current = true; };
     window.addEventListener("keydown", onKey, true);
-    window.addEventListener("keyup", onKey, true);
 
     const onData = term.onData((data) => termInput(id, data).catch(() => {}));
     const unOut = listen<{ id: string; data: string }>("term-output", ({ payload }) => {
@@ -264,7 +264,6 @@ function TerminalView({ id, cwd, active, onExit, onOpenPath }: {
       onData.dispose();
       linkProvider.dispose();
       window.removeEventListener("keydown", onKey, true);
-      window.removeEventListener("keyup", onKey, true);
       unOut.then((f) => f());
       unExit.then((f) => f());
       ro.disconnect();
